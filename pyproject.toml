@@ -1,0 +1,17 @@
+[project]
+name = "ai-banking-customer-service"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "junforever", email = "dgalvaro@hotmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ai-banking-customer-service = "ai_banking_customer_service:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"

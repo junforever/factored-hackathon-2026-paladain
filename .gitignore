@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / C-extension files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Packaging and distribution
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+*.whl
+
+# Virtual environments & package managers
+.venv/
+env/
+venv/
+ENV/
+.uv/
+
+# Environment variables, credentials and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Strands Agents & LLM local runtime state
+.strands/
+traces/
+*.trace
+*.session
+eval_results/
+
+# Local databases, vectors, caches and data storage
+*.db
+*.sqlite
+*.sqlite3
+data/
+storage/
+.chroma/
+.cache/
+
+# Testing, linting and type checking
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+logs/
+*.log
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db
