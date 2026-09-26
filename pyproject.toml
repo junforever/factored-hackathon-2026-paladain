@@ -7,7 +7,9 @@ authors = [
     { name = "junforever", email = "dgalvaro@hotmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "strands-agents[openai]>=1.57.1",
+]
 
 [project.scripts]
 ai-banking-customer-service = "ai_banking_customer_service:main"
