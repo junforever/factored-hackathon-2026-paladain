@@ -63,3 +63,5 @@ logs/
 # Operating System files
 .DS_Store
 Thumbs.db
+# Local Pi runtime state
+.atl/
