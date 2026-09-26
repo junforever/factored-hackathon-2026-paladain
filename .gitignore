@@ -56,7 +56,6 @@ logs/
 *.log
 
 # IDEs and editors
-.vscode/
 .idea/
 *.swp
 *.swo
