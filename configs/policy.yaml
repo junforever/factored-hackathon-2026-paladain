@@ -1,0 +1,12 @@
+auto_block:
+  enabled: true
+  allowed_product_types:
+    - Tarjeta Crédito
+    - Tarjeta Débito
+  max_amount_usd: 500
+  require_merchant_known: true
+  max_days_since_transaction: 30
+
+escalation:
+  high_amount_threshold_usd: 500
+  account_products_require_human: true

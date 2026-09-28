@@ -1,0 +1,8 @@
+held_out_start: '2026-05-01'
+held_out_end: '2026-06-17'
+min_sample_size: 200
+metrics:
+  - safe_automated_resolution_rate
+  - unsafe_outcomes
+  - escalation_quality
+  - latency_p95
