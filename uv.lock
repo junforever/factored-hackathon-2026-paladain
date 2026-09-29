@@ -32,6 +32,8 @@ dependencies = [
     { name = "pandas" },
     { name = "pandera" },
     { name = "pyarrow" },
+    { name = "pydantic-settings" },
+    { name = "pyyaml" },
     { name = "strands-agents", extra = ["openai"] },
 ]
 
@@ -48,6 +50,8 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "pandera", specifier = ">=0.33.1" },
     { name = "pyarrow", specifier = ">=25.0.1" },
+    { name = "pydantic-settings", specifier = ">=2.15.0" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "strands-agents", extras = ["openai"], specifier = ">=1.57.1" },
 ]
 

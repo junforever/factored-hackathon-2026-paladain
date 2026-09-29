@@ -13,6 +13,8 @@ dependencies = [
     "pandas>=3.0.6",
     "pandera>=0.33.1",
     "pyarrow>=25.0.1",
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
     "strands-agents[openai]>=1.57.1",
 ]
 

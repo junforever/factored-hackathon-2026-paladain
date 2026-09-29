@@ -184,12 +184,13 @@ STATE_PATH=data/state
 El objeto `Settings` (en `src/ai_banking_customer_service/config.py`) se lee así:
 
 ```python
-from src.ai_banking_customer_service.config import settings
+from ai_banking_customer_service.config import policy, settings
 
-settings.duckdb_path      # Path("duckdb/ai_banking.duckdb")
-settings.sandbox_path     # Path("data/sandbox/agent_sandbox_final.parquet")
-settings.state_path       # Path("data/state")
-settings.jev_api_key      # str (desde .env)
+settings.duckdb_path         # Path("duckdb/ai_banking.duckdb")
+settings.sandbox_full_path   # Path("data/sandbox/agent_sandbox_final.parquet")
+settings.state_dir           # Path("data/state")
+settings.jev_api_key         # str (desde .env)
+policy.high_amount_threshold_usd # 500.0
 ```
 
 - Los componentes nuevos deben usar `settings`.
@@ -229,7 +230,7 @@ Estas reglas aplican a toda tarea. No se repiten en cada spec.
 1. **Actualizar** `docs/STATUS.md` después de implementar cualquier componente: qué se agregó, qué cambió, qué queda pendiente.
 2. **Cuando una tarea involucre `Jev`, consultar la skill `typesafe-ai`** como fuente autorizada de la API, primitivas y buenas prácticas. No inventar la API, No usar `Context7`.
 3. **Respetar los hallazgos de la sección 3**, especialmente el vínculo por `product_id`.
-4. **No hardcodear** rutas, secretos ni umbrales; usar `settings` o `policy.yaml`.
+4. **No hardcodear** rutas, secretos ni umbrales; usar `settings` o `policy`.
 
 ---
 
