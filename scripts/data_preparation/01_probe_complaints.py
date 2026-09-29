@@ -1,11 +1,7 @@
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 import duckdb
-
-load_dotenv()
+from ai_banking_customer_service.config import settings
 
 file_path = Path("data/complaints/year=2025/month=12/day=02/complaints_20251202.csv")
 
@@ -14,9 +10,9 @@ print("Existe archivo:", file_path.exists())
 if not file_path.exists():
     raise FileNotFoundError(f"No existe el archivo: {file_path}")
 
-Path("duckdb").mkdir(exist_ok=True)
+settings.duckdb_path.parent.mkdir(exist_ok=True)
 
-con = duckdb.connect(f"duckdb/{os.getenv('DUCKDB_NAME')}")
+con = duckdb.connect(str(settings.duckdb_path))
 
 query = f"""
 SELECT

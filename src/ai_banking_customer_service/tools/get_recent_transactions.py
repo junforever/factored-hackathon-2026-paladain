@@ -6,17 +6,13 @@ Usa el sandbox como puerta de autorización: solo permite consultar
 transacciones de clientes que tienen una queja en el sandbox.
 """
 
-import os
 from datetime import timedelta
-from pathlib import Path
-
-from dotenv import load_dotenv
 
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-SANDBOX_PATH = Path(os.getenv("SANDBOX_PATH"))
-DB_PATH = Path(f"duckdb/{os.getenv('DUCKDB_NAME')}")
+SANDBOX_PATH = settings.sandbox_full_path
+DB_PATH = settings.duckdb_path
 
 
 def get_recent_transactions(

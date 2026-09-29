@@ -2,16 +2,10 @@
 Diagnóstico: entender por qué get_recent_transactions devolvió 0 filas.
 """
 
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-
-DB_PATH = Path(f"duckdb/{os.getenv('DUCKDB_NAME')}")
+DB_PATH = settings.duckdb_path
 
 TEST_CUSTOMER = "CLI-9W3CREKG73Q7"
 TEST_PRODUCT = "PRD-8DIMA5HG33OA"

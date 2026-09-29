@@ -11,11 +11,9 @@ Requisito del hackathon:
  supporting evidence, unresolved questions, and recommended next steps."
 """
 
-import os
 from datetime import datetime
 
-from dotenv import load_dotenv
-
+from ai_banking_customer_service.config import policy
 from ai_banking_customer_service.services.card_service import is_card_blocked
 from ai_banking_customer_service.services.escalation_service import create_escalation
 from ai_banking_customer_service.tools.get_dispute_context import get_dispute_context
@@ -23,13 +21,8 @@ from ai_banking_customer_service.tools.get_recent_transactions import (
     get_recent_transactions,
 )
 
-load_dotenv()
 # Umbral de monto alto (USD) que dispara prioridad High
-HIGH_AMOUNT_THRESHOLD_USD = (
-    float(os.getenv("HIGH_AMOUNT_THRESHOLD_USD"))
-    if os.getenv("HIGH_AMOUNT_THRESHOLD_USD") is not None
-    else 500.0
-)
+HIGH_AMOUNT_THRESHOLD_USD = policy.high_amount_threshold_usd
 
 
 def _determine_priority(context: dict) -> str:

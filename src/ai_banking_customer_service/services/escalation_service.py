@@ -9,23 +9,18 @@ En producción se integraría con el sistema de tickets del banco.
 """
 
 import json
-import os
 import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-STATE_PATH = Path(os.getenv("STATE_PATH")) if os.getenv("STATE_PATH") else None
+STATE_PATH: Path = settings.state_dir / "escalation_service.sqlite3"
 
 
 def _get_conn() -> sqlite3.Connection:
     """Abre una conexión SQLite configurada para concurrencia."""
-
-    if not STATE_PATH:
-        raise ValueError("La variable de entorno STATE_PATH no está configurada")
 
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(STATE_PATH), timeout=30, isolation_level=None)

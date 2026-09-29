@@ -1,12 +1,7 @@
-import os
-
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-
-con = duckdb.connect(f"duckdb/{os.getenv('DUCKDB_NAME')}", read_only=True)
+con = duckdb.connect(str(settings.duckdb_path), read_only=True)
 
 query = """
 SELECT

@@ -3,17 +3,11 @@ Diagnóstico: ¿de quién es el producto afectado?
 ¿El mismatch customer_id es puntual o sistémico en el sandbox?
 """
 
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-
-DB_PATH = Path(f"duckdb/{os.getenv('DUCKDB_NAME')}")
-SANDBOX_PATH = Path(os.getenv("SANDBOX_PATH"))
+DB_PATH = settings.duckdb_path
+SANDBOX_PATH = settings.sandbox_full_path
 
 TEST_PRODUCT = "PRD-8DIMA5HG33OA"
 TEST_CUSTOMER_COMPLAINT = "CLI-9W3CREKG73Q7"

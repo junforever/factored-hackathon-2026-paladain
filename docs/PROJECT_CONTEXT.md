@@ -71,7 +71,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 | Configuración               | `pydantic-settings` | Lee `.env` en un objeto `Settings` tipado          |
 | Orquestador de agente       | Strands             | Lifecycle hooks para gobierno                      |
 | Capa de gobierno            | Jev (TypeSafe)      | Screening, routing, tool gating, confidence gating |
-| UI / demo                   | Streamlit o Gradio  | Pendiente de construir                             |
+| UI / demo                   | Chainlit            | Interfaz conversacional con el agente              |
 
 ---
 
@@ -151,6 +151,7 @@ Estas decisiones son vinculantes. No reintroducir patrones que ya descartamos.
 8. **Idempotencia.** Bloquear dos veces no corrompe el estado; devuelve `already_blocked`.
 9. **Mock services documentados.** `card_service` y `escalation_service` son sintéticos. En producción serían las APIs reales del banco.
 10. **Configuración vía `.env` + `pydantic-settings`.** Secretos y rutas en `.env`; parámetros de negocio en `configs/policy.yaml`. Nunca hardcodear.
+11. **UI como capa de presentación delgada.** La lógica del agente (orquestador, tools, gobierno, política) vive en `src/` agnóstica del framework de UI. La UI (Chainlit) recibe la entrada del usuario, invoca al orquestador y renderiza la salida. No contiene lógica de negocio, política ni llamadas directas a servicios. Esto hace la UI intercambiable y el agente testeable sin levantar la interfaz.
 
 ---
 

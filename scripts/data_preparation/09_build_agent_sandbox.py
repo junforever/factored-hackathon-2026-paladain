@@ -1,15 +1,9 @@
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
+settings.sandbox_full_path.parent.mkdir(parents=True, exist_ok=True)
 
-Path("data/sandbox").mkdir(parents=True, exist_ok=True)
-
-con = duckdb.connect(f"duckdb/{os.getenv('DUCKDB_NAME')}")
+con = duckdb.connect(str(settings.duckdb_path))
 
 print("Aplicando reglas de negocio y exportando sandbox final...")
 
@@ -60,9 +54,9 @@ FROM sandbox_dispute_cases;
 con.execute(query)
 
 # Exportar a Parquet para consumo rápido del agente
-con.execute("""
+con.execute(f"""
 COPY agent_sandbox_final 
-TO 'data/sandbox/agent_sandbox_final.parquet' 
+TO '{settings.sandbox_full_path.as_posix()}' 
 (FORMAT PARQUET, COMPRESSION ZSTD);
 """)
 

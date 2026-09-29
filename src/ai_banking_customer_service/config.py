@@ -46,7 +46,10 @@ class Settings(BaseSettings):
 
     @property
     def state_dir(self) -> Path:
-        return PROJECT_ROOT / self.state_path
+        path = PROJECT_ROOT / self.state_path
+        if path.suffix:
+            return path.parent
+        return path
 
 
 class Policy(BaseModel):

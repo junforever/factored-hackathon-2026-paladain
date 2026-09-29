@@ -8,15 +8,13 @@ IMPORTANTE: Esto es un servicio sintético para el prototipo.
 En producción sería la API real del banco.
 """
 
-import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-STATE_PATH = Path(os.getenv("STATE_PATH")) if os.getenv("STATE_PATH") else None
+STATE_PATH: Path = settings.state_dir / "card_service.sqlite3"
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -27,9 +25,6 @@ def _get_conn() -> sqlite3.Connection:
     - isolation_level=None: autocommit, para controlar transacciones manualmente.
     - WAL mode: permite múltiples lectores concurrentes sin bloquearse.
     """
-    if not STATE_PATH:
-        raise ValueError("La variable de entorno STATE_PATH no está configurada")
-
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(STATE_PATH), timeout=30, isolation_level=None)
     conn.execute("PRAGMA journal_mode=WAL;")

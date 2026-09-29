@@ -3,17 +3,14 @@ Data Quality Gate: Valida el contrato del sandbox antes de que el agente lo cons
 Si falla, el pipeline debería detenerse y alertar.
 """
 
-import os
 import sys
-from pathlib import Path
 
 import pandas as pd
 import pandera.pandas as pa
-from dotenv import load_dotenv
 
-load_dotenv()
+from ai_banking_customer_service.config import settings
 
-SANDBOX_PATH = Path(os.getenv("SANDBOX_PATH"))
+SANDBOX_PATH = settings.sandbox_full_path
 
 # 1. Definir el Contrato de Datos (Data Contract)
 # validamos las columnas críticas para el agente

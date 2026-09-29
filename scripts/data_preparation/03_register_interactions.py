@@ -1,15 +1,11 @@
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
+settings.duckdb_path.parent.mkdir(exist_ok=True)
 
-Path("duckdb").mkdir(exist_ok=True)
-
-con = duckdb.connect(f"duckdb/{os.getenv('DUCKDB_NAME')}")
+con = duckdb.connect(str(settings.duckdb_path))
 
 con.execute("PRAGMA threads=4;")
 con.execute("PRAGMA memory_limit='4GB';")

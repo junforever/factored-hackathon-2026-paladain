@@ -5,16 +5,11 @@ Obtiene el contexto completo de una disputa por cargo no reconocido.
 Lee del sandbox generado en el paso 9.
 """
 
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
 import duckdb
+from ai_banking_customer_service.config import settings
 
-load_dotenv()
-# Path al sandbox (relativo a la raíz del proyecto)
-SANDBOX_PATH = Path(os.getenv("SANDBOX_PATH"))
+# Path al sandbox
+SANDBOX_PATH = settings.sandbox_full_path
 
 
 def get_dispute_context(complaint_id: str) -> dict:
