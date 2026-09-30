@@ -3,6 +3,7 @@
 import json
 from typing import Any, Mapping
 
+import typesafe_sdk
 from pydantic import SecretStr, ValidationError
 
 from ai_banking_customer_service.config import settings
@@ -80,5 +81,14 @@ class JevClient:
         return response
 
     def _invoke(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Invoke the Jev transport; real SDK integration is intentionally pending."""
-        raise NotImplementedError
+        """Invoke Jev through the SDK and return its JSON-compatible wire form."""
+        with typesafe_sdk.TypeSafeClient(
+            api_key=self._api_key.get_secret_value(),
+            model=self._model,
+            timeout=self._timeout_seconds,
+        ) as client:
+            response = client.system_one(
+                state=request["state"],
+                questions=request["questions"],
+            )
+            return response.model_dump(mode="json")

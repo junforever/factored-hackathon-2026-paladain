@@ -1,4 +1,5 @@
 import pytest
+import typesafe_sdk
 from pydantic import SecretStr
 
 from ai_banking_customer_service.governance.jev import (
@@ -348,3 +349,103 @@ def test_evaluate_rejects_incomplete_or_surplus_answers(
                 question_id: _noul_question() for question_id in question_ids
             },
         )
+
+
+def test_invoke_uses_sdk_context_manager_and_returns_wire_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[object] = []
+    constructor_arguments: dict[str, object] = {}
+    state = {"message": "Report an unknown charge."}
+    questions = {
+        "authorized": {
+            "type": "noul",
+            "instructions": "Is the request authorized?",
+            "criteria": {"true": "Authorized.", "false": "Not authorized."},
+        }
+    }
+    wire_response = {
+        "model": "jev-test",
+        "answers": {"authorized": {"type": "noul", "noul": 0.9}},
+        "usage": {"input_tokens": 5, "output_tokens": 1},
+    }
+
+    class FakeResponse:
+        def model_dump(self, *, mode: str) -> dict[str, object]:
+            events.append(("model_dump", mode))
+            return wire_response
+
+    class FakeTypeSafeClient:
+        def __init__(self, **kwargs: object) -> None:
+            constructor_arguments.update(kwargs)
+
+        def __enter__(self) -> "FakeTypeSafeClient":
+            events.append("enter")
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            events.append("exit")
+
+        def system_one(
+            self, *, state: object, questions: object
+        ) -> FakeResponse:
+            events.append(("system_one", state, questions))
+            return FakeResponse()
+
+    monkeypatch.setattr(typesafe_sdk, "TypeSafeClient", FakeTypeSafeClient)
+    client = JevClient(
+        api_key=SecretStr("plain-api-key"),
+        model="jev-test",
+        timeout_seconds=2.5,
+    )
+
+    result = client._invoke(
+        {"state": state, "model": "jev-test", "questions": questions}
+    )
+
+    assert constructor_arguments == {
+        "api_key": "plain-api-key",
+        "model": "jev-test",
+        "timeout": 2.5,
+    }
+    assert events == [
+        "enter",
+        ("system_one", state, questions),
+        ("model_dump", "json"),
+        "exit",
+    ]
+    assert result == wire_response
+
+
+def test_invoke_closes_sdk_client_when_system_one_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[object] = []
+
+    class FakeTypeSafeClient:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        def __enter__(self) -> "FakeTypeSafeClient":
+            events.append("enter")
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            events.append(("exit", args[0]))
+
+        def system_one(self, *, state: object, questions: object) -> object:
+            raise RuntimeError("transport failed")
+
+    monkeypatch.setattr(typesafe_sdk, "TypeSafeClient", FakeTypeSafeClient)
+    client = JevClient()
+
+    with pytest.raises(RuntimeError, match="transport failed"):
+        client._invoke(
+            {
+                "state": {"message": "Report an unknown charge."},
+                "model": "jev-test",
+                "questions": {"authorized": {}},
+            }
+        )
+
+    assert events == ["enter", ("exit", RuntimeError)]
