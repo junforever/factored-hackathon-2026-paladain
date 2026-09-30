@@ -8,22 +8,11 @@ from .exceptions import (
     JevUnavailableError,
     JevValidationError,
 )
+from .schemas import ChoiceQuestion, NoulQuestion, ScoreQuestion
 
 
 class JevClient:
     """Typed Jev transport adapter."""
-
-
-class NoulQuestion:
-    """Typed Noul question contract."""
-
-
-class ChoiceQuestion:
-    """Typed Choice question contract."""
-
-
-class ScoreQuestion:
-    """Typed Score question contract."""
 
 
 class JevResponse:
