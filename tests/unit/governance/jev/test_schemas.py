@@ -45,9 +45,7 @@ def test_noul_question_rejects_blank_instructions(instructions: str) -> None:
 
 @pytest.mark.parametrize("field_name", ["true", "false"])
 @pytest.mark.parametrize("value", ["", "   "])
-def test_noul_question_rejects_blank_criteria(
-    field_name: str, value: str
-) -> None:
+def test_noul_question_rejects_blank_criteria(field_name: str, value: str) -> None:
     criteria = {"true": "Authorized.", "false": "Not authorized."}
     criteria[field_name] = value
 
@@ -191,7 +189,8 @@ def test_score_answer_accepts_structured_legend_content(
     ],
 )
 def test_answer_union_parses_by_discriminator(
-    payload: dict[str, object], expected_type: type,
+    payload: dict[str, object],
+    expected_type: type,
 ) -> None:
     answer = TypeAdapter(Answer).validate_python(payload)
 
@@ -259,7 +258,8 @@ def test_jev_response_parses_answers_usage_and_future_fields() -> None:
     ],
 )
 def test_jev_response_helpers_reject_wrong_type_or_missing_question(
-    helper_name: str, question_id: str,
+    helper_name: str,
+    question_id: str,
 ) -> None:
     response = JevResponse(
         model="jev-1.13.0",

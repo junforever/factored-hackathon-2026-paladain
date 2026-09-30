@@ -20,9 +20,7 @@ JSONContent = str | dict[str, Any] | list[Any]
 def _require_non_blank(value: str, field_name: str) -> str:
     """Reject strings that are empty or contain only whitespace."""
     if not value.strip():
-        raise ValueError(
-            f"{field_name} no puede estar vacío ni contener solo espacios"
-        )
+        raise ValueError(f"{field_name} no puede estar vacío ni contener solo espacios")
     return value
 
 

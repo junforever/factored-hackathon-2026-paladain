@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-09-29
+> Última actualización: 2026-09-30
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offline están **pendientes**.
+El transporte tipado de Jev está **completado**. Las evaluaciones y decisiones de gobierno, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #1 — Schemas Pydantic de Jev + Cliente Jev.
+**Siguiente paso:** Spec #2 — Evaluaciones Jev: input screening + intent routing.
 
 ---
 
@@ -45,6 +45,11 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 
 - [x] `config.py` — `Settings` (.env) + `Policy` (policy.yaml), `SecretStr`, paths derivados.
 
+### Gobierno — transporte Jev
+
+- [x] Schemas Pydantic de Jev (wire format Noul/Choice/Score).
+- [x] Cliente Jev (adapter sobre `typesafe-sdk`).
+
 ### Documentación
 
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
@@ -53,21 +58,21 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 
 ---
 
-## Pendiente (orden por dependencias)
+## Plan (orden por dependencias)
 
-| #   | Componente                                                                   | Depende de       | Spec sugerido |
-| --- | ---------------------------------------------------------------------------- | ---------------- | ------------- |
-| 1   | Schemas Pydantic de Jev (wire format Noul/Choice/Score)                      | —                | Spec #1       |
-| 2   | Cliente Jev (adapter sobre `typesafe-sdk`)                                   | #1               | Spec #1       |
-| 3   | Evaluaciones Jev: input screening + intent routing                           | #2               | Spec #2       |
-| 4   | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
-| 5   | Evaluaciones Jev: tool gating + output screening                             | #2, #4           | Spec #4       |
-| 6   | Registro de las 4 tools en el agente Strands                                 | tools existentes | Spec #5       |
-| 7   | Hooks de Strands con Jev (`before_model_hook`, `before_tool_hook`)           | #4, #5, #6       | Spec #6       |
-| 8   | Orquestador / flujo conversacional (memoria, clarificación, abstención)      | #6, #7           | Spec #7       |
-| 9   | UI Chainlit (capa de presentación delgada, decisión #11)                     | #8               | Spec #8       |
-| 10  | Evaluación offline held-out (métricas del hackathon)                         | #8               | Spec #9       |
-| 11  | Docs finales, slides, video pitch                                            | todo             | Spec #10      |
+| #   | Estado    | Componente                                                                   | Depende de       | Spec sugerido |
+| --- | --------- | ---------------------------------------------------------------------------- | ---------------- | ------------- |
+| 1   | Completado | Schemas Pydantic de Jev (wire format Noul/Choice/Score)                     | —                | Spec #1       |
+| 2   | Completado | Cliente Jev (adapter sobre `typesafe-sdk`)                                  | #1               | Spec #1       |
+| 3   | Pendiente  | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
+| 4   | Pendiente  | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
+| 5   | Pendiente  | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
+| 6   | Pendiente  | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
+| 7   | Pendiente  | Hooks de Strands con Jev (`before_model_hook`, `before_tool_hook`)          | #4, #5, #6       | Spec #6       |
+| 8   | Pendiente  | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
+| 9   | Pendiente  | UI Chainlit (capa de presentación delgada, decisión #11)                    | #8               | Spec #8       |
+| 10  | Pendiente  | Evaluación offline held-out (métricas del hackathon)                        | #8               | Spec #9       |
+| 11  | Pendiente  | Docs finales, slides, video pitch                                           | todo             | Spec #10      |
 
 > La agrupación de specs es tentativa. El orden de dependencias es lo vinculante:
 > no construir un componente antes que sus dependencias.
@@ -89,4 +94,5 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 
 ## Registro de actualizaciones
 
+- **2026-09-30** — Spec #1 implementada con TDD. Schemas alineados al wire de Jev, cliente adapter sobre `typesafe-sdk`, bootstrap hermético, parsing discriminado y mapeo tipado de errores SDK.
 - **2026-09-29** — Se completó `config.py` (Settings + Policy). Se definió Chainlit como UI y se agregó la decisión de diseño #11 (UI como capa de presentación delgada). Se crea este documento.
