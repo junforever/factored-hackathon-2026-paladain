@@ -1,14 +1,14 @@
 # STATUS — Estado de implementación
 
 > Última actualización: 2026-09-29
-> Contexto estable y decisiones de diseño: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
+> Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
 ---
 
 ## Resumen
 
-Capa de datos, sandbox validado, tools y servicios mock están **completados y probados**.
+Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
 La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offline están **pendientes**.
 
 **Siguiente paso:** Spec #1 — Schemas Pydantic de Jev + Cliente Jev.
@@ -34,7 +34,7 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 - [x] `get_recent_transactions.py` — lectura filtrada por `product_id`.
 - [x] `block_card.py` — acción con policy fuera del prompt + verificación.
 - [x] `escalate_case.py` — acción que genera Structured JSON Handoff.
-- [x] Todas probadas (caso existente, inexistente, input inválido, idempotencia).
+- [x] smoke-tested (caso existente, inexistente, input inválido, idempotencia).
 
 ### Services (mock bancarios)
 
@@ -47,7 +47,7 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 
 ### Documentación
 
-- [x] `PROJECT_CONTEXT.md` — contexto estable, decisiones de diseño, no-negociables.
+- [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
 - [x] `findings/data_quality.md` — hallazgos de calidad de datos.
 - [x] `typesafe_jev/README.md` — investigación de Jev (contratos, límites, umbrales).
 
@@ -58,7 +58,7 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 | #   | Componente                                                                   | Depende de       | Spec sugerido |
 | --- | ---------------------------------------------------------------------------- | ---------------- | ------------- |
 | 1   | Schemas Pydantic de Jev (wire format Noul/Choice/Score)                      | —                | Spec #1       |
-| 2   | Cliente Jev (wrapper de `typesafe-sdk` o HTTP)                               | #1               | Spec #1       |
+| 2   | Cliente Jev (adapter sobre `typesafe-sdk`)                                   | #1               | Spec #1       |
 | 3   | Evaluaciones Jev: input screening + intent routing                           | #2               | Spec #2       |
 | 4   | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
 | 5   | Evaluaciones Jev: tool gating + output screening                             | #2, #4           | Spec #4       |
@@ -77,6 +77,13 @@ La capa de gobierno (Jev + Strands), el orquestador, la UI y la evaluación offl
 ## En progreso
 
 - Ninguno actualmente.
+
+---
+
+## Deuda conocida
+
+- Deuda de seguridad: la autorización del usuario sobre el producto no está verificada. Consultar por `product_id` resuelve integridad referencial, NO autorización. Falta validar que el usuario autenticado tenga permiso sobre el producto antes de exponer sus transacciones.
+- El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries)
 
 ---
 

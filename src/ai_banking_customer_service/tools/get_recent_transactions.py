@@ -2,7 +2,7 @@
 Tool: get_recent_transactions
 
 Obtiene transacciones recientes de un cliente a partir de un complaint_id.
-Usa el sandbox como puerta de autorización: solo permite consultar
+Usa el sandbox como puerta de integridad referencial: solo permite consultar
 transacciones de clientes que tienen una queja en el sandbox.
 """
 

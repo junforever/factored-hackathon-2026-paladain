@@ -80,8 +80,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 ```text
 ├── configs/
 │   ├── eval.yaml          # Config de evaluación held-out
-│   ├── policy.yaml        # Parámetros de negocio y umbrales
-│   └── settings.yaml      # Config general (rutas, idiomas, log level)
+│   └── policy.yaml        # Parámetros de negocio y umbrales
 │
 ├── docs/
 │   ├── STATUS.md          # Estado vivo: qué hay, qué falta
@@ -118,7 +117,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 │   │   └── escalation_service.py        # Mock bancario, SQLite
 │   ├── agent/              # PENDIENTE: orquestador Strands
 │   ├── api/                # PENDIENTE: FastAPI backend
-│   ├── config.py           # PENDIENTE: objeto Settings (pydantic-settings)
+│   ├── config.py           # COMPLETO: objeto Settings (pydantic-settings)
 │   ├── data_access/        # PENDIENTE: repositorios sobre DuckDB/Parquet
 │   ├── domain/             # PENDIENTE: modelos Pydantic de dominio
 │   ├── evaluation/         # PENDIENTE: métricas y runner held-out
@@ -128,7 +127,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 │   ├── policies/           # PENDIENTE: reglas duras fuera del prompt
 │   └── sandbox/            # PENDIENTE: gestión del sandbox del agente
 │
-├── app/                    # PENDIENTE: UI (Streamlit/Gradio)
+├── app/                    # PENDIENTE: UI (Chainlit)
 ├── evals/                  # PENDIENTE: casos held-out y reportes
 ├── tests/                  # PENDIENTE: tests unitarios e integración
 ├── AGENTS.md               # Este documento (contexto estable)
@@ -162,7 +161,7 @@ Estas decisiones son vinculantes. No reintroducir patrones que ya descartamos.
 
 | Tipo                  | Dónde                 | Ejemplos                                                         |
 | --------------------- | --------------------- | ---------------------------------------------------------------- |
-| Secretos              | `.env`                | `JEV_API_KEY`, `OPENAI_API_KEY`                                  |
+| Secretos              | `.env`                | `TYPESAFE_API_KEY`, `OPENAI_API_KEY`                             |
 | Rutas                 | `.env`                | `DUCKDB_NAME`, `SANDBOX_PATH`, `STATE_PATH`                      |
 | Parámetros de negocio | `configs/policy.yaml` | `HIGH_AMOUNT_THRESHOLD_USD`, umbrales Jev, productos bloqueables |
 
@@ -171,7 +170,9 @@ Estas decisiones son vinculantes. No reintroducir patrones que ya descartamos.
 ```text
 # Secretos
 OPENAI_API_KEY=
-JEV_API_KEY=
+TYPESAFE_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+TYPESAFE_DEFAULT_MODEL=jev-1.13.0
 
 # Rutas
 DUCKDB_NAME=ai_banking.duckdb
@@ -191,7 +192,7 @@ from ai_banking_customer_service.config import policy, settings
 settings.duckdb_path         # Path("duckdb/ai_banking.duckdb")
 settings.sandbox_full_path   # Path("data/sandbox/agent_sandbox_final.parquet")
 settings.state_dir           # Path("data/state")
-settings.jev_api_key         # str (desde .env)
+settings.typesafe_api_key         # SecretStr (desde .env)
 policy.high_amount_threshold_usd # 500.0
 ```
 

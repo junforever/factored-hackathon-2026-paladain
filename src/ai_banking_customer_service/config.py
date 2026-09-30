@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # Secretos (obligatorios)
     openai_api_key: SecretStr
-    jev_api_key: SecretStr
+    typesafe_api_key: SecretStr
 
     # Rutas y nombres (obligatorios)
     duckdb_name: str
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     state_path: str
 
     # Modelos (obligatorios)
-    jev_model: str
+    typesafe_default_model: str
     openai_model: str
 
     @property

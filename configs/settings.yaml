@@ -1,7 +1,0 @@
-duckdb_path: duckdb/ai_banking.duckdb
-sandbox_path: data/sandbox/agent_sandbox_final.parquet
-log_level: INFO
-default_language: es
-supported_languages:
-  - es
-  - pt
