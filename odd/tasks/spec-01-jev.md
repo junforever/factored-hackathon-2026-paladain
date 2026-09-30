@@ -34,7 +34,7 @@ Implement the typed Jev transport and validation layer defined by `docs/specs/sp
 | 5 | 2 focused transport tests failed against `NotImplementedError` | Focused transport → 2 passed; combined regression → 55 passed | Mocked SDK boundary; no network | `90c155a` |
 | 6 | Focused tests observed escaping SDK exceptions and DEBUG logger state; Ruff later found I001 | Combined focused suite → 69 passed; full Jev Ruff scope → passed | Mocked SDK boundary; no network | `60e237a` |
 | 7 | Ruff format check found 2 files requiring formatting | `uv run pytest tests/unit/governance/jev -q` → 69 passed; Ruff check/format and `git diff --check` → passed | Full focused suite; no network | `5cf6aaa` |
-| 8 | Host denied direct read after explicit user authorization | User-provided contents include all seven required variables; additional AWS variables are permitted | N/A — configuration template inspection | Pending |
+| 8 | Host denied direct read after explicit user authorization | User-provided contents include all seven required variables; additional AWS variables are permitted | N/A — configuration template inspection | `92b5a67` |
 
 ## Review Workload
 
