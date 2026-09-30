@@ -13,9 +13,11 @@ dependencies = [
     "pandas>=3.0.6",
     "pandera>=0.33.1",
     "pyarrow>=25.0.1",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
     "strands-agents[openai]>=1.57.1",
+    "typesafe-sdk>=0.7.2",
 ]
 
 [project.scripts]
@@ -24,6 +26,8 @@ ai-banking-customer-service = "ai_banking_customer_service:main"
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
+    "pytest>=9.1.1",
+    "pytest-mock>=3.16.0",
     "ruff>=0.9.0",
 ]
 
