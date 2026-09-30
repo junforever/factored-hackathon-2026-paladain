@@ -245,6 +245,7 @@ Aplican a todos los componentes. Cada spec agrega solo sus requisitos específic
 - `product_id` es el vínculo confiable entre queja y transacción.
 - Fail-closed: ante fallo de Jev o timeout en tools de escritura, denegar la acción.
 - No exponer PAN completo, CVV ni credenciales en logs, state de Jev o handoffs.
+- Toda decisión del agente es auditable: cada componente emite eventos de auditoría siguiendo el contrato de `docs/observability.md`. El chain-of-thought oculto no es un artefacto de auditoría.
 
 ## 10. Glosario
 
