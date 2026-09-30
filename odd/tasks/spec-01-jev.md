@@ -33,7 +33,7 @@ Implement the typed Jev transport and validation layer defined by `docs/specs/sp
 | 4 | Focused client tests observed constructor/evaluate/wire/completeness failures across microcycles | `uv run pytest tests/unit/governance/jev/test_client.py -q` → 20 passed; combined regression → 53 passed | N/A — unit-tested adapter logic | `a3ae3cd` |
 | 5 | 2 focused transport tests failed against `NotImplementedError` | Focused transport → 2 passed; combined regression → 55 passed | Mocked SDK boundary; no network | `90c155a` |
 | 6 | Focused tests observed escaping SDK exceptions and DEBUG logger state; Ruff later found I001 | Combined focused suite → 69 passed; full Jev Ruff scope → passed | Mocked SDK boundary; no network | `60e237a` |
-| 7 | Ruff format check found 2 files requiring formatting | `uv run pytest tests/unit/governance/jev -q` → 69 passed; Ruff check/format and `git diff --check` → passed | Full focused suite; no network | Pending |
+| 7 | Ruff format check found 2 files requiring formatting | `uv run pytest tests/unit/governance/jev -q` → 69 passed; Ruff check/format and `git diff --check` → passed | Full focused suite; no network | `5cf6aaa` |
 | 8 | Host denied direct read after explicit user authorization | Pending user-provided file contents | N/A — configuration template inspection | Pending |
 
 ## Review Workload
