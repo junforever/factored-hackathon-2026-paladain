@@ -1,12 +1,17 @@
+import logging
+
 import pytest
 import typesafe_sdk
 from pydantic import SecretStr
 
 from ai_banking_customer_service.governance.jev import (
     ChoiceQuestion,
+    JevAuthError,
     JevClient,
     JevConfigError,
+    JevRateLimitError,
     JevResponse,
+    JevUnavailableError,
     JevValidationError,
     NoulQuestion,
     ScoreQuestion,
@@ -30,6 +35,72 @@ def test_constructor_rejects_empty_api_key(api_key: SecretStr) -> None:
 def test_constructor_rejects_non_positive_timeout(timeout_seconds: float) -> None:
     with pytest.raises(JevConfigError):
         JevClient(timeout_seconds=timeout_seconds)
+
+
+def test_constructor_raises_sdk_logger_level_from_debug() -> None:
+    sdk_logger = logging.getLogger("typesafe_sdk")
+    previous_level = sdk_logger.level
+    try:
+        sdk_logger.setLevel(logging.DEBUG)
+
+        JevClient()
+
+        assert sdk_logger.getEffectiveLevel() >= logging.INFO
+    finally:
+        sdk_logger.setLevel(previous_level)
+
+
+def test_adapter_does_not_log_request_or_response_bodies(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    sdk_logger = logging.getLogger("typesafe_sdk")
+    previous_level = sdk_logger.level
+    request_secret = "sensitive-request-body"
+    response_secret = "sensitive-response-body"
+
+    class FakeResponse:
+        def model_dump(self, *, mode: str) -> dict[str, object]:
+            sdk_logger.debug("response=%s", response_secret)
+            return {
+                "model": "jev-test",
+                "answers": {"authorized": {"type": "noul", "noul": 0.9}},
+                "usage": {},
+            }
+
+    class FakeTypeSafeClient:
+        def __init__(self, **kwargs: object) -> None:
+            sdk_logger.debug("client=%r", kwargs)
+
+        def __enter__(self) -> "FakeTypeSafeClient":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def system_one(self, *, state: object, questions: object) -> FakeResponse:
+            sdk_logger.debug("request=%r questions=%r", state, questions)
+            return FakeResponse()
+
+    monkeypatch.setattr(typesafe_sdk, "TypeSafeClient", FakeTypeSafeClient)
+    caplog.set_level(logging.DEBUG)
+    try:
+        sdk_logger.setLevel(logging.DEBUG)
+        client = JevClient(api_key=SecretStr("secret-api-key"), model="jev-test")
+
+        client._invoke(
+            {
+                "state": {"message": request_secret},
+                "model": "jev-test",
+                "questions": {"authorized": {}},
+            }
+        )
+    finally:
+        sdk_logger.setLevel(previous_level)
+
+    assert "secret-api-key" not in caplog.text
+    assert request_secret not in caplog.text
+    assert response_secret not in caplog.text
 
 
 def test_evaluate_rejects_empty_questions() -> None:
@@ -296,7 +367,121 @@ def test_typed_response_helpers_reject_missing_question(helper: str) -> None:
         getattr(response, helper)("missing")
 
 
+@pytest.mark.parametrize(
+    ("sdk_error", "expected_error"),
+    [
+        (
+            typesafe_sdk.TypeSafeAuthenticationError(
+                401, {"message": "secret-api-key"}, {}
+            ),
+            JevAuthError,
+        ),
+        (
+            typesafe_sdk.TypeSafePermissionDeniedError(
+                403, {"message": "secret-api-key"}, {}
+            ),
+            JevAuthError,
+        ),
+        (
+            typesafe_sdk.TypeSafeUnprocessableEntityError(
+                422, {"message": "secret-api-key"}, {}
+            ),
+            JevValidationError,
+        ),
+        (
+            typesafe_sdk.TypeSafeAPIResponseValidationError(
+                200,
+                {"message": "secret-api-key"},
+                {},
+                "answers.authorized",
+            ),
+            JevValidationError,
+        ),
+        (
+            typesafe_sdk.TypeSafeBadRequestError(
+                400, {"message": "secret-api-key"}, {}
+            ),
+            JevValidationError,
+        ),
+        (
+            typesafe_sdk.TypeSafeNotFoundError(404, {"message": "secret-api-key"}, {}),
+            JevValidationError,
+        ),
+        (
+            typesafe_sdk.TypeSafeRateLimitError(429, {"message": "secret-api-key"}, {}),
+            JevRateLimitError,
+        ),
+        (
+            typesafe_sdk.TypeSafeInternalServerError(
+                529, {"message": "secret-api-key"}, {}
+            ),
+            JevUnavailableError,
+        ),
+        (typesafe_sdk.TypeSafeAPITimeoutError(2.5), JevUnavailableError),
+        (
+            typesafe_sdk.TypeSafeAPIConnectionError("secret-api-key"),
+            JevUnavailableError,
+        ),
+        (typesafe_sdk.TypeSafeError("secret-api-key"), JevUnavailableError),
+    ],
+    ids=[
+        "authentication",
+        "permission-denied",
+        "unprocessable-entity",
+        "response-validation",
+        "bad-request",
+        "not-found",
+        "rate-limit",
+        "internal-server",
+        "timeout",
+        "connection",
+        "catch-all",
+    ],
+)
+def test_evaluate_maps_sdk_errors_without_exposing_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+    sdk_error: typesafe_sdk.TypeSafeError,
+    expected_error: type[Exception],
+) -> None:
+    client = JevClient(api_key=SecretStr("secret-api-key"))
+
+    def fail_invoke(request: dict[str, object]) -> dict[str, object]:
+        raise sdk_error
+
+    monkeypatch.setattr(client, "_invoke", fail_invoke)
+
+    with pytest.raises(expected_error) as raised:
+        client.evaluate(
+            state={"message": "Please block my card."},
+            questions={"authorized": _noul_question()},
+        )
+
+    assert not isinstance(raised.value, typesafe_sdk.TypeSafeError)
+    assert "secret-api-key" not in str(raised.value)
+
+
 def test_evaluate_wraps_malformed_response_as_validation_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = JevClient()
+    monkeypatch.setattr(
+        client,
+        "_invoke",
+        lambda request: {
+            "model": request["model"],
+            "answers": {"authorized": {"type": "noul", "noul": "not-a-probability"}},
+            "usage": {},
+        },
+    )
+
+    with pytest.raises(JevValidationError):
+        client.evaluate(
+            state={"message": "Please block my card."},
+            questions={"authorized": _noul_question()},
+        )
+
+
+def test_evaluate_rejects_response_without_usage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = JevClient()
@@ -335,8 +520,7 @@ def test_evaluate_rejects_incomplete_or_surplus_answers(
         lambda request: {
             "model": request["model"],
             "answers": {
-                answer_id: {"type": "noul", "noul": 0.5}
-                for answer_id in answer_ids
+                answer_id: {"type": "noul", "noul": 0.5} for answer_id in answer_ids
             },
             "usage": {},
         },
@@ -345,9 +529,7 @@ def test_evaluate_rejects_incomplete_or_surplus_answers(
     with pytest.raises(JevValidationError):
         client.evaluate(
             state={"message": "Check completeness."},
-            questions={
-                question_id: _noul_question() for question_id in question_ids
-            },
+            questions={question_id: _noul_question() for question_id in question_ids},
         )
 
 
@@ -386,9 +568,7 @@ def test_invoke_uses_sdk_context_manager_and_returns_wire_response(
         def __exit__(self, *args: object) -> None:
             events.append("exit")
 
-        def system_one(
-            self, *, state: object, questions: object
-        ) -> FakeResponse:
+        def system_one(self, *, state: object, questions: object) -> FakeResponse:
             events.append(("system_one", state, questions))
             return FakeResponse()
 

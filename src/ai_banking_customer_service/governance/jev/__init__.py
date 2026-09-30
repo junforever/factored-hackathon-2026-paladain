@@ -21,7 +21,6 @@ from .schemas import (
     Usage,
 )
 
-
 __all__ = [
     "Answer",
     "ChoiceAnswer",
