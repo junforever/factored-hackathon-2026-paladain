@@ -84,10 +84,10 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 │   └── settings.yaml      # Config general (rutas, idiomas, log level)
 │
 ├── docs/
-│   ├── PROJECT_CONTEXT.md # Este documento (contexto estable)
 │   ├── STATUS.md          # Estado vivo: qué hay, qué falta
-│   ├── findings/
+│   ├── findings/          # Hallazgos importantes en la data del proyecto
 │   │   └── data_quality.md
+│   ├── specs/             # Especificaciones técnicas para la implementación de funcionalidades
 │   └── typesafe_jev/
 │       └── README.md      # Investigación de Jev (contratos, límites, umbrales)
 │
@@ -131,6 +131,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 ├── app/                    # PENDIENTE: UI (Streamlit/Gradio)
 ├── evals/                  # PENDIENTE: casos held-out y reportes
 ├── tests/                  # PENDIENTE: tests unitarios e integración
+├── AGENTS.md               # Este documento (contexto estable)
 ├── .env                    # Secretos y rutas (NO commitear)
 └── .env.example            # Plantilla de .env (SÍ commitear)
 ```
