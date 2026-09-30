@@ -28,7 +28,7 @@ Implement the typed Jev transport and validation layer defined by `docs/specs/sp
 | --- | --- | --- | --- | --- |
 | 1 | `uv run pytest tests/unit/governance/jev/test_import.py -q` → 1 failed (`ModuleNotFoundError`) | Same command → 1 passed | N/A — import contract only | `cd13e7f` |
 | 2 | `uv run pytest tests/unit/governance/jev/test_schemas.py -q` → failed (`NoulQuestion() takes no arguments`) | Same command → 17 passed; import regression → 1 passed | N/A — schema validation only | `a41ce26` |
-| 3 | Focused schema tests failed on missing answer-schema imports | `uv run pytest tests/unit/governance/jev/test_schemas.py tests/unit/governance/jev/test_import.py -q` → 33 passed | N/A — response parsing only | Pending |
+| 3 | Focused schema tests failed on missing answer-schema imports | `uv run pytest tests/unit/governance/jev/test_schemas.py tests/unit/governance/jev/test_import.py -q` → 33 passed | N/A — response parsing only | `859af7b` |
 | 4 | Pending | Pending | N/A — unit-tested adapter logic | Pending |
 | 5 | Pending | Pending | Mocked SDK boundary; no network | Pending |
 | 6 | Pending | Pending | Mocked SDK boundary; no network | Pending |
