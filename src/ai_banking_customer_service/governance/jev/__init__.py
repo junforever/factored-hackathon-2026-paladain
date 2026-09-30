@@ -8,18 +8,26 @@ from .exceptions import (
     JevUnavailableError,
     JevValidationError,
 )
-from .schemas import ChoiceQuestion, NoulQuestion, ScoreQuestion
+from .schemas import (
+    Answer,
+    ChoiceAnswer,
+    ChoiceQuestion,
+    JevResponse,
+    NoulAnswer,
+    NoulQuestion,
+    ScoreAnswer,
+    ScoreQuestion,
+    Usage,
+)
 
 
 class JevClient:
     """Typed Jev transport adapter."""
 
 
-class JevResponse:
-    """Typed Jev response contract."""
-
-
 __all__ = [
+    "Answer",
+    "ChoiceAnswer",
     "ChoiceQuestion",
     "JevAuthError",
     "JevClient",
@@ -29,6 +37,9 @@ __all__ = [
     "JevResponse",
     "JevUnavailableError",
     "JevValidationError",
+    "NoulAnswer",
     "NoulQuestion",
+    "ScoreAnswer",
     "ScoreQuestion",
+    "Usage",
 ]
