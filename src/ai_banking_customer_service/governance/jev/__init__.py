@@ -1,5 +1,6 @@
 """Public API for the typed Jev transport boundary."""
 
+from .client import JevClient
 from .exceptions import (
     JevAuthError,
     JevConfigError,
@@ -19,10 +20,6 @@ from .schemas import (
     ScoreQuestion,
     Usage,
 )
-
-
-class JevClient:
-    """Typed Jev transport adapter."""
 
 
 __all__ = [
