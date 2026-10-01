@@ -1,9 +1,16 @@
 """Configuración central del proyecto: .env (Settings) y policy.yaml (Policy)."""
 
+import math
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, SecretStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,9 +59,47 @@ class Settings(BaseSettings):
         return path
 
 
+class ScreeningThresholdPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    block: float
+    review: float
+
+    @field_validator("block", "review")
+    @classmethod
+    def _finite(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("debe ser un número finito")
+        return value
+
+    @model_validator(mode="after")
+    def _order(self) -> "ScreeningThresholdPolicy":
+        if not (0.0 <= self.review < self.block <= 1.0):
+            raise ValueError("se requiere 0 <= review < block <= 1")
+        return self
+
+
+class GovernancePolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prompt_injection: ScreeningThresholdPolicy
+    social_engineering: ScreeningThresholdPolicy
+    min_intent_confidence: float
+
+    @field_validator("min_intent_confidence")
+    @classmethod
+    def _min_conf(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("min_intent_confidence debe ser finito")
+        if not (0.0 <= value <= 1.0):
+            raise ValueError("se requiere 0 <= min_intent_confidence <= 1")
+        return value
+
+
 class Policy(BaseModel):
     auto_block: dict = {}
     escalation: dict = {}
+    governance: GovernancePolicy
 
     @property
     def high_amount_threshold_usd(self) -> float:
@@ -62,10 +107,13 @@ class Policy(BaseModel):
 
 
 def load_policy(path: Path = POLICY_PATH) -> Policy:
-    if path.exists():
-        with open(path, encoding="utf-8") as f:
-            return Policy(**(yaml.safe_load(f) or {}))
-    return Policy()
+    if not path.exists():
+        raise FileNotFoundError(
+            f"policy.yaml no encontrado en {path}; la sección governance es obligatoria"
+        )
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    return Policy(**data)
 
 
 settings = Settings()

@@ -36,9 +36,9 @@ Definir e invocar las evaluaciones Jev de **input screening** (`prompt_injection
 
 - Lógica de umbrales ni decisiones (allow/block/review) → **Spec #3**.
 - `GovernanceDecision` → **Spec #3**.
-- Medición de latencia (`latency_ms`) → **Spec #3**.
+- Medición de latencia (`latency_ms`) → adaptador de gobierno de **Spec #6**.
 - Integración con Strands ni hooks → **Spec #6**.
-- Emisión de eventos de auditoría → capa de gobierno (Spec #3+).
+- Emisión de eventos de auditoría → adaptador de gobierno de **Spec #6**.
 - Modificaciones a archivos de producción de Spec #1.
 - Calibración semántica multilingüe → ver sección 9.
 
@@ -293,7 +293,7 @@ class IntentRoutingResult:
     usage: Usage
 ```
 
-`model` y `usage` se preservan para que Spec #3 emita los eventos de observabilidad (tokens, modelo) exigidos por `observability.md`.
+`model` y `usage` se preservan para que el adaptador de gobierno de Spec #6 emita los eventos de observabilidad (tokens, modelo) exigidos por `observability.md`.
 
 ### 5.3 Firmas públicas
 
@@ -365,7 +365,7 @@ Ninguna función aplica umbrales ni devuelve decisiones. Devuelven answers crudo
 
 - Este componente sanitiza el mensaje (sección 3) antes de enviarlo a Jev, cubriendo los formatos enumerados.
 - Este componente NO loguea el mensaje ni las respuestas.
-- Este componente NO emite eventos de auditoría (preserva metadata para que Spec #3 los emita).
+- Este componente NO emite eventos de auditoría (preserva metadata para que el adaptador de gobierno de Spec #6 los emita).
 
 ---
 

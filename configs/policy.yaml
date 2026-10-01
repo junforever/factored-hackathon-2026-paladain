@@ -10,3 +10,12 @@ auto_block:
 escalation:
   high_amount_threshold_usd: 500
   account_products_require_human: true
+
+governance:
+  prompt_injection:
+    block: 0.80
+    review: 0.35
+  social_engineering:
+    block: 0.80
+    review: 0.35
+  min_intent_confidence: 0.50

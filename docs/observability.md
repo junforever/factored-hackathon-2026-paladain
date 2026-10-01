@@ -67,7 +67,7 @@ payload         obj   campos específicos del event_type
 ```
 stage      str   input_screening | intent_routing | tool_gating | output_screening
 signals    obj   señales crudas de Jev (noul, choice, probabilities, score, confidence)
-decision   str   allow | block | review
+decision   str   block | review | allow
 reason     str   por qué se tomó la decisión
 thresholds obj   umbrales aplicados
 ```
@@ -103,13 +103,15 @@ language       str   es | pt
 
 Cada componente emite los tipos de evento que le corresponden:
 
-| Componente             | Emite                       | Ubicación   |
-| ---------------------- | --------------------------- | ----------- |
-| Orquestador            | input, response, escalation | agent/      |
-| Capa de gobierno (Jev) | governance                  | governance/ |
-| Tools                  | tool_call                   | tools/      |
-| Módulo de política     | policy                      | policies/   |
-| Servicios mock         | action                      | services/   |
+| Componente                              | Emite                       | Ubicación   |
+| --------------------------------------- | --------------------------- | ----------- |
+| Orquestador                             | input, response, escalation | agent/      |
+| Adaptador de gobierno (Spec #6)         | governance                  | governance/ |
+| Tools                                   | tool_call                   | tools/      |
+| Módulo de política                      | policy                      | policies/   |
+| Servicios mock                          | action                      | services/   |
+
+El adaptador de gobierno emite un evento `governance` por cada etapa ejecutada: uno para `input_screening` y otro para `intent_routing`. Cada evento usa el vocabulario de decisión `block|review|allow`.
 
 ## 6. AuditSink: interfaz única de emisión
 
