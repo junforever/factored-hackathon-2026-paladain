@@ -383,7 +383,7 @@ class JevUnavailableError(JevError): ...
 - El wrapper NO loguea bodies (ni `state` ni respuestas). El SDK 0.7.2 sí los registra si su logger está en DEBUG; por tanto el adapter fija el logger del SDK a INFO o superior y se prohíbe `TYPESAFE_LOG_LEVEL=debug` con datos reales. Si se necesita depurar, aplicar redacción/enmascaramiento explícito.
 - El cliente NO incluye secretos en excepciones ni logs.
 - La sanitización del `state` (enmascarar PAN, CVV, PII) es responsabilidad del llamador (capa de gobierno). Este componente solo garantiza no loguear y no filtrar secretos.
-- Este componente NO emite eventos de auditoría. La auditoría de modelo, señales y latencia la hace la capa de gobierno (Spec #3+), según `observability.md`.
+- Este componente NO emite eventos de auditoría. La auditoría de modelo, señales y latencia la hace el adaptador de gobierno de Spec #6, según `observability.md`.
 
 ---
 

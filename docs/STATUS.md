@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado y las evaluaciones de input screening e intent routing de Jev están **completados**. Las decisiones de gobierno, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
+El transporte tipado, las evaluaciones de input screening e intent routing y la lógica de decisión de gobierno de Jev están **completados**. Tool gating, output screening, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #3 — Lógica de decisión de gobierno.
+**Siguiente paso:** Spec #4 — Evaluaciones Jev de tool gating y output screening.
 
 ---
 
@@ -50,6 +50,7 @@ El transporte tipado y las evaluaciones de input screening e intent routing de J
 - [x] Schemas Pydantic de Jev (wire format Noul/Choice/Score).
 - [x] Cliente Jev (adapter sobre `typesafe-sdk`).
 - [x] Evaluaciones Jev: input screening + intent routing.
+- [x] Lógica de decisión de gobierno: dos etapas, fail-closed, confidence gating, dominio de intent y configuración tipada fail-fast.
 
 ### Documentación
 
@@ -66,7 +67,7 @@ El transporte tipado y las evaluaciones de input screening e intent routing de J
 | 1   | Completado | Schemas Pydantic de Jev (wire format Noul/Choice/Score)                     | —                | Spec #1       |
 | 2   | Completado | Cliente Jev (adapter sobre `typesafe-sdk`)                                  | #1               | Spec #1       |
 | 3   | Completado | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
-| 4   | Pendiente  | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
+| 4   | Completado | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
 | 5   | Pendiente  | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
 | 6   | Pendiente  | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
 | 7   | Pendiente  | Hooks de Strands con Jev (`before_model_hook`, `before_tool_hook`)          | #4, #5, #6       | Spec #6       |
@@ -82,7 +83,7 @@ El transporte tipado y las evaluaciones de input screening e intent routing de J
 
 ## En progreso
 
-- Ninguno actualmente.
+- Ninguno actualmente. Spec #4 todavía no inició.
 
 ---
 
@@ -95,6 +96,7 @@ El transporte tipado y las evaluaciones de input screening e intent routing de J
 
 ## Registro de actualizaciones
 
+- **2026-10-01** — Spec #3 v4 implementada con TDD. API de dos etapas (`decide_screening` / `decide_routing`), totalidad acotada fail-closed, validación de dominio de intent contra `EXPECTED_INTENTS`, umbrales tipados en `Policy` + `configs/policy.yaml` con `load_policy` fail-fast y mapper `from_policy`, confidence gating, metadata y probabilidades preservadas por etapa, reasons con códigos estables y precedencia. Vocabulario `block|review|allow`; stages `input_screening|intent_routing`.
 - **2026-10-01** — Spec #2 implementada con TDD. Evaluaciones `prompt_injection`, `social_engineering` y `banking_intent` en `governance/jev/evaluations.py`, con sanitización de secretos prohibidos (PAN/CVV/credenciales/tokens) en los formatos enumerados, reducción de falsos positivos mediante indicadores explícitos de asignación, cobertura trilingüe (es/pt/en), batching de `screen_input`, precedencia literal de intents, metadata preservada (`model`/`usage`) y validación de dominio de `probabilities`. Entry points públicos: `screen_input` y `route_banking_intent`. Tests unitarios sin red con mock del cliente de Spec #1.
 - **2026-09-30** — Spec #1 implementada con TDD. Schemas alineados al wire de Jev, cliente adapter sobre `typesafe-sdk`, bootstrap hermético, parsing discriminado y mapeo tipado de errores SDK.
 - **2026-09-29** — Se completó `config.py` (Settings + Policy). Se definió Chainlit como UI y se agregó la decisión de diseño #11 (UI como capa de presentación delgada). Se crea este documento.
