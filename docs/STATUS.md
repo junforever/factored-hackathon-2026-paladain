@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-09-30
+> Última actualización: 2026-10-01
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado de Jev está **completado**. Las evaluaciones y decisiones de gobierno, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
+El transporte tipado y las evaluaciones de input screening e intent routing de Jev están **completados**. Las decisiones de gobierno, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #2 — Evaluaciones Jev: input screening + intent routing.
+**Siguiente paso:** Spec #3 — Lógica de decisión de gobierno.
 
 ---
 
@@ -45,10 +45,11 @@ El transporte tipado de Jev está **completado**. Las evaluaciones y decisiones 
 
 - [x] `config.py` — `Settings` (.env) + `Policy` (policy.yaml), `SecretStr`, paths derivados.
 
-### Gobierno — transporte Jev
+### Gobierno — Jev
 
 - [x] Schemas Pydantic de Jev (wire format Noul/Choice/Score).
 - [x] Cliente Jev (adapter sobre `typesafe-sdk`).
+- [x] Evaluaciones Jev: input screening + intent routing.
 
 ### Documentación
 
@@ -64,7 +65,7 @@ El transporte tipado de Jev está **completado**. Las evaluaciones y decisiones 
 | --- | --------- | ---------------------------------------------------------------------------- | ---------------- | ------------- |
 | 1   | Completado | Schemas Pydantic de Jev (wire format Noul/Choice/Score)                     | —                | Spec #1       |
 | 2   | Completado | Cliente Jev (adapter sobre `typesafe-sdk`)                                  | #1               | Spec #1       |
-| 3   | Pendiente  | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
+| 3   | Completado | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
 | 4   | Pendiente  | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
 | 5   | Pendiente  | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
 | 6   | Pendiente  | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
@@ -94,5 +95,6 @@ El transporte tipado de Jev está **completado**. Las evaluaciones y decisiones 
 
 ## Registro de actualizaciones
 
+- **2026-10-01** — Spec #2 implementada con TDD. Evaluaciones `prompt_injection`, `social_engineering` y `banking_intent` en `governance/jev/evaluations.py`, con sanitización de secretos prohibidos (PAN/CVV/credenciales/tokens) en los formatos enumerados, reducción de falsos positivos mediante indicadores explícitos de asignación, cobertura trilingüe (es/pt/en), batching de `screen_input`, precedencia literal de intents, metadata preservada (`model`/`usage`) y validación de dominio de `probabilities`. Entry points públicos: `screen_input` y `route_banking_intent`. Tests unitarios sin red con mock del cliente de Spec #1.
 - **2026-09-30** — Spec #1 implementada con TDD. Schemas alineados al wire de Jev, cliente adapter sobre `typesafe-sdk`, bootstrap hermético, parsing discriminado y mapeo tipado de errores SDK.
 - **2026-09-29** — Se completó `config.py` (Settings + Policy). Se definió Chainlit como UI y se agregó la decisión de diseño #11 (UI como capa de presentación delgada). Se crea este documento.
