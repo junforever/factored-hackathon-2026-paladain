@@ -36,7 +36,7 @@ The typed Jev transport from Spec #1 exists, but the application still lacks con
   - Rollback boundary: remove the two new evaluation files and revert the Spec #2 status entries only.
   - Writer evidence: RED collection failed with `ModuleNotFoundError`; focused GREEN reached `1 passed`; final focused suite reached `59 passed`; full Jev suite reached `128 passed`; Ruff passed.
   - Commit evidence: work-unit commit `feat(governance): add Jev input evaluations` (exact hash recorded in the Engram mirror after commit creation).
-  - Native assessment/review: ambient assessment was unassessable because untracked files require explicit declaration; independent verifier completed with no findings. Committed-range native review remains pending.
+  - Native assessment/review: independent verifier completed with no findings; native reliability review approved and was acknowledged under lineage `review-5a58119b2586bff6`.
 
 ## Acceptance criteria
 
@@ -58,9 +58,11 @@ The typed Jev transport from Spec #1 exists, but the application still lacks con
 - Parent structural readback and `git diff --check` passed.
 - Independent verifier: no findings; focused `59 passed`, full Jev suite `128 passed`, Ruff passed.
 - Parent spot check: focused suite `59 passed in 0.44s`.
-- Native ambient assessment: `unassessable`; untracked files require explicit review declaration. The independent high-risk fallback verification completed successfully.
-- Delivery: `stacked-to-main` selected. One cohesive 696-line slice carries `size:exception`; splitting the security/contract test matrix from its behavior would weaken the work-unit story.
+- Native ambient assessment: `unassessable`; untracked files required explicit review declaration. The independent high-risk fallback verification completed successfully.
+- Work-unit commit: `5145bba` (`feat(governance): add Jev input evaluations`).
+- Native committed-range review: approved and acknowledged under lineage `review-5a58119b2586bff6`; authority burned after acknowledgement.
+- Delivery: `stacked-to-main` selected. The cohesive implementation slice carries `size:exception`; splitting the security/contract test matrix from its behavior would weaken the work-unit story. This tracking-closure update forms the passive follow-up slice.
 
 ## Next step
 
-Create the work-unit commit, record its exact identity in the Engram mirror, and start native committed-range review from the branch point.
+No implementation work remains. Delivery follows ordinary repository policy; no push or pull request was requested.
