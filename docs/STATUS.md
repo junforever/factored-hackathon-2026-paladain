@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-10-01
+> Última actualización: 2026-10-02
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno de Jev están **completados**. Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
+El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno de Jev y el registro de las cuatro tools en Strands están **completados**. El orquestador, la UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #5 — Registro de las 4 tools en el agente Strands.
+**Siguiente paso:** Spec #6 — Hooks de Strands con Jev.
 
 ---
 
@@ -53,6 +53,10 @@ El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno 
 - [x] Evaluaciones Jev: tool gating + output screening, con reglas determinísticas previas y proyecciones semánticas minimizadas.
 - [x] Lógica de decisión de gobierno: cuatro etapas, fail-closed, confidence gating, dominios de acción acotados y configuración tipada fail-fast.
 
+### Agente — Strands
+
+- [x] Registro de las 4 tools en el agente Strands.
+
 ### Documentación
 
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
@@ -70,7 +74,7 @@ El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno 
 | 3   | Completado | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
 | 4   | Completado | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
 | 5   | Completado | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
-| 6   | Pendiente  | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
+| 6   | Completado | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
 | 7   | Pendiente  | Hooks de Strands con Jev (`before_model_hook`, `before_tool_hook`)          | #4, #5, #6       | Spec #6       |
 | 8   | Pendiente  | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
 | 9   | Pendiente  | UI Chainlit (capa de presentación delgada, decisión #11)                    | #8               | Spec #8       |
@@ -84,7 +88,7 @@ El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno 
 
 ## En progreso
 
-- Ninguno actualmente. Spec #4 está completada; el próximo componente es Spec #5.
+- Ninguno actualmente. Spec #5 está completada; el próximo componente es Spec #6.
 
 ---
 
@@ -94,10 +98,17 @@ El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno 
 - El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries).
 - Los umbrales de tool gating y output screening son provisionales; deben calibrarse con la evaluación offline de Spec #9.
 
+1. **`unresolved_questions` es `list | None`, no `list[str] | None`.** La tool y Spec #4 aceptan elementos de cualquier tipo. Riesgo: el modelo podría pasar elementos no-string. Mitigación futura: validar tipo de elementos en la tool o en TOOL_ARG_CONTRACTS.
+
+2. **`days_before` solo exige un entero positivo, sin límite superior.** Un valor muy grande podría causar consultas lentas. Mitigación futura: agregar límite superior en TOOL_ARG_CONTRACTS.
+
+3. **`reason` acepta cualquier string.** Los valores del docstring son ejemplos, no un vocabulario cerrado. Riesgo: el modelo podría pasar razones arbitrarias. Mitigación futura: definir un vocabulario cerrado o validar contra una allowlist.
+
 ---
 
 ## Registro de actualizaciones
 
+- **2026-10-02** — Spec #5 v3 implementada con TDD. Wrappers `@tool` de Strands para las 4 tools en `agent/tools.py`, docstrings en inglés que reflejan categorías reales de retorno, sincronización con `TOOL_ARG_CONTRACTS`/`ALLOWED_TOOLS` (nombres, exposición) y con firmas originales (tipos, defaults, nullabilidad via `inspect.signature`), tipos JSON verificados, delegación directa sin lógica adicional. `tool_call` asignado al orquestador en `observability.md`. Llamadas directas declaradas como solo-para-tests.
 - **2026-10-01** — Spec #4 v5 implementada con TDD. Se agregó `sanitization.py` con API pública y comparación exacta de claves. Tool gating y output screening combinan una capa determinística (allowlists, tipos, rangos, autenticación, confirmación, verificación de `complaint_id` y detección de secretos) con una capa semántica Jev (`intent_matches_tool_call` Noul y `output_safety_semantic` Score). Los trust boundaries de `customer_context`, `verified_facts` y `actions_taken` usan allowlists internas y proyecciones minimizadas separan ejecución de estado Jev. `decide_tool_gating` limita sus acciones a `BLOCK/ALLOW` y `decide_output_screening` a `REVIEW/ALLOW`; sus reasons tienen precedencia determinística. `GovernanceStage` incluye ambas etapas, se preservan los umbrales efectivos y se validan probabilidades finitas. Los umbrales son provisionales hasta su calibración en Spec #9.
 - **2026-10-01** — Spec #3 v4 implementada con TDD. API de dos etapas (`decide_screening` / `decide_routing`), totalidad acotada fail-closed, validación de dominio de intent contra `EXPECTED_INTENTS`, umbrales tipados en `Policy` + `configs/policy.yaml` con `load_policy` fail-fast y mapper `from_policy`, confidence gating, metadata y probabilidades preservadas por etapa, reasons con códigos estables y precedencia. Vocabulario `block|review|allow`; stages `input_screening|intent_routing`.
 - **2026-10-01** — Spec #2 implementada con TDD. Evaluaciones `prompt_injection`, `social_engineering` y `banking_intent` en `governance/jev/evaluations.py`, con sanitización de secretos prohibidos (PAN/CVV/credenciales/tokens) en los formatos enumerados, reducción de falsos positivos mediante indicadores explícitos de asignación, cobertura trilingüe (es/pt/en), batching de `screen_input`, precedencia literal de intents, metadata preservada (`model`/`usage`) y validación de dominio de `probabilities`. Entry points públicos: `screen_input` y `route_banking_intent`. Tests unitarios sin red con mock del cliente de Spec #1.
