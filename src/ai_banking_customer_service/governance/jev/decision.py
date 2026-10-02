@@ -8,12 +8,21 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from .evaluations import EXPECTED_INTENTS
-from .schemas import Usage
+from .schemas import NoulAnswer, ScoreAnswer, Usage
 
 if TYPE_CHECKING:
-    from ai_banking_customer_service.config import GovernancePolicy
+    from ai_banking_customer_service.config import (
+        GovernancePolicy,
+        OutputScreeningPolicy,
+        ToolGatingPolicy,
+    )
 
-    from .evaluations import InputScreeningResult, IntentRoutingResult
+    from .evaluations import (
+        InputScreeningResult,
+        IntentRoutingResult,
+        OutputScreeningResult,
+        ToolGatingResult,
+    )
 
 
 class GovernanceAction(StrEnum):
@@ -25,6 +34,8 @@ class GovernanceAction(StrEnum):
 class GovernanceStage(StrEnum):
     INPUT_SCREENING = "input_screening"
     INTENT_ROUTING = "intent_routing"
+    TOOL_GATING = "tool_gating"
+    OUTPUT_SCREENING = "output_screening"
 
 
 @dataclass(frozen=True)
@@ -39,6 +50,69 @@ class ScreeningThresholds:
             raise ValueError(
                 "ScreeningThresholds: se requiere 0 <= review < block <= 1"
             )
+
+
+@dataclass(frozen=True)
+class ToolGatingThresholds:
+    min_intent_matches_tool: float
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.min_intent_matches_tool):
+            raise ValueError(
+                "ToolGatingThresholds: min_intent_matches_tool debe ser finito"
+            )
+        if not (0.0 <= self.min_intent_matches_tool <= 1.0):
+            raise ValueError(
+                "ToolGatingThresholds: se requiere 0 <= min_intent_matches_tool <= 1"
+            )
+
+    @classmethod
+    def from_policy(
+        cls,
+        policy: ToolGatingPolicy,
+    ) -> ToolGatingThresholds:
+        if policy is None:
+            raise ValueError("from_policy: policy no puede ser None")
+        return cls(min_intent_matches_tool=policy.min_intent_matches_tool)
+
+
+@dataclass(frozen=True)
+class OutputScreeningThresholds:
+    min_output_safety_score: float
+    min_output_safety_confidence: float
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.min_output_safety_score):
+            raise ValueError(
+                "OutputScreeningThresholds: min_output_safety_score debe ser finito"
+            )
+        if not (0.0 <= self.min_output_safety_score <= 2.0):
+            raise ValueError(
+                "OutputScreeningThresholds: se requiere "
+                "0 <= min_output_safety_score <= 2"
+            )
+        if not math.isfinite(self.min_output_safety_confidence):
+            raise ValueError(
+                "OutputScreeningThresholds: "
+                "min_output_safety_confidence debe ser finito"
+            )
+        if not (0.0 <= self.min_output_safety_confidence <= 1.0):
+            raise ValueError(
+                "OutputScreeningThresholds: se requiere "
+                "0 <= min_output_safety_confidence <= 1"
+            )
+
+    @classmethod
+    def from_policy(
+        cls,
+        policy: OutputScreeningPolicy,
+    ) -> OutputScreeningThresholds:
+        if policy is None:
+            raise ValueError("from_policy: policy no puede ser None")
+        return cls(
+            min_output_safety_score=policy.min_output_safety_score,
+            min_output_safety_confidence=policy.min_output_safety_confidence,
+        )
 
 
 @dataclass(frozen=True)
@@ -85,12 +159,16 @@ class GovernanceDecision:
     reasons: tuple[str, ...]
     model: str | None
     usage: Usage | None
-    governance_thresholds: GovernanceThresholds
+    governance_thresholds: (
+        GovernanceThresholds | ToolGatingThresholds | OutputScreeningThresholds
+    )
     prompt_injection_signal: float | None = None
     social_engineering_signal: float | None = None
     intent: str | None = None
     intent_confidence: float | None = None
     intent_probabilities: dict[str, float] | None = None
+    intent_matches_tool: NoulAnswer | None = None
+    output_safety_semantic: ScoreAnswer | None = None
 
 
 def decide_screening(
@@ -165,6 +243,185 @@ def decide_screening(
     return decision(
         GovernanceAction.ALLOW,
         ("SCREENING_PASS: all signals below review thresholds",),
+    )
+
+
+def decide_tool_gating(
+    gating: ToolGatingResult,
+    thresholds: ToolGatingThresholds,
+) -> GovernanceDecision:
+    """Decide whether one concrete tool call may execute."""
+
+    def decision(
+        action: GovernanceAction,
+        reason: str,
+    ) -> GovernanceDecision:
+        return GovernanceDecision(
+            action=action,
+            stage=GovernanceStage.TOOL_GATING,
+            reason_codes=(reason.partition(":")[0],),
+            reasons=(reason,),
+            model=gating.model if isinstance(gating.model, str) else None,
+            usage=gating.usage if isinstance(gating.usage, Usage) else None,
+            governance_thresholds=thresholds,
+            intent_matches_tool=gating.intent_matches_tool,
+        )
+
+    if gating.deterministic_block:
+        return decision(
+            GovernanceAction.BLOCK,
+            f"TOOL_GATING_DETERMINISTIC_BLOCK: {gating.deterministic_reason}",
+        )
+    if not isinstance(gating.model, str) or not gating.model.strip():
+        return decision(
+            GovernanceAction.BLOCK,
+            "INVALID_METADATA: model is invalid",
+        )
+    if not isinstance(gating.usage, Usage):
+        return decision(
+            GovernanceAction.BLOCK,
+            "INVALID_METADATA: usage is invalid",
+        )
+
+    probability = gating.intent_matches_tool.noul
+    if not (math.isfinite(probability) and 0.0 <= probability <= 1.0):
+        return decision(
+            GovernanceAction.BLOCK,
+            "INVALID_SIGNAL: intent_matches_tool.noul failed validation",
+        )
+
+    threshold = thresholds.min_intent_matches_tool
+    if probability >= threshold:
+        return decision(
+            GovernanceAction.ALLOW,
+            "TOOL_GATING_ALLOW: "
+            f"intent_matches_tool={repr(float(probability))} "
+            f">= min_intent_matches_tool={repr(float(threshold))}",
+        )
+
+    return decision(
+        GovernanceAction.BLOCK,
+        "TOOL_GATING_BLOCK_LOW_INTENT_MATCH: "
+        f"intent_matches_tool={repr(float(probability))} "
+        f"< min_intent_matches_tool={repr(float(threshold))}",
+    )
+
+
+def decide_output_screening(
+    screening: OutputScreeningResult,
+    thresholds: OutputScreeningThresholds,
+) -> GovernanceDecision:
+    """Decide whether a proposed response may be delivered."""
+
+    def decision(
+        action: GovernanceAction,
+        reason: str,
+    ) -> GovernanceDecision:
+        return GovernanceDecision(
+            action=action,
+            stage=GovernanceStage.OUTPUT_SCREENING,
+            reason_codes=(reason.partition(":")[0],),
+            reasons=(reason,),
+            model=screening.model if isinstance(screening.model, str) else None,
+            usage=screening.usage if isinstance(screening.usage, Usage) else None,
+            governance_thresholds=thresholds,
+            output_safety_semantic=screening.output_safety_semantic,
+        )
+
+    if screening.secrets_detected:
+        return decision(
+            GovernanceAction.REVIEW,
+            "OUTPUT_SCREENING_SECRETS_DETECTED: "
+            f"secrets_detected={screening.secrets_detected!r}",
+        )
+    if not isinstance(screening.model, str) or not screening.model.strip():
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_METADATA: model is invalid",
+        )
+    if not isinstance(screening.usage, Usage):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_METADATA: usage is invalid",
+        )
+
+    answer = screening.output_safety_semantic
+    score = answer.score
+    if not (math.isfinite(score) and 0.0 <= score <= 2.0):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: score failed validation",
+        )
+    if set(answer.legend) != {0, 1, 2}:
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: legend_domain failed validation",
+        )
+    if set(answer.probabilities) != {0, 1, 2}:
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: probabilities_domain failed validation",
+        )
+    if not all(
+        math.isfinite(probability) and 0.0 <= probability <= 1.0
+        for probability in answer.probabilities.values()
+    ):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: probability_values failed validation",
+        )
+    if not math.isclose(
+        sum(answer.probabilities.values()),
+        1.0,
+        abs_tol=1e-6,
+    ):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: probability_sum failed validation",
+        )
+    weighted_score = sum(
+        level * probability for level, probability in answer.probabilities.items()
+    )
+    if not math.isclose(score, weighted_score, abs_tol=0.1):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: weighted_score failed validation",
+        )
+
+    confidence = answer.confidence
+    if not (math.isfinite(confidence) and 0.0 <= confidence <= 1.0):
+        return decision(
+            GovernanceAction.REVIEW,
+            "INVALID_SIGNAL: confidence failed validation",
+        )
+
+    confidence_threshold = thresholds.min_output_safety_confidence
+    if confidence < confidence_threshold:
+        return decision(
+            GovernanceAction.REVIEW,
+            "OUTPUT_SCREENING_REVIEW_LOW_CONFIDENCE: "
+            f"confidence={repr(float(confidence))} "
+            "< min_output_safety_confidence="
+            f"{repr(float(confidence_threshold))}",
+        )
+
+    score_threshold = thresholds.min_output_safety_score
+    if score < score_threshold:
+        return decision(
+            GovernanceAction.REVIEW,
+            "OUTPUT_SCREENING_REVIEW_LOW_SCORE: "
+            f"output_safety_score={repr(float(score))} "
+            f"< min_output_safety_score={repr(float(score_threshold))}",
+        )
+
+    return decision(
+        GovernanceAction.ALLOW,
+        "OUTPUT_SCREENING_ALLOW: "
+        f"output_safety_score={repr(float(score))} "
+        f">= min_output_safety_score={repr(float(score_threshold))} "
+        f"and confidence={repr(float(confidence))} "
+        ">= min_output_safety_confidence="
+        f"{repr(float(confidence_threshold))}",
     )
 
 
