@@ -1,0 +1,98 @@
+# Spec 06 Governance Adapter
+
+## Objective
+
+Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-level TDD.
+
+## Scope
+
+- Add the observability event contract and JSONL audit sink.
+- Add the framework-agnostic governance adapter with fail-closed decisions, audit chaining, latency measurement, and trust-boundary builders.
+- Add Strands 1.57.1 governance hooks with per-`toolUseId` concurrent state.
+- Update observability ownership details and project status.
+
+## Constraints
+
+- Follow RED → GREEN → TRIANGULATE → REFACTOR with `uv run pytest`.
+- Tests must not call the network, real Jev, DuckDB, SQLite, or a live Strands agent.
+- Do not modify `governance/jev/*.py`, tools, services, `agent/tools.py`, configuration, or policy.
+- Keep production and repository-facing artifacts in English.
+- Close each task with a reviewable Conventional Commit on `feat/spec-06-governance-adapter`.
+
+## Tasks
+
+- [x] **T1 — Implement observability contract and JSONL sink**
+  - RED observed: contract and sink tests each failed because their target module did not exist.
+  - GREEN/TRIANGULATE: added strict envelope validation and a validated single-write JSONL sink; 79 focused tests pass.
+  - Checks: focused pytest, scoped Ruff check/format, `git diff --check`, and independent verification passed.
+  - Commit: `3b4ec5cc349aa733c299ad21f8f384a3a38d1a9d` (`feat(observability): add audit event persistence`).
+- [x] **T2 — Implement GovernanceAdapter and trust boundaries**
+  - RED observed across microcycles: missing module/methods, unimplemented routing, propagated Jev errors, missing latency measurement, and deterministic signal leakage.
+  - GREEN/TRIANGULATE: added the complete framework-agnostic pipeline, audit emission, fail-closed handling, and trust-boundary builders; 46 focused and 421 governance tests pass.
+  - Checks: scoped Ruff check/format, diff check, and independent verification passed after one regression-first correction.
+  - Commit: `25bf05758683415c99b15414529cb126875fce75` (`feat(governance): orchestrate guarded banking decisions`).
+- [x] **T3 — Integrate governance through Strands hooks**
+  - RED observed: hook tests failed collection because `agent.hooks` did not exist.
+  - GREEN/TRIANGULATE: added typed HookProvider integration, fail-closed validation, stable routing parents, and isolated concurrent state; 37 focused and 62 agent tests pass.
+  - Checks: scoped Ruff check/format, diff check, and independent verification passed.
+  - Commit: `b5813beb1feedd2a106667da039c814bee8a9bc7` (`feat(agent): enforce governance lifecycle hooks`).
+- [x] **T4 — Update documentation and run final acceptance**
+  - Applied the passive-documentation TDD exception; no meaningful RED behavior test exists.
+  - Updated the observability contract and project status, then structurally validated the required entries.
+  - Acceptance: 162 focused and 593 unit tests passed; Ruff check, scoped format checks, diff checks, scope audit, and independent verification passed.
+  - Known baseline: global `ruff format --check` still reports the same 11 pre-existing files; all 10 Spec #6 Python files pass scoped formatting.
+  - Commit: `6e594f38492f777e42ae56dfd19095124cdad847` (`docs: record governance adapter completion`).
+
+## Acceptance Criteria
+
+- Every criterion in `docs/specs/spec_06.md` section 17 is satisfied.
+- Focused tests, the complete unit suite, Ruff check, and Ruff format check pass.
+- Concurrent tool calls remain isolated by `toolUseId` and share the stable routing parent.
+- Jev failures produce the stage-specific conservative decisions and still emit audit events.
+- Public imports and documentation match the reviewed contract.
+
+## Progress
+
+- Completed: T1, T2, T3, T4.
+- Active task: none.
+- Branch: `feat/spec-06-governance-adapter`.
+- Exploration: completed by `gentle-ai-explore`; no implementation blocker found.
+- Review workload: T2 is a cohesive 1,493-line work unit and T3 is a cohesive 679-line work unit, both above the 400-line guide. Keep tests with behavior and record a `size:exception` for any PR slice containing either unit rather than splitting each contract from its verification.
+- Engram mirror: synchronized as observation 141.
+
+## Verification Evidence
+
+- Test runner resolved from `pyproject.toml`: pytest via `uv run pytest`.
+- Baseline: 431 unit tests and Ruff check passed; whole-repo Ruff format check had 11 pre-existing unformatted files.
+- T1 RED: focused collection failed for missing `observability.contract`; sink RED failed for missing `observability.sink`.
+- T1 GREEN/TRIANGULATE: `uv run pytest tests/unit/observability/ -q` → 79 passed.
+- T1 quality: scoped Ruff check and format check passed; `git diff --check` passed.
+- T1 independent verification: PASS; exact type/domain validation and JSONL persistence semantics confirmed.
+- T1 runtime harness: N/A because this unit has no application runtime boundary.
+- T1 rollback boundary: remove the six new observability source/test files.
+- T2 RED: successive focused runs exposed missing module/methods, routing, Jev error handling, latency behavior, and deterministic signal normalization.
+- T2 GREEN/TRIANGULATE: 46 focused adapter tests and 421 governance tests passed.
+- T2 quality: scoped Ruff check/format and diff check passed.
+- T2 independent verification: initial FAIL found deterministic-block signal leakage; regression test observed 1 failure/45 passes, the minimal correction restored 46 passes, and re-verification passed.
+- T2 runtime harness: N/A because the adapter is framework-agnostic and live Jev is excluded.
+- T2 rollback boundary: remove `governance/adapter.py` and `test_adapter.py`.
+- T3 RED: focused hooks collection failed because `agent.hooks` was missing.
+- T3 GREEN/TRIANGULATE: 37 focused hooks tests and 62 agent tests passed.
+- T3 quality: scoped Ruff check/format and diff check passed.
+- T3 independent verification: PASS; installed Strands 1.57.1 API, exhaustive validation, stable sibling parents, mandatory toolUseId, and global-state non-overwrite confirmed.
+- T3 runtime harness: N/A because live Agent/network execution is explicitly outside this spec.
+- T3 rollback boundary: remove `agent/hooks.py` and `test_hooks.py`.
+- T4 documentation exception: passive docs have no meaningful RED behavior test; targeted readback and grep passed.
+- T4 focused acceptance: 162 passed.
+- T4 full unit suite: 593 passed.
+- T4 quality: Ruff check passed; all 10 new Python files pass scoped format checks; diff checks and prohibited-path audit passed.
+- T4 known baseline failure: exact global `uv run ruff format --check` reports the same 11 pre-existing files observed before implementation; no candidate file fails formatting.
+- T4 independent acceptance: PASS with no candidate findings.
+- Native review: approved and acknowledged for the committed Spec #6 PR slice; lineage `review-ec969246de93e771`, receipt revision `sha256:e5d34dbee36c2ece199631b878c290e59eb8104452232d9f19ddc48910cd086c`.
+- Native review advisories (non-blocking, separate follow-up): non-finite `cost_usd` validation and stale invocation-state cleanup.
+- T4 runtime harness: N/A because live Agent/network execution is excluded by Spec #6.
+- T4 rollback boundary: revert only `docs/observability.md`, `docs/STATUS.md`, and the task-record closure.
+
+## Next Step
+
+Implementation and review are complete. Delivery (push/PR/merge) remains the user's decision.

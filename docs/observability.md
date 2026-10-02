@@ -53,7 +53,7 @@ payload         obj   campos específicos del event_type
 | event_type | Qué registra                  | payload                                                  |
 | ---------- | ----------------------------- | -------------------------------------------------------- |
 | input      | Mensaje recibido del cliente  | text, language (es/pt), channel                          |
-| governance | Una decisión de Jev           | stage, signals, decision, reason, thresholds             |
+| governance | Una decisión de Jev           | stage, signals, decision, reasons, thresholds            |
 | tool_call  | Invocación de una tool        | tool_name, args, result_status, result_summary, verified |
 | policy     | Regla dura aplicada           | rule_id, inputs, decision, reason                        |
 | action     | Acción ejecutada y verificada | action_name, target_id, executed, verification           |
@@ -67,9 +67,9 @@ payload         obj   campos específicos del event_type
 ```
 stage      str   input_screening | intent_routing | tool_gating | output_screening
 signals    obj   señales crudas de Jev (noul, choice, probabilities, score, confidence)
-decision   str   block | review | allow
-reason     str   por qué se tomó la decisión
-thresholds obj   umbrales aplicados
+decision   str       block | review | allow
+reasons    list[str] razones normalizadas que explican la decisión
+thresholds obj       umbrales aplicados
 ```
 
 **tool_call:**
@@ -112,7 +112,7 @@ Cada componente emite los tipos de evento que le corresponden:
 
 El orquestador emite exactamente UN evento `tool_call` por invocación de tool ejecutada mediante el Agent. Las tools y los wrappers NO emiten eventos directamente. Esto evita duplicación y garantiza que el evento tenga trace_id, latencia, argumentos sanitizados y resultado.
 
-El contrato está preparado para registrar las cuatro etapas: `input_screening`, `intent_routing`, `tool_gating` y `output_screening`. La emisión actual del adaptador sigue limitada a `input_screening` e `intent_routing`; Spec #6 implementará la emisión de `tool_gating` y `output_screening`. Cada evento usa el vocabulario de decisión `block|review|allow`.
+El `GovernanceAdapter` emite un evento por cada etapa ejecutada: `input_screening`, `intent_routing`, `tool_gating` y `output_screening`. Los hooks de Strands integran las tres primeras etapas; `output_screening` queda disponible como método del adaptador para que el orquestador pendiente lo invoque. Cada evento usa el vocabulario de decisión `block|review|allow` y normaliza `reasons` como `list[str]`.
 
 ## 6. AuditSink: interfaz única de emisión
 
@@ -123,7 +123,7 @@ class AuditSink(Protocol):
     def emit(self, event: dict) -> None: ...
 ```
 
-Implementación: JsonlAuditSink, que escribe cada evento como una línea JSON en settings.state_dir / "audit" / "audit.jsonl".
+Implementación: `contract.py` valida el envelope y sus dominios; `sink.py` define `AuditSink` y `JsonlAuditSink`. El sink recibe un `output_path`, valida cada evento antes de persistirlo, crea el directorio padre y escribe una línea JSON por evento con `allow_nan=False`.
 
 ```text
 src/ai_banking_customer_service/observability/
