@@ -30,11 +30,14 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
   - RED observed across microcycles: missing module/methods, unimplemented routing, propagated Jev errors, missing latency measurement, and deterministic signal leakage.
   - GREEN/TRIANGULATE: added the complete framework-agnostic pipeline, audit emission, fail-closed handling, and trust-boundary builders; 46 focused and 421 governance tests pass.
   - Checks: scoped Ruff check/format, diff check, and independent verification passed after one regression-first correction.
+  - Commit: `25bf05758683415c99b15414529cb126875fce75` (`feat(governance): orchestrate guarded banking decisions`).
+- [x] **T3 — Integrate governance through Strands hooks**
+  - RED observed: hook tests failed collection because `agent.hooks` did not exist.
+  - GREEN/TRIANGULATE: added typed HookProvider integration, fail-closed validation, stable routing parents, and isolated concurrent state; 37 focused and 62 agent tests pass.
+  - Checks: scoped Ruff check/format, diff check, and independent verification passed.
   - Commit: pending.
-- [ ] **T3 — Integrate governance through Strands hooks**
-  - Evidence: active strict-TDD work.
 - [ ] **T4 — Update documentation and run final acceptance**
-  - Evidence: pending.
+  - Evidence: active documentation and acceptance work.
 
 ## Acceptance Criteria
 
@@ -46,11 +49,11 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 
 ## Progress
 
-- Completed: T1, T2.
-- Active task: T3.
+- Completed: T1, T2, T3.
+- Active task: T4.
 - Branch: `feat/spec-06-governance-adapter`.
 - Exploration: completed by `gentle-ai-explore`; no implementation blocker found.
-- Review workload: T2 is a cohesive 1,493-line work unit (590 production, 903 behavior tests), above the 400-line guide. Keep tests with behavior and record a `size:exception` for any PR slice containing it rather than splitting the contract from its verification.
+- Review workload: T2 is a cohesive 1,493-line work unit and T3 is a cohesive 679-line work unit, both above the 400-line guide. Keep tests with behavior and record a `size:exception` for any PR slice containing either unit rather than splitting each contract from its verification.
 - Engram mirror: synchronized as observation 141.
 
 ## Verification Evidence
@@ -69,9 +72,14 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 - T2 independent verification: initial FAIL found deterministic-block signal leakage; regression test observed 1 failure/45 passes, the minimal correction restored 46 passes, and re-verification passed.
 - T2 runtime harness: N/A because the adapter is framework-agnostic and live Jev is excluded.
 - T2 rollback boundary: remove `governance/adapter.py` and `test_adapter.py`.
-- T3 evidence: pending.
+- T3 RED: focused hooks collection failed because `agent.hooks` was missing.
+- T3 GREEN/TRIANGULATE: 37 focused hooks tests and 62 agent tests passed.
+- T3 quality: scoped Ruff check/format and diff check passed.
+- T3 independent verification: PASS; installed Strands 1.57.1 API, exhaustive validation, stable sibling parents, mandatory toolUseId, and global-state non-overwrite confirmed.
+- T3 runtime harness: N/A because live Agent/network execution is explicitly outside this spec.
+- T3 rollback boundary: remove `agent/hooks.py` and `test_hooks.py`.
 - T4 evidence: pending.
 
 ## Next Step
 
-Observe T3 RED tests for the missing Strands governance hooks, then implement the minimum GREEN behavior.
+Apply the narrow documentation-only TDD exception, update the reviewed contracts/status, then run every acceptance check.
