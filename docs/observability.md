@@ -103,13 +103,14 @@ language       str   es | pt
 
 Cada componente emite los tipos de evento que le corresponden:
 
-| Componente                              | Emite                       | Ubicación   |
-| --------------------------------------- | --------------------------- | ----------- |
-| Orquestador                             | input, response, escalation | agent/      |
-| Adaptador de gobierno (Spec #6)         | governance                  | governance/ |
-| Tools                                   | tool_call                   | tools/      |
-| Módulo de política                      | policy                      | policies/   |
-| Servicios mock                          | action                      | services/   |
+| Componente                              | Emite                                  | Ubicación   |
+| --------------------------------------- | -------------------------------------- | ----------- |
+| Orquestador                             | input, tool_call, response, escalation | agent/      |
+| Adaptador de gobierno (Spec #6)         | governance                             | governance/ |
+| Módulo de política                      | policy                                 | policies/   |
+| Servicios mock                          | action                                 | services/   |
+
+El orquestador emite exactamente UN evento `tool_call` por invocación de tool ejecutada mediante el Agent. Las tools y los wrappers NO emiten eventos directamente. Esto evita duplicación y garantiza que el evento tenga trace_id, latencia, argumentos sanitizados y resultado.
 
 El contrato está preparado para registrar las cuatro etapas: `input_screening`, `intent_routing`, `tool_gating` y `output_screening`. La emisión actual del adaptador sigue limitada a `input_screening` e `intent_routing`; Spec #6 implementará la emisión de `tool_gating` y `output_screening`. Cada evento usa el vocabulario de decisión `block|review|allow`.
 
