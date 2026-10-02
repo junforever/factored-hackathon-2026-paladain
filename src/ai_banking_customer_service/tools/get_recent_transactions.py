@@ -64,7 +64,8 @@ def get_recent_transactions(
             return {
                 "error": (
                     "La vista raw_transactions no existe en la base DuckDB. "
-                    "Ejecuta scripts/data_preparation/07_register_transactions.py primero."
+                    "Ejecuta scripts/data_preparation/07_register_transactions.py "
+                    "primero."
                 )
             }
         # 4. Buscar el caso en el sandbox (puerta de autorización)
@@ -131,7 +132,8 @@ def get_recent_transactions(
             "data_quality_note": (
                 "Se consultó por product_id porque ~26% de las quejas "
                 "tienen customer_id distinto al de la transacción asociada. "
-                "Esto puede indicar tarjetas adicionales, corporativas o errores de datos."
+                "Esto puede indicar tarjetas adicionales, corporativas o errores "
+                "de datos."
             ),
         }
 

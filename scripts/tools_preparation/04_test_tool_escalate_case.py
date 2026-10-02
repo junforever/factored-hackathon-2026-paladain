@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from ai_banking_customer_service.services.escalation_service import get_escalation
 from ai_banking_customer_service.tools.escalate_case import escalate_case
 
 TEST_ID = "CMP-LMHTOD889KGMUG3RQSAA"
@@ -24,7 +25,10 @@ result = escalate_case(
         "¿El cliente reconoce alguna transacción parcial en el período?",
         "¿Hubo cambio de dispositivo o IP en la fecha de la transacción?",
     ],
-    agent_notes="Cliente reporta cargo de hace varias semanas. Fuera de ventana de bloqueo automático.",
+    agent_notes=(
+        "Cliente reporta cargo de hace varias semanas. "
+        "Fuera de ventana de bloqueo automático."
+    ),
 )
 
 if "error" in result:
@@ -40,7 +44,6 @@ else:
 print("\n" + "=" * 60)
 print("Prueba 2: Verificar que el handoff se persistió")
 print("=" * 60)
-from ai_banking_customer_service.services.escalation_service import get_escalation
 
 if "escalation_id" in result:
     stored = get_escalation(result["escalation_id"])

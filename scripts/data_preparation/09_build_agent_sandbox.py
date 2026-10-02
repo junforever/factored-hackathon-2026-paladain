@@ -9,13 +9,16 @@ print("Aplicando reglas de negocio y exportando sandbox final...")
 
 con.execute("DROP TABLE IF EXISTS agent_sandbox_final;")
 
-query = """
+query = (
+    """
 CREATE TABLE agent_sandbox_final AS
 SELECT
     *,
     -- Estimación de monto en USD para reglas de negocio
-    -- En producción usaríamos la tabla daily_exchange_rates, aquí usamos tasas fijas para el sandbox
-    CASE
+"""
+    "    -- En producción usaríamos la tabla daily_exchange_rates, aquí usamos "
+    "tasas fijas para el sandbox\n"
+    """    CASE
         WHEN currency = 'USD' THEN amount
         WHEN currency = 'MXN' THEN amount / 17.0
         WHEN currency = 'COP' THEN amount / 4000.0
@@ -25,15 +28,20 @@ SELECT
     
     -- REGLAS DE DECISIÓN DETERMINÍSTICAS (Fuera del prompt del LLM)
     CASE
-        -- CASO 1: Tarjeta + Comercio conocido + Monto bajo -> Automatizar bloqueo y disputa
-        WHEN product_type LIKE '%Tarjeta%' 
-             AND merchant_name IS NOT NULL 
-             AND (CASE WHEN currency='USD' THEN amount ELSE amount/1000 END) < 500
-             AND complaint_status IN ('Open', 'In Process')
+"""
+    "        -- CASO 1: Tarjeta + Comercio conocido + Monto bajo -> Automatizar "
+    "bloqueo y disputa\n"
+    "        WHEN product_type LIKE '%Tarjeta%' \n"
+    "             AND merchant_name IS NOT NULL \n"
+    "             AND (CASE WHEN currency='USD' THEN amount ELSE amount/1000 END) "
+    "< 500\n"
+    """             AND complaint_status IN ('Open', 'In Process')
         THEN 'AUTO_BLOCK_AND_DISPUTE'
         
-        -- CASO 2: Cuenta Corriente/Ahorro -> Siempre escalar (riesgo de congelamiento de fondos)
-        WHEN product_type LIKE '%Cuenta%'
+"""
+    "        -- CASO 2: Cuenta Corriente/Ahorro -> Siempre escalar "
+    "(riesgo de congelamiento de fondos)\n"
+    """        WHEN product_type LIKE '%Cuenta%'
         THEN 'ESCALATE_TO_HUMAN'
         
         -- CASO 3: Monto alto (>= $500 USD aprox) -> Escalar a supervisor
@@ -50,6 +58,7 @@ SELECT
     
 FROM sandbox_dispute_cases;
 """
+)
 
 con.execute(query)
 

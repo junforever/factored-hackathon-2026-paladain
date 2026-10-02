@@ -67,15 +67,19 @@ print("\nTabla sandbox_dispute_cases creada.")
 
 print("\nResumen del Sandbox:")
 print(
-    con.sql("""
+    con.sql(
+        """
     SELECT
         COUNT(*) AS total_cases,
         COUNT(DISTINCT customer_id) AS unique_customers,
         COUNT(DISTINCT country) AS countries,
-        ROUND(AVG(CASE WHEN system_flagged_fraud THEN 1.0 ELSE 0.0 END) * 100, 2) AS pct_flagged_as_fraud,
-        ROUND(AVG(resolution_days), 1) AS avg_resolution_days
+"""
+        "        ROUND(AVG(CASE WHEN system_flagged_fraud THEN 1.0 ELSE 0.0 "
+        "END) * 100, 2) AS pct_flagged_as_fraud,\n"
+        """        ROUND(AVG(resolution_days), 1) AS avg_resolution_days
     FROM sandbox_dispute_cases;
-    """)
+    """
+    )
 )
 
 print("\nMuestra de 3 casos:")
