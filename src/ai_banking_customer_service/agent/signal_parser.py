@@ -8,12 +8,23 @@ _SIGNAL_FIELDS = {
 }
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate JSON key")
+        value[key] = item
+    return value
+
+
 def parse_orchestration_signal(text: str) -> dict[str, str] | None:
     """Parse a complete, exact orchestration signal or return ``None``."""
     candidate = text.lstrip()
     try:
-        value, end = json.JSONDecoder().raw_decode(candidate)
-    except json.JSONDecodeError:
+        value, end = json.JSONDecoder(
+            object_pairs_hook=_reject_duplicate_keys
+        ).raw_decode(candidate)
+    except (json.JSONDecodeError, ValueError):
         return None
 
     if candidate[end:].strip() or not isinstance(value, dict):

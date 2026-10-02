@@ -15,7 +15,6 @@ def test_system_prompt_covers_language_tools_and_dispute_flow() -> None:
         "get_recent_transactions",
         "block_card",
         "escalate_case",
-        "verified case context",
         "clarify missing details",
         "product-linked transactions",
         "resolve safely or escalate",
@@ -42,5 +41,8 @@ def test_system_prompt_keeps_hard_policy_and_secrets_out() -> None:
         "min_output_safety",
         "typesafe",
         "api_key",
+        "governed tool access",
+        "verified case context",
+        "tool result confirms",
     ):
         assert forbidden not in lowered

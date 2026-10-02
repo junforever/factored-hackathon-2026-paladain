@@ -52,6 +52,20 @@ def test_parse_orchestration_signal_rejects_non_exact_signals(text: str) -> None
     assert parse_orchestration_signal(text) is None
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        (
+            '{"orchestration_signal":"abstention",'
+            '"orchestration_signal":"clarification","question":"Which charge?"}'
+        ),
+        ('{"orchestration_signal":"abstention","reason":"first","reason":"second"}'),
+    ],
+)
+def test_parse_orchestration_signal_rejects_duplicate_keys(text: str) -> None:
+    assert parse_orchestration_signal(text) is None
+
+
 def test_parse_orchestration_signal_enforces_500_character_limit() -> None:
     accepted = json.dumps(
         {"orchestration_signal": "clarification", "question": "q" * 500}
