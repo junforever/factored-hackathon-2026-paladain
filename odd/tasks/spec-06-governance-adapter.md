@@ -35,9 +35,13 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
   - RED observed: hook tests failed collection because `agent.hooks` did not exist.
   - GREEN/TRIANGULATE: added typed HookProvider integration, fail-closed validation, stable routing parents, and isolated concurrent state; 37 focused and 62 agent tests pass.
   - Checks: scoped Ruff check/format, diff check, and independent verification passed.
+  - Commit: `b5813beb1feedd2a106667da039c814bee8a9bc7` (`feat(agent): enforce governance lifecycle hooks`).
+- [x] **T4 — Update documentation and run final acceptance**
+  - Applied the passive-documentation TDD exception; no meaningful RED behavior test exists.
+  - Updated the observability contract and project status, then structurally validated the required entries.
+  - Acceptance: 162 focused and 593 unit tests passed; Ruff check, scoped format checks, diff checks, scope audit, and independent verification passed.
+  - Known baseline: global `ruff format --check` still reports the same 11 pre-existing files; all 10 Spec #6 Python files pass scoped formatting.
   - Commit: pending.
-- [ ] **T4 — Update documentation and run final acceptance**
-  - Evidence: active documentation and acceptance work.
 
 ## Acceptance Criteria
 
@@ -49,8 +53,8 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 
 ## Progress
 
-- Completed: T1, T2, T3.
-- Active task: T4.
+- Completed: T1, T2, T3, T4.
+- Active task: none.
 - Branch: `feat/spec-06-governance-adapter`.
 - Exploration: completed by `gentle-ai-explore`; no implementation blocker found.
 - Review workload: T2 is a cohesive 1,493-line work unit and T3 is a cohesive 679-line work unit, both above the 400-line guide. Keep tests with behavior and record a `size:exception` for any PR slice containing either unit rather than splitting each contract from its verification.
@@ -78,8 +82,15 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 - T3 independent verification: PASS; installed Strands 1.57.1 API, exhaustive validation, stable sibling parents, mandatory toolUseId, and global-state non-overwrite confirmed.
 - T3 runtime harness: N/A because live Agent/network execution is explicitly outside this spec.
 - T3 rollback boundary: remove `agent/hooks.py` and `test_hooks.py`.
-- T4 evidence: pending.
+- T4 documentation exception: passive docs have no meaningful RED behavior test; targeted readback and grep passed.
+- T4 focused acceptance: 162 passed.
+- T4 full unit suite: 593 passed.
+- T4 quality: Ruff check passed; all 10 new Python files pass scoped format checks; diff checks and prohibited-path audit passed.
+- T4 known baseline failure: exact global `uv run ruff format --check` reports the same 11 pre-existing files observed before implementation; no candidate file fails formatting.
+- T4 independent acceptance: PASS with no candidate findings.
+- T4 runtime harness: N/A because live Agent/network execution is excluded by Spec #6.
+- T4 rollback boundary: revert only `docs/observability.md`, `docs/STATUS.md`, and the task-record closure.
 
 ## Next Step
 
-Apply the narrow documentation-only TDD exception, update the reviewed contracts/status, then run every acceptance check.
+Commit the documentation/acceptance record, complete native review handling for each source work unit, and report delivery options.
