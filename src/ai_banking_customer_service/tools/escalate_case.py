@@ -101,8 +101,11 @@ def escalate_case(
     handoff = {
         "request": {
             "complaint_id": complaint_id,
-            "summary": f"Cliente reporta cargo no reconocido de {context.get('amount')} "
-            f"{context.get('currency')} en {context.get('product_type')}.",
+            "summary": (
+                "Cliente reporta cargo no reconocido de "
+                f"{context.get('amount')} {context.get('currency')} "
+                f"en {context.get('product_type')}."
+            ),
             "reported_at": str(context.get("complaint_date")),
         },
         "verified_facts": {

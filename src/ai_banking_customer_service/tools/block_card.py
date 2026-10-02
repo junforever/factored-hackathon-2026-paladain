@@ -47,7 +47,10 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "action": "block_card",
             "executed": False,
             "reason": "customer_confirmation_required",
-            "message": "El cliente debe confirmar explícitamente antes de bloquear la tarjeta.",
+            "message": (
+                "El cliente debe confirmar explícitamente antes de bloquear "
+                "la tarjeta."
+            ),
         }
 
     # 4. POLÍTICA: ¿es un producto bloqueable?
@@ -57,7 +60,10 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "executed": False,
             "reason": "product_not_blockable",
             "product_type": product_type,
-            "message": f"El producto '{product_type}' no puede bloquearse con esta acción.",
+            "message": (
+                f"El producto '{product_type}' no puede bloquearse "
+                "con esta acción."
+            ),
         }
 
     # 5. POLÍTICA: ¿el producto está activo?
@@ -67,7 +73,10 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "executed": False,
             "reason": "product_not_active",
             "product_status": product_status,
-            "message": f"El producto está en estado '{product_status}' y no puede bloquearse.",
+            "message": (
+                f"El producto está en estado '{product_status}' "
+                "y no puede bloquearse."
+            ),
         }
 
     # 6. POLÍTICA: ¿ya está bloqueada?

@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado, las evaluaciones de input screening e intent routing y la lógica de decisión de gobierno de Jev están **completados**. Tool gating, output screening, Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
+El transporte tipado y las cuatro etapas de evaluación y decisión de gobierno de Jev están **completados**. Strands, el orquestador, la UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #4 — Evaluaciones Jev de tool gating y output screening.
+**Siguiente paso:** Spec #5 — Registro de las 4 tools en el agente Strands.
 
 ---
 
@@ -50,7 +50,8 @@ El transporte tipado, las evaluaciones de input screening e intent routing y la 
 - [x] Schemas Pydantic de Jev (wire format Noul/Choice/Score).
 - [x] Cliente Jev (adapter sobre `typesafe-sdk`).
 - [x] Evaluaciones Jev: input screening + intent routing.
-- [x] Lógica de decisión de gobierno: dos etapas, fail-closed, confidence gating, dominio de intent y configuración tipada fail-fast.
+- [x] Evaluaciones Jev: tool gating + output screening, con reglas determinísticas previas y proyecciones semánticas minimizadas.
+- [x] Lógica de decisión de gobierno: cuatro etapas, fail-closed, confidence gating, dominios de acción acotados y configuración tipada fail-fast.
 
 ### Documentación
 
@@ -68,7 +69,7 @@ El transporte tipado, las evaluaciones de input screening e intent routing y la 
 | 2   | Completado | Cliente Jev (adapter sobre `typesafe-sdk`)                                  | #1               | Spec #1       |
 | 3   | Completado | Evaluaciones Jev: input screening + intent routing                          | #2               | Spec #2       |
 | 4   | Completado | Lógica de decisión de gobierno (`GovernanceDecision`, umbrales, fail-closed) | #3               | Spec #3       |
-| 5   | Pendiente  | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
+| 5   | Completado | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
 | 6   | Pendiente  | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
 | 7   | Pendiente  | Hooks de Strands con Jev (`before_model_hook`, `before_tool_hook`)          | #4, #5, #6       | Spec #6       |
 | 8   | Pendiente  | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
@@ -83,19 +84,21 @@ El transporte tipado, las evaluaciones de input screening e intent routing y la 
 
 ## En progreso
 
-- Ninguno actualmente. Spec #4 todavía no inició.
+- Ninguno actualmente. Spec #4 está completada; el próximo componente es Spec #5.
 
 ---
 
 ## Deuda conocida
 
 - Deuda de seguridad: la autorización del usuario sobre el producto no está verificada. Consultar por `product_id` resuelve integridad referencial, NO autorización. Falta validar que el usuario autenticado tenga permiso sobre el producto antes de exponer sus transacciones.
-- El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries)
+- El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries).
+- Los umbrales de tool gating y output screening son provisionales; deben calibrarse con la evaluación offline de Spec #9.
 
 ---
 
 ## Registro de actualizaciones
 
+- **2026-10-01** — Spec #4 v5 implementada con TDD. Se agregó `sanitization.py` con API pública y comparación exacta de claves. Tool gating y output screening combinan una capa determinística (allowlists, tipos, rangos, autenticación, confirmación, verificación de `complaint_id` y detección de secretos) con una capa semántica Jev (`intent_matches_tool_call` Noul y `output_safety_semantic` Score). Los trust boundaries de `customer_context`, `verified_facts` y `actions_taken` usan allowlists internas y proyecciones minimizadas separan ejecución de estado Jev. `decide_tool_gating` limita sus acciones a `BLOCK/ALLOW` y `decide_output_screening` a `REVIEW/ALLOW`; sus reasons tienen precedencia determinística. `GovernanceStage` incluye ambas etapas, se preservan los umbrales efectivos y se validan probabilidades finitas. Los umbrales son provisionales hasta su calibración en Spec #9.
 - **2026-10-01** — Spec #3 v4 implementada con TDD. API de dos etapas (`decide_screening` / `decide_routing`), totalidad acotada fail-closed, validación de dominio de intent contra `EXPECTED_INTENTS`, umbrales tipados en `Policy` + `configs/policy.yaml` con `load_policy` fail-fast y mapper `from_policy`, confidence gating, metadata y probabilidades preservadas por etapa, reasons con códigos estables y precedencia. Vocabulario `block|review|allow`; stages `input_screening|intent_routing`.
 - **2026-10-01** — Spec #2 implementada con TDD. Evaluaciones `prompt_injection`, `social_engineering` y `banking_intent` en `governance/jev/evaluations.py`, con sanitización de secretos prohibidos (PAN/CVV/credenciales/tokens) en los formatos enumerados, reducción de falsos positivos mediante indicadores explícitos de asignación, cobertura trilingüe (es/pt/en), batching de `screen_input`, precedencia literal de intents, metadata preservada (`model`/`usage`) y validación de dominio de `probabilities`. Entry points públicos: `screen_input` y `route_banking_intent`. Tests unitarios sin red con mock del cliente de Spec #1.
 - **2026-09-30** — Spec #1 implementada con TDD. Schemas alineados al wire de Jev, cliente adapter sobre `typesafe-sdk`, bootstrap hermético, parsing discriminado y mapeo tipado de errores SDK.

@@ -96,10 +96,52 @@ class GovernancePolicy(BaseModel):
         return value
 
 
+class ToolGatingPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    min_intent_matches_tool: float
+
+    @field_validator("min_intent_matches_tool")
+    @classmethod
+    def _probability(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("min_intent_matches_tool debe ser finito")
+        if not (0.0 <= value <= 1.0):
+            raise ValueError("se requiere 0 <= min_intent_matches_tool <= 1")
+        return value
+
+
+class OutputScreeningPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    min_output_safety_score: float
+    min_output_safety_confidence: float
+
+    @field_validator("min_output_safety_score")
+    @classmethod
+    def _score(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("min_output_safety_score debe ser finito")
+        if not (0.0 <= value <= 2.0):
+            raise ValueError("se requiere 0 <= min_output_safety_score <= 2")
+        return value
+
+    @field_validator("min_output_safety_confidence")
+    @classmethod
+    def _confidence(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("min_output_safety_confidence debe ser finito")
+        if not (0.0 <= value <= 1.0):
+            raise ValueError("se requiere 0 <= min_output_safety_confidence <= 1")
+        return value
+
+
 class Policy(BaseModel):
     auto_block: dict = {}
     escalation: dict = {}
     governance: GovernancePolicy
+    tool_gating: ToolGatingPolicy
+    output_screening: OutputScreeningPolicy
 
     @property
     def high_amount_threshold_usd(self) -> float:

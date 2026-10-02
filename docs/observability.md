@@ -111,7 +111,7 @@ Cada componente emite los tipos de evento que le corresponden:
 | Módulo de política                      | policy                      | policies/   |
 | Servicios mock                          | action                      | services/   |
 
-El adaptador de gobierno emite un evento `governance` por cada etapa ejecutada: uno para `input_screening` y otro para `intent_routing`. Cada evento usa el vocabulario de decisión `block|review|allow`.
+El contrato está preparado para registrar las cuatro etapas: `input_screening`, `intent_routing`, `tool_gating` y `output_screening`. La emisión actual del adaptador sigue limitada a `input_screening` e `intent_routing`; Spec #6 implementará la emisión de `tool_gating` y `output_screening`. Cada evento usa el vocabulario de decisión `block|review|allow`.
 
 ## 6. AuditSink: interfaz única de emisión
 

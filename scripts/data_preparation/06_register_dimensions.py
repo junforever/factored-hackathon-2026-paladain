@@ -20,7 +20,8 @@ for table in dimensions:
         pattern = f"{data_path}.csv"
         if not Path(pattern).is_file():
             raise FileNotFoundError(
-                f"No se encontraron archivos CSV para '{table}' en {data_path} ni {pattern}"
+                f"No se encontraron archivos CSV para '{table}' en {data_path} "
+                f"ni {pattern}"
             )
 
     print(f"Leyendo {table} desde: {pattern}")

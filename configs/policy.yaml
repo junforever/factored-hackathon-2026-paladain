@@ -19,3 +19,10 @@ governance:
     block: 0.80
     review: 0.35
   min_intent_confidence: 0.50
+
+tool_gating:
+  min_intent_matches_tool: 0.70
+
+output_screening:
+  min_output_safety_score: 1.50
+  min_output_safety_confidence: 0.50

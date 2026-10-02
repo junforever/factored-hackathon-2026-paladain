@@ -133,7 +133,8 @@ def get_escalation(escalation_id: str) -> dict | None:
     try:
         _init_schema(conn)
         row = conn.execute(
-            "SELECT handoff_json, status, created_at FROM escalations WHERE escalation_id = ?",
+            "SELECT handoff_json, status, created_at FROM escalations "
+            "WHERE escalation_id = ?",
             (escalation_id,),
         ).fetchone()
         if row is None:
