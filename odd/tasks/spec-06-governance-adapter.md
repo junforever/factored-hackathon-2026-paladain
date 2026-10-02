@@ -88,9 +88,11 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 - T4 quality: Ruff check passed; all 10 new Python files pass scoped format checks; diff checks and prohibited-path audit passed.
 - T4 known baseline failure: exact global `uv run ruff format --check` reports the same 11 pre-existing files observed before implementation; no candidate file fails formatting.
 - T4 independent acceptance: PASS with no candidate findings.
+- Native review: approved and acknowledged for the committed Spec #6 PR slice; lineage `review-ec969246de93e771`, receipt revision `sha256:e5d34dbee36c2ece199631b878c290e59eb8104452232d9f19ddc48910cd086c`.
+- Native review advisories (non-blocking, separate follow-up): non-finite `cost_usd` validation and stale invocation-state cleanup.
 - T4 runtime harness: N/A because live Agent/network execution is excluded by Spec #6.
 - T4 rollback boundary: revert only `docs/observability.md`, `docs/STATUS.md`, and the task-record closure.
 
 ## Next Step
 
-Commit the documentation/acceptance record, complete native review handling for each source work unit, and report delivery options.
+Implementation and review are complete. Delivery (push/PR/merge) remains the user's decision.
