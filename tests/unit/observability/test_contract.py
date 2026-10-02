@@ -128,7 +128,10 @@ def test_validate_event_accepts_optional_non_negative_float_cost(
     validate_event(event)
 
 
-@pytest.mark.parametrize("invalid_value", [True, False, -0.1, 1, "1.0"])
+@pytest.mark.parametrize(
+    "invalid_value",
+    [True, False, -0.1, 1, "1.0", float("nan"), float("inf"), float("-inf")],
+)
 def test_validate_event_rejects_invalid_cost(invalid_value: object) -> None:
     event = _valid_event()
     event["cost_usd"] = invalid_value

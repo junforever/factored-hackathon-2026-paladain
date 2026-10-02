@@ -27,6 +27,14 @@ class GovernanceHooks(HookProvider):
     def before_invocation(self, event: BeforeInvocationEvent) -> None:
         """Screen and route the latest user message."""
         state = event.invocation_state
+        for key in (
+            "intent",
+            "customer_message",
+            "routing_event_id",
+            "governance_decision",
+            "governance_action",
+        ):
+            state.pop(key, None)
         state["tool_governance"] = {}
         message = _last_user_text(event.messages)
         if message is None:

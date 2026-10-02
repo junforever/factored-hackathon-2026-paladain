@@ -1,5 +1,7 @@
 """Validation for audit event envelopes."""
 
+from math import isfinite
+
 REQUIRED_ENVELOPE_FIELDS = frozenset(
     {
         "trace_id",
@@ -64,7 +66,9 @@ def validate_event(event: dict) -> None:
         raise ValueError("tokens must be a non-negative integer or None")
 
     cost_usd = event.get("cost_usd")
-    if cost_usd is not None and (not isinstance(cost_usd, float) or cost_usd < 0):
+    if cost_usd is not None and (
+        not isinstance(cost_usd, float) or not isfinite(cost_usd) or cost_usd < 0
+    ):
         raise ValueError("cost_usd must be a non-negative float or None")
 
     payload = event.get("payload")

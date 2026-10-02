@@ -149,6 +149,11 @@ def test_before_invocation_uses_last_user_message_and_concatenates_text_blocks()
             "session_id": "session-1",
             "customer_id": "customer-1",
             "input_event_id": "input-event-1",
+            "intent": "stale-intent",
+            "customer_message": "stale-message",
+            "routing_event_id": "stale-routing-event",
+            "governance_decision": object(),
+            "governance_action": "block",
             "tool_governance": {"stale": object()},
         },
     )
@@ -246,6 +251,36 @@ def test_before_invocation_without_user_text_fails_closed(messages: object) -> N
     assert event.cancel == "governance:block"
     assert event.invocation_state["governance_action"] == "block"
     assert event.invocation_state["tool_governance"] == {}
+    adapter.screen_and_route.assert_not_called()
+
+
+def test_before_invocation_clears_stale_derived_state_before_failing_closed() -> None:
+    adapter = _adapter()
+    state = {
+        "trace_id": "trace-1",
+        "session_id": "session-1",
+        "customer_id": "customer-1",
+        "input_event_id": "input-event-1",
+        "intent": "stale-intent",
+        "customer_message": "stale-message",
+        "routing_event_id": "stale-routing-event",
+        "governance_decision": object(),
+        "governance_action": "allow",
+        "tool_governance": {"stale": object()},
+    }
+    event = _invocation_event(messages=[], state=state)
+
+    GovernanceHooks(adapter).before_invocation(event)
+
+    assert event.cancel == "governance:block"
+    assert state == {
+        "trace_id": "trace-1",
+        "session_id": "session-1",
+        "customer_id": "customer-1",
+        "input_event_id": "input-event-1",
+        "governance_action": "block",
+        "tool_governance": {},
+    }
     adapter.screen_and_route.assert_not_called()
 
 
