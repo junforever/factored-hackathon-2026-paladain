@@ -85,11 +85,12 @@ Spec #6 needs a stable public tool set whose signatures, JSON schemas, governanc
 - T2 rollback boundary: revert commit `bbf31df140bc8ff63121e2c0f92aa6e67321b2af`.
 - T3 final acceptance: 25 focused and 431 unit tests passed; scoped Ruff check and format check passed; `git diff --check 6e34a15..HEAD` passed.
 - T3 scope audit: only the expected agent, test, and documentation paths changed; original tools, governance, services, config, and policy remain unchanged.
-- T3 independent verification: PASS; no checks skipped or pending.
+- T3 independent verification: PASS; no functional or quality checks skipped or pending.
+- Native review: unavailable for the committed feature slice because START failed with `schema-incompatible`; no lineage was created and no review outcome was claimed. Native assessment classified the committed range as medium risk; prior writer self-verification and independent verification satisfy the fallback path.
 - T3 runtime harness: N/A because governed Agent orchestration belongs to a later spec; mocks prove delegation without external I/O.
 - T3 rollback boundary: revert T1 and T2 commits; T3 is an empty verification-evidence commit.
 - Delivery workload: 153 code lines, 250 test lines, and 36 documentation diff lines (439 total). The feature is cohesive; use a `size:exception` rather than splitting contract tests from behavior if opened as one PR.
 
 ## Next Step
 
-Run native review for the completed committed feature slice when offered, then report the verified outcome and delivery options.
+Native review remains due but unavailable (`schema-incompatible`). Retry the provider-reported continuation after the native integration is repaired; delivery remains the user's decision.
