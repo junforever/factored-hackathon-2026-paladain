@@ -41,7 +41,7 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
   - Updated the observability contract and project status, then structurally validated the required entries.
   - Acceptance: 162 focused and 593 unit tests passed; Ruff check, scoped format checks, diff checks, scope audit, and independent verification passed.
   - Known baseline: global `ruff format --check` still reports the same 11 pre-existing files; all 10 Spec #6 Python files pass scoped formatting.
-  - Commit: pending.
+  - Commit: `6e594f38492f777e42ae56dfd19095124cdad847` (`docs: record governance adapter completion`).
 
 ## Acceptance Criteria
 
