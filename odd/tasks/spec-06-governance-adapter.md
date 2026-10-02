@@ -25,11 +25,14 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
   - RED observed: contract and sink tests each failed because their target module did not exist.
   - GREEN/TRIANGULATE: added strict envelope validation and a validated single-write JSONL sink; 79 focused tests pass.
   - Checks: focused pytest, scoped Ruff check/format, `git diff --check`, and independent verification passed.
+  - Commit: `3b4ec5cc349aa733c299ad21f8f384a3a38d1a9d` (`feat(observability): add audit event persistence`).
+- [x] **T2 — Implement GovernanceAdapter and trust boundaries**
+  - RED observed across microcycles: missing module/methods, unimplemented routing, propagated Jev errors, missing latency measurement, and deterministic signal leakage.
+  - GREEN/TRIANGULATE: added the complete framework-agnostic pipeline, audit emission, fail-closed handling, and trust-boundary builders; 46 focused and 421 governance tests pass.
+  - Checks: scoped Ruff check/format, diff check, and independent verification passed after one regression-first correction.
   - Commit: pending.
-- [ ] **T2 — Implement GovernanceAdapter and trust boundaries**
-  - Evidence: active strict-TDD work.
 - [ ] **T3 — Integrate governance through Strands hooks**
-  - Evidence: pending.
+  - Evidence: active strict-TDD work.
 - [ ] **T4 — Update documentation and run final acceptance**
   - Evidence: pending.
 
@@ -43,11 +46,11 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 
 ## Progress
 
-- Completed: T1.
-- Active task: T2.
+- Completed: T1, T2.
+- Active task: T3.
 - Branch: `feat/spec-06-governance-adapter`.
 - Exploration: completed by `gentle-ai-explore`; no implementation blocker found.
-- Review workload: monitor authored diff size per work unit; slice by behavior and record an honest exception if a cohesive unit exceeds 400 lines.
+- Review workload: T2 is a cohesive 1,493-line work unit (590 production, 903 behavior tests), above the 400-line guide. Keep tests with behavior and record a `size:exception` for any PR slice containing it rather than splitting the contract from its verification.
 - Engram mirror: synchronized as observation 141.
 
 ## Verification Evidence
@@ -60,10 +63,15 @@ Implement the reviewed `docs/specs/spec_06.md` v5 contract with strict behavior-
 - T1 independent verification: PASS; exact type/domain validation and JSONL persistence semantics confirmed.
 - T1 runtime harness: N/A because this unit has no application runtime boundary.
 - T1 rollback boundary: remove the six new observability source/test files.
-- T2 evidence: pending.
+- T2 RED: successive focused runs exposed missing module/methods, routing, Jev error handling, latency behavior, and deterministic signal normalization.
+- T2 GREEN/TRIANGULATE: 46 focused adapter tests and 421 governance tests passed.
+- T2 quality: scoped Ruff check/format and diff check passed.
+- T2 independent verification: initial FAIL found deterministic-block signal leakage; regression test observed 1 failure/45 passes, the minimal correction restored 46 passes, and re-verification passed.
+- T2 runtime harness: N/A because the adapter is framework-agnostic and live Jev is excluded.
+- T2 rollback boundary: remove `governance/adapter.py` and `test_adapter.py`.
 - T3 evidence: pending.
 - T4 evidence: pending.
 
 ## Next Step
 
-Observe T2 RED tests for the missing framework-agnostic adapter, then implement the minimum GREEN behavior.
+Observe T3 RED tests for the missing Strands governance hooks, then implement the minimum GREEN behavior.
