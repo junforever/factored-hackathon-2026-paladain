@@ -467,8 +467,7 @@ def decide_routing(
     if not (math.isfinite(confidence) and 0.0 <= confidence <= 1.0):
         return decision(
             GovernanceAction.BLOCK,
-            "INVALID_CONFIDENCE: "
-            "intent_confidence is not finite or is outside [0, 1]",
+            "INVALID_CONFIDENCE: intent_confidence is not finite or is outside [0, 1]",
         )
     if not isinstance(routing.model, str) or not routing.model.strip():
         return decision(

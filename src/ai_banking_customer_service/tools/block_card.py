@@ -48,8 +48,7 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "executed": False,
             "reason": "customer_confirmation_required",
             "message": (
-                "El cliente debe confirmar explícitamente antes de bloquear "
-                "la tarjeta."
+                "El cliente debe confirmar explícitamente antes de bloquear la tarjeta."
             ),
         }
 
@@ -61,8 +60,7 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "reason": "product_not_blockable",
             "product_type": product_type,
             "message": (
-                f"El producto '{product_type}' no puede bloquearse "
-                "con esta acción."
+                f"El producto '{product_type}' no puede bloquearse con esta acción."
             ),
         }
 
@@ -74,8 +72,7 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
             "reason": "product_not_active",
             "product_status": product_status,
             "message": (
-                f"El producto está en estado '{product_status}' "
-                "y no puede bloquearse."
+                f"El producto está en estado '{product_status}' y no puede bloquearse."
             ),
         }
 

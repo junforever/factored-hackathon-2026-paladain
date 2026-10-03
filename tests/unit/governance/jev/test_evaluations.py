@@ -778,9 +778,7 @@ def test_screen_input_sanitizes_message_and_batches_questions() -> None:
     )
 
     client.evaluate.assert_called_once_with(
-        state={
-            "user_message": "Card [REDACTED_PAN] with [REDACTED_SECRET]"
-        },
+        state={"user_message": "Card [REDACTED_PAN] with [REDACTED_SECRET]"},
         questions={
             "prompt_injection": PROMPT_INJECTION_QUESTION,
             "social_engineering": SOCIAL_ENGINEERING_QUESTION,
@@ -888,9 +886,10 @@ def test_route_banking_intent_preserves_raw_answer_and_metadata() -> None:
     assert type(result) is IntentRoutingResult
     assert result.intent is response.get_choice("banking_intent")
     assert result.intent.choice == "dispute_charge"
-    assert result.intent.probabilities == response.get_choice(
-        "banking_intent"
-    ).probabilities
+    assert (
+        result.intent.probabilities
+        == response.get_choice("banking_intent").probabilities
+    )
     assert result.intent.confidence == 0.87
     assert result.model == "jev-test"
     assert result.usage is response.usage
@@ -917,9 +916,7 @@ def test_route_banking_intent_rejects_invalid_intent_domain(
     probabilities: dict[str, float],
     error_match: str,
 ) -> None:
-    client = _mock_client(
-        _routing_response(choice=choice, probabilities=probabilities)
-    )
+    client = _mock_client(_routing_response(choice=choice, probabilities=probabilities))
 
     with pytest.raises(JevValidationError, match=error_match):
         route_banking_intent(client, "Necesito ayuda")
@@ -955,9 +952,7 @@ def test_route_banking_intent_rejects_non_choice_answer() -> None:
         JevResponse.model_validate(
             {
                 "model": "jev-test",
-                "answers": {
-                    "banking_intent": {"type": "noul", "noul": 0.5}
-                },
+                "answers": {"banking_intent": {"type": "noul", "noul": 0.5}},
                 "usage": {},
             }
         )
@@ -1081,9 +1076,7 @@ def test_question_constants_match_contract() -> None:
                 "balances, or procedures, with no dispute, block, status, or human "
                 "request."
             ),
-            "other": (
-                "None of the above categories fit the customer's message."
-            ),
+            "other": ("None of the above categories fit the customer's message."),
         },
         "include_other": False,
     }

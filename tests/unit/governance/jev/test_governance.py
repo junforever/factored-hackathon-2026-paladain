@@ -57,9 +57,7 @@ def _screening_result(
     usage: object | None = _DEFAULT_USAGE,
 ) -> InputScreeningResult:
     return InputScreeningResult(
-        prompt_injection=NoulAnswer.model_construct(
-            type="noul", noul=prompt_injection
-        ),
+        prompt_injection=NoulAnswer.model_construct(type="noul", noul=prompt_injection),
         social_engineering=NoulAnswer.model_construct(
             type="noul", noul=social_engineering
         ),

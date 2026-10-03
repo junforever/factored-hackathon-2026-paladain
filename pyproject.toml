@@ -41,6 +41,7 @@ select = ["E", "F", "I", "UP"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+exclude = ["*.md"]
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
