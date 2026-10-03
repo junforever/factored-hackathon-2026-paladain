@@ -35,6 +35,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Planned slices: one reviewable work-unit commit per task, grouped further only if a task cannot stand independently.
 - T1 commits: `98f6eb5` (foundations) and `3e11422` (independent-verification corrections).
 - T2 commit: `c5a5e91` (locked session memory and tests).
+- T3 commit: `eb04d17` (normalized tool-result capture and tests).
 - Native review boundaries: each authorized work-unit commit, or each selected PR slice.
 
 ## Tasks
@@ -49,7 +50,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
   - Test-first surfaces: per-session locking, TTL, FIFO trimming, deep-copy snapshots, persistence validation, and sanitization.
   - Acceptance: focused session tests observe RED then GREEN, including expiry and mutation-isolation cases.
 
-- [ ] **T3 — Capture normalized tool results**
+- [x] **T3 — Capture normalized tool results**
   - Route: delegated writer; multi-file write trigger.
   - Test-first surfaces: Strands before/after tool callbacks, normalization, exceptions, cancellation, retries, and duplicate evidence.
   - Acceptance: focused capture tests observe RED then GREEN and preserve sensitive-action uncertainty.
@@ -87,7 +88,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - TypeSafe live documentation checked; the existing Jev integration shape remains valid and Spec 07 only extends internal orphan/audit propagation.
 - Completed: T1 — Implement deterministic orchestration foundations.
 - Completed: T2 — Implement locked session memory.
-- Active task: none; T2 native review is pending before T3 starts.
+- Completed: T3 — Capture normalized tool results.
+- Active task: none; T3 native review is pending before T4 starts.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -105,7 +107,12 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T2 lint/format: Ruff check passed and both files were formatted.
 - T2 independent verification: PASS with no contract gaps.
 - T2 parent spot check: all 40 session-manager tests passed.
+- T2 native review: approved and acknowledged (`review-62ecacb6b6efe3f5`). Two informational follow-ups were reported for late `SessionTurn.persist()` use and retained per-session lock entries; neither opened a correction or expands this feature scope.
+- T3 RED: the first result-capture test failed collection because the module did not exist; duplicate-attempt triangulation later exposed an expected identity-order failure.
+- T3 GREEN: 19 result-capture tests passed after implementing conservative normalization, callback capture, retry/duplicate preservation, governance-block evidence, and isolated snapshots.
+- T3 lint/format: Ruff check passed and both files were formatted.
+- T3 parent spot check: all 19 result-capture tests passed.
 
 ## Next Step
 
-Complete native review for the T2 committed range, record the outcome, then start T3.
+Run native review for the T3 committed range and follow its exact continuation.
