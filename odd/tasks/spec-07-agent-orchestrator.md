@@ -96,7 +96,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Completed: T4 — Extend audit and governance compatibility.
 - Completed: T5 — Implement the stateful Strands orchestrator.
 - Completed: T6 — Verify Strands integration and close documentation.
-- Active task: none; final T6 native review is pending.
+- Active task: none; feature complete.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -136,7 +136,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T6 format: the new integration test is formatted; repository-wide `ruff format --check` still reports exactly 12 files proven unchanged from the base and current feature range. This pre-existing formatting debt is outside Spec 07 scope.
 - T6 structural verification: documentation readback, terminology checks, and `git diff --check` passed; `handoff_id` wording was corrected after independent verification.
 - T6 parent spot check: all 5 Strands integration tests passed.
+- T6 native review: approved and acknowledged (`review-0fed387ebebbfb1e`) with no advisory findings.
 
 ## Next Step
 
-Run native review for the T6 committed range, record the result, then close the feature.
+The implementation is complete on the local feature branch. Push and pull-request creation remain user decisions.
