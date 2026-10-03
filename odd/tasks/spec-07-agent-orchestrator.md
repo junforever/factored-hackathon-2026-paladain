@@ -34,6 +34,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Work-unit commits: locally authorized; no push, pull request creation, merge, or release is authorized.
 - Planned slices: one reviewable work-unit commit per task, grouped further only if a task cannot stand independently.
 - T1 commits: `98f6eb5` (foundations) and `3e11422` (independent-verification corrections).
+- T2 commit: `c5a5e91` (locked session memory and tests).
 - Native review boundaries: each authorized work-unit commit, or each selected PR slice.
 
 ## Tasks
@@ -43,7 +44,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
   - Test-first surfaces: language detection, strict signal parsing, and system prompt contract.
   - Acceptance: focused unit tests observe RED then GREEN; no model or network dependency.
 
-- [ ] **T2 — Implement locked session memory**
+- [x] **T2 — Implement locked session memory**
   - Route: delegated writer; multi-file write trigger.
   - Test-first surfaces: per-session locking, TTL, FIFO trimming, deep-copy snapshots, persistence validation, and sanitization.
   - Acceptance: focused session tests observe RED then GREEN, including expiry and mutation-isolation cases.
@@ -85,7 +86,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Exploration complete: Spec 07 is implementation-ready and has no unresolved product decision.
 - TypeSafe live documentation checked; the existing Jev integration shape remains valid and Spec 07 only extends internal orphan/audit propagation.
 - Completed: T1 — Implement deterministic orchestration foundations.
-- Active task: none; T1 native review is pending before T2 starts.
+- Completed: T2 — Implement locked session memory.
+- Active task: none; T2 native review is pending before T3 starts.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -97,7 +99,13 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T1 lint/format: Ruff check passed and all 6 files were formatted.
 - T1 independent verification: initial FAIL found duplicate-key acceptance and prompt hard-policy leakage; focused corrections were independently re-verified PASS.
 - T1 parent spot check: 22 parser/prompt tests passed; `git diff --check` reported no whitespace errors.
+- T1 native review: unavailable. Two fresh START attempts created no lineage because each fresh consent binding was immediately reported expired; the native assessment's fail-closed high-risk plan was satisfied by independent verification.
+- T2 RED: the first session-manager test failed collection because the module did not exist; the expanded contract suite then exposed 28 expected failures.
+- T2 GREEN: 40 session-manager tests passed after implementing validation, TTL, FIFO trimming, deep-copy isolation, sanitization, atomic one-shot persistence, and locking.
+- T2 lint/format: Ruff check passed and both files were formatted.
+- T2 independent verification: PASS with no contract gaps.
+- T2 parent spot check: all 40 session-manager tests passed.
 
 ## Next Step
 
-Complete native review for the T1 committed range, record the outcome, then start T2.
+Complete native review for the T2 committed range, record the outcome, then start T3.
