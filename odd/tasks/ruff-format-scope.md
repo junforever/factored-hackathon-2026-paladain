@@ -28,6 +28,7 @@ Ruff 0.16.9 formats Python code fences in Markdown by default. The repository tr
 - Branch: `chore/ruff-format-scope`, created from merged `main`.
 - Delivery strategy: `ask-on-risk`; forecast under 200 authored changed lines.
 - Planned work unit: one cohesive formatter-policy and Python-normalization change.
+- Work-unit commit: `d3298c3` (`chore(ruff): exclude Markdown from formatting`).
 
 ## Tasks
 
@@ -67,4 +68,4 @@ Ruff 0.16.9 formats Python code fences in Markdown by default. The repository tr
 
 ## Next Step
 
-Create the authorized local work-unit commit; push, merge, and pull-request creation remain separate user decisions.
+The work unit is complete on the local branch. Push, merge, and pull-request creation remain user decisions.
