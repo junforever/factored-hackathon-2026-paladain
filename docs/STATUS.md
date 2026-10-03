@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad y el orquestador conversacional de Spec #7 están **completados**. La UI y la evaluación offline siguen **pendientes**.
+El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional y la UI Chainlit delgada de Spec #8 están **completados**. La evaluación offline sigue **pendiente**.
 
-**Siguiente paso:** Spec #8 — UI Chainlit como capa de presentación delgada.
+**Siguiente paso:** Spec #9 — evaluación offline held-out.
 
 ---
 
@@ -70,6 +70,15 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 - [x] `CompositeAuditSink` con fallback diagnóstico no durable y `AuditPersistenceError`.
 - [x] Eventos `input`, `tool_call`, `escalation` y `response` con sanitización, lineage, correlación fallback y descendencia huérfana.
 
+### UI — Chainlit
+
+- [x] Capa de presentación delgada: valida entrada, invoca al orquestador y renderiza sin lógica de negocio, política, gobierno ni auditoría.
+- [x] Configuración de startup fail-closed con HTML inseguro deshabilitado y composition root exacto, lazy e inyectable.
+- [x] Render seguro ES/PT con acciones exhaustivas y fallback cerrado ante acciones desconocidas o fallos de entrega.
+- [x] Task retenido por turno, cancelación cooperativa, monitor de finalización y reconciliación de resultados tardíos sin ejecución duplicada.
+- [x] Cobertura unitaria, de contrato Chainlit 2.12 y smoke portable con aislamiento del app-root entre proceso padre e hijo.
+- [x] Validación completada: 78 tests enfocados y 842 tests del repositorio; Ruff check, Ruff format y diff check pasaron.
+
 ### Documentación
 
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
@@ -90,7 +99,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 | 6   | Completado | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
 | 7   | Completado | Hooks de Strands con Jev (`BeforeInvocationEvent`, `BeforeToolCallEvent`)   | #4, #5, #6       | Spec #6       |
 | 8   | Completado | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
-| 9   | Pendiente  | UI Chainlit (capa de presentación delgada, decisión #11)                    | #8               | Spec #8       |
+| 9   | Completado | UI Chainlit (capa de presentación delgada, decisión #11)                    | #8               | Spec #8       |
 | 10  | Pendiente  | Evaluación offline held-out (métricas del hackathon)                        | #8               | Spec #9       |
 | 11  | Pendiente  | Docs finales, slides, video pitch                                           | todo             | Spec #10      |
 
@@ -101,7 +110,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ## En progreso
 
-- Ninguno actualmente. Spec #7 está completada; el próximo componente es Spec #8.
+- Ninguno actualmente. Spec #8 está completada; el próximo componente es Spec #9.
 
 ---
 
@@ -110,6 +119,8 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 - Deuda de seguridad: la autorización del usuario sobre el producto no está verificada. Consultar por `product_id` resuelve integridad referencial, NO autorización. Falta validar que el usuario autenticado tenga permiso sobre el producto antes de exponer sus transacciones.
 - El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries).
 - Los umbrales de tool gating y output screening son provisionales; deben calibrarse con la evaluación offline de Spec #9.
+- Los turnos activos y resultados pendientes de la UI se mantienen en memoria: un reinicio, una sesión perdida o procesos no afines pueden perderlos. La UI actual es adecuada para la demo, no ofrece durabilidad de producción.
+- La suite emite una advertencia de deprecación preexistente de terceros por la configuración class-based de Pydantic usada por Traceloop; no afecta el GREEN actual, pero depende de una corrección upstream o actualización futura.
 
 1. **`unresolved_questions` es `list | None`, no `list[str] | None`.** La tool y Spec #4 aceptan elementos de cualquier tipo. Riesgo: el modelo podría pasar elementos no-string. Mitigación futura: validar tipo de elementos en la tool o en TOOL_ARG_CONTRACTS.
 
@@ -121,6 +132,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ## Registro de actualizaciones
 
+- **2026-10-02** — Spec #8 v5 verificada. Se completó la UI Chainlit como capa delgada, con startup fail-closed, composition root exacto y lazy, render seguro ES/PT, task retenido, cancelación cooperativa y reconciliación de resultados tardíos. La cobertura incluye contratos de Chainlit y smoke portable con app-roots aislados para padre e hijo. Pasaron 78 tests enfocados, 842 tests del repositorio, Ruff check, Ruff format y diff check. Permanecen explícitos el límite de durabilidad in-memory y la advertencia de deprecación de terceros Traceloop/Pydantic.
 - **2026-10-02** — Spec #7 v5 implementada con TDD. Se completaron `BankingOrchestrator`, memoria de sesión bloqueada, captura normalizada de tools, señales estrictas, idioma ES/PT, templates seguros y composición de auditoría fail-closed. El flujo cubre respuesta, clarificación, abstención, bloqueo, escalamiento, cancelación e incertidumbre de side effects; emite eventos sanitizados con lineage durable, fallback de correlación y propagación `orphaned`. La integración valida los contratos instalados de Strands 1.57.1 con modelos y adapters falsos, sin red ni llamadas reales a Jev.
 - **2026-10-02** — Advisories de confiabilidad posteriores a Spec #6 resueltos con TDD: el contrato de observabilidad rechaza `cost_usd` no finito (`NaN`, `+Inf`, `-Inf`) y `before_invocation` elimina estado de gobierno derivado de invocaciones previas antes de validar el turno actual, preservando únicamente el contexto propiedad del orquestador. Ambos casos quedan cubiertos por tests de regresión y no son deuda pendiente para specs futuras.
 - **2026-10-02** — Spec #6 v5 implementada con TDD. `GovernanceAdapter` framework-agnostic. `GovernanceHooks` implementa `HookProvider` con `register_hooks`; `cancel`/`cancel_tool` como atributos. `before_tool_call` valida `tool_use`/`name`/`input`/`complaint_id` antes de indexar. Soporte para tools concurrentes: `routing_event_id` como padre estable, resultados por `toolUseId` en `tool_governance`, sin sobrescribir claves globales. `build_actions_taken` compatible con Spec #4: salida con EXACTAMENTE `ACTION_REQUIRED_FIELDS` (sin `target_id`), `ACTION_VERIFICATIONS` consultado por `action_name`. Serialización con `allow_nan=False`, `reasons` como `list[str]`. Módulo de observabilidad completado y `docs/observability.md` actualizado.
