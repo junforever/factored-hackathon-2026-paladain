@@ -31,6 +31,7 @@ from ai_banking_customer_service.governance.jev.schemas import (
     Usage,
 )
 from ai_banking_customer_service.observability.contract import validate_event
+from ai_banking_customer_service.observability.sink import AuditPersistenceError
 
 
 def _thresholds() -> GovernanceThresholds:
@@ -100,6 +101,55 @@ def test_screening_block_emits_one_event_and_skips_routing() -> None:
     assert event["payload"]["stage"] == "input_screening"
     assert event["payload"]["decision"] == "block"
     assert isinstance(event["payload"]["reasons"], list)
+    assert "orphaned" not in event["payload"]
+
+
+def test_screening_allow_routes_and_marks_both_events_orphaned() -> None:
+    sink = Mock()
+    adapter = _adapter(sink=sink)
+    screening = InputScreeningResult(
+        prompt_injection=NoulAnswer(noul=0.1),
+        social_engineering=NoulAnswer(noul=0.1),
+        model="jev-test",
+        usage=Usage(input_tokens=10, output_tokens=2),
+    )
+    routing = IntentRoutingResult(
+        intent=ChoiceAnswer(
+            choice="dispute_charge",
+            probabilities={
+                intent: 1.0 if intent == "dispute_charge" else 0.0
+                for intent in EXPECTED_INTENTS
+            },
+            confidence=0.9,
+        ),
+        model="jev-test",
+        usage=Usage(input_tokens=8, output_tokens=1),
+    )
+
+    with (
+        patch(
+            "ai_banking_customer_service.governance.adapter.screen_input",
+            return_value=screening,
+        ),
+        patch(
+            "ai_banking_customer_service.governance.adapter.route_banking_intent",
+            return_value=routing,
+        ),
+    ):
+        adapter.screen_and_route(
+            "No reconozco el cargo",
+            "trace-1",
+            "session-1",
+            "customer-1234",
+            parent_event_id="input-event",
+            orphaned=True,
+        )
+
+    screening_event, routing_event = [call.args[0] for call in sink.emit.call_args_list]
+    assert screening_event["payload"]["orphaned"] is True
+    assert routing_event["payload"]["orphaned"] is True
+    assert screening_event["parent_event_id"] == "input-event"
+    assert routing_event["parent_event_id"] == screening_event["event_id"]
 
 
 def test_screening_allow_routes_and_chains_two_events() -> None:
@@ -156,6 +206,40 @@ def test_screening_allow_routes_and_chains_two_events() -> None:
         "intent_confidence": 0.9,
         "intent_probabilities": routing.intent.probabilities,
     }
+
+
+def test_screening_audit_failure_propagates_before_routing() -> None:
+    primary_error = OSError("primary unavailable")
+    sink = Mock()
+    sink.emit.side_effect = AuditPersistenceError(primary_error)
+    adapter = _adapter(sink=sink)
+    screening = InputScreeningResult(
+        prompt_injection=NoulAnswer(noul=0.1),
+        social_engineering=NoulAnswer(noul=0.1),
+        model="jev-test",
+        usage=Usage(input_tokens=10, output_tokens=2),
+    )
+
+    with (
+        patch(
+            "ai_banking_customer_service.governance.adapter.screen_input",
+            return_value=screening,
+        ),
+        patch(
+            "ai_banking_customer_service.governance.adapter.route_banking_intent"
+        ) as route,
+        pytest.raises(AuditPersistenceError) as captured,
+    ):
+        adapter.screen_and_route(
+            "No reconozco el cargo",
+            "trace-1",
+            "session-1",
+            "customer-1234",
+        )
+
+    assert captured.value.primary_error is primary_error
+    route.assert_not_called()
+    sink.emit.assert_called_once()
 
 
 def test_screening_review_short_circuits_routing() -> None:
@@ -414,6 +498,7 @@ def test_gate_tool_call_ignores_inconsistent_signal_for_deterministic_block() ->
             "session-1",
             "customer-1234",
             parent_event_id="routing-event",
+            orphaned=True,
         )
 
     assert result.decision.action is GovernanceAction.BLOCK
@@ -423,6 +508,7 @@ def test_gate_tool_call_ignores_inconsistent_signal_for_deterministic_block() ->
     sink.emit.assert_called_once()
     event = sink.emit.call_args.args[0]
     assert event["parent_event_id"] == "routing-event"
+    assert event["payload"]["orphaned"] is True
     assert event["payload"]["signals"] == {
         "intent_matches_tool": None,
         "deterministic_reason": "confirmation_required",
@@ -461,6 +547,7 @@ def test_gate_tool_call_allow_emits_semantic_signal_tokens_and_thresholds() -> N
     assert event["tokens"] == 14
     assert event["payload"]["signals"] == {"intent_matches_tool": 0.9}
     assert event["payload"]["thresholds"] == {"min_intent_matches_tool": 0.7}
+    assert "orphaned" not in event["payload"]
 
 
 @pytest.mark.parametrize(
@@ -551,6 +638,7 @@ def test_screen_output_emits_review_for_detected_secrets() -> None:
             "session-1",
             "customer-1234",
             parent_event_id="tool-event",
+            orphaned=True,
         )
 
     assert result.decision.action is GovernanceAction.REVIEW
@@ -560,6 +648,7 @@ def test_screen_output_emits_review_for_detected_secrets() -> None:
     event = sink.emit.call_args.args[0]
     assert event["parent_event_id"] == "tool-event"
     assert event["outcome"] == "escalated"
+    assert event["payload"]["orphaned"] is True
     assert event["payload"]["signals"] == {
         "score": None,
         "confidence": None,
@@ -615,6 +704,7 @@ def test_screen_output_allow_emits_semantic_signals_and_tokens() -> None:
         "min_output_safety_score": 1.5,
         "min_output_safety_confidence": 0.5,
     }
+    assert "orphaned" not in event["payload"]
 
 
 @pytest.mark.parametrize(
@@ -669,6 +759,53 @@ def test_screen_output_propagates_non_jev_errors() -> None:
             "session-1",
             "customer-1234",
         )
+
+
+@pytest.mark.parametrize(
+    ("method_name", "args"),
+    [
+        (
+            "screen_and_route",
+            ("Mensaje", "trace-1", "session-1", "customer-1234"),
+        ),
+        (
+            "gate_tool_call",
+            (
+                "get_dispute_context",
+                {"complaint_id": "CMP-1"},
+                "dispute_charge",
+                "Mensaje",
+                {"authenticated": True},
+                "trace-1",
+                "session-1",
+                "customer-1234",
+            ),
+        ),
+        (
+            "screen_output",
+            (
+                "Respuesta",
+                "Mensaje",
+                {},
+                [],
+                "trace-1",
+                "session-1",
+                "customer-1234",
+            ),
+        ),
+    ],
+)
+def test_adapter_entry_points_require_boolean_orphaned(
+    method_name: str,
+    args: tuple,
+) -> None:
+    sink = Mock()
+    adapter = _adapter(sink=sink)
+
+    with pytest.raises(TypeError, match="orphaned must be bool"):
+        getattr(adapter, method_name)(*args, orphaned="yes")
+
+    sink.emit.assert_not_called()
 
 
 def test_build_customer_context_uses_matching_complaint_and_product() -> None:

@@ -85,8 +85,11 @@ class GovernanceAdapter:
         session_id: str,
         customer_id: str,
         parent_event_id: str | None = None,
+        *,
+        orphaned: bool = False,
     ) -> ScreeningRoutingResult:
         """Run input screening and, when allowed, intent routing."""
+        _validate_orphaned(orphaned)
         started = time.monotonic()
         try:
             screening = screen_input(self._client, message)
@@ -106,6 +109,7 @@ class GovernanceAdapter:
                 session_id=session_id,
                 customer_id=customer_id,
                 parent_event_id=parent_event_id,
+                orphaned=orphaned,
             )
             return ScreeningRoutingResult(decision, None, False, event_id)
         except JevError:
@@ -124,6 +128,7 @@ class GovernanceAdapter:
                 session_id=session_id,
                 customer_id=customer_id,
                 parent_event_id=parent_event_id,
+                orphaned=orphaned,
             )
             return ScreeningRoutingResult(decision, None, False, event_id)
         except Exception:
@@ -139,6 +144,7 @@ class GovernanceAdapter:
             session_id=session_id,
             customer_id=customer_id,
             parent_event_id=parent_event_id,
+            orphaned=orphaned,
         )
         if decision.action is not GovernanceAction.ALLOW:
             return ScreeningRoutingResult(decision, None, False, event_id)
@@ -162,6 +168,7 @@ class GovernanceAdapter:
                 session_id=session_id,
                 customer_id=customer_id,
                 parent_event_id=event_id,
+                orphaned=orphaned,
             )
             return ScreeningRoutingResult(decision, None, False, event_id)
         except JevError:
@@ -180,6 +187,7 @@ class GovernanceAdapter:
                 session_id=session_id,
                 customer_id=customer_id,
                 parent_event_id=event_id,
+                orphaned=orphaned,
             )
             return ScreeningRoutingResult(decision, None, False, event_id)
         except Exception:
@@ -195,6 +203,7 @@ class GovernanceAdapter:
             session_id=session_id,
             customer_id=customer_id,
             parent_event_id=event_id,
+            orphaned=orphaned,
         )
         should_continue = decision.action is GovernanceAction.ALLOW
         return ScreeningRoutingResult(
@@ -326,8 +335,11 @@ class GovernanceAdapter:
         session_id: str,
         customer_id: str,
         parent_event_id: str | None = None,
+        *,
+        orphaned: bool = False,
     ) -> GovernanceResult:
         """Evaluate whether one concrete tool call may execute."""
+        _validate_orphaned(orphaned)
         started = time.monotonic()
         try:
             gating = evaluate_tool_call(
@@ -354,6 +366,7 @@ class GovernanceAdapter:
                 session_id,
                 customer_id,
                 parent_event_id,
+                orphaned=orphaned,
             )
         except JevError:
             latency_ms = _latency_ms(started)
@@ -371,6 +384,7 @@ class GovernanceAdapter:
                 session_id,
                 customer_id,
                 parent_event_id,
+                orphaned=orphaned,
             )
         except Exception:
             _latency_ms(started)
@@ -385,6 +399,7 @@ class GovernanceAdapter:
             session_id,
             customer_id,
             parent_event_id,
+            orphaned=orphaned,
         )
 
     def screen_output(
@@ -397,8 +412,11 @@ class GovernanceAdapter:
         session_id: str,
         customer_id: str,
         parent_event_id: str | None = None,
+        *,
+        orphaned: bool = False,
     ) -> GovernanceResult:
         """Evaluate whether a proposed response may be delivered."""
+        _validate_orphaned(orphaned)
         started = time.monotonic()
         try:
             screening = evaluate_output(
@@ -424,6 +442,7 @@ class GovernanceAdapter:
                 session_id,
                 customer_id,
                 parent_event_id,
+                orphaned=orphaned,
             )
         except JevError:
             latency_ms = _latency_ms(started)
@@ -441,6 +460,7 @@ class GovernanceAdapter:
                 session_id,
                 customer_id,
                 parent_event_id,
+                orphaned=orphaned,
             )
         except Exception:
             _latency_ms(started)
@@ -458,6 +478,7 @@ class GovernanceAdapter:
             session_id,
             customer_id,
             parent_event_id,
+            orphaned=orphaned,
         )
 
     def _governance_result(
@@ -469,6 +490,8 @@ class GovernanceAdapter:
         session_id: str,
         customer_id: str,
         parent_event_id: str | None,
+        *,
+        orphaned: bool,
     ) -> GovernanceResult:
         event_id = self._emit_event(
             decision=decision,
@@ -478,6 +501,7 @@ class GovernanceAdapter:
             session_id=session_id,
             customer_id=customer_id,
             parent_event_id=parent_event_id,
+            orphaned=orphaned,
         )
         return GovernanceResult(decision, event_id)
 
@@ -491,8 +515,18 @@ class GovernanceAdapter:
         session_id: str,
         customer_id: str,
         parent_event_id: str | None,
+        orphaned: bool,
     ) -> str:
         event_id = str(uuid4())
+        payload = {
+            "stage": decision.stage.value,
+            "signals": _signals(decision, raw_result),
+            "decision": decision.action.value,
+            "reasons": list(decision.reasons),
+            "thresholds": asdict(decision.governance_thresholds),
+        }
+        if orphaned:
+            payload["orphaned"] = True
         event = {
             "trace_id": trace_id,
             "event_id": event_id,
@@ -510,16 +544,15 @@ class GovernanceAdapter:
             "latency_ms": latency_ms,
             "tokens": _tokens_from_usage(decision.usage),
             "cost_usd": None,
-            "payload": {
-                "stage": decision.stage.value,
-                "signals": _signals(decision, raw_result),
-                "decision": decision.action.value,
-                "reasons": list(decision.reasons),
-                "thresholds": asdict(decision.governance_thresholds),
-            },
+            "payload": payload,
         }
         self._audit_sink.emit(event)
         return event_id
+
+
+def _validate_orphaned(orphaned: bool) -> None:
+    if not isinstance(orphaned, bool):
+        raise TypeError("orphaned must be bool")
 
 
 def _fail_closed_decision(

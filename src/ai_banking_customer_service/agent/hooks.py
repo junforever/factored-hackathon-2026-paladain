@@ -57,6 +57,7 @@ class GovernanceHooks(HookProvider):
             session_id,
             customer_id,
             parent_event_id=state.get("input_event_id"),
+            orphaned=bool(state.get("audit_orphaned", False)),
         )
         state.update(
             intent=result.intent,
@@ -141,6 +142,7 @@ class GovernanceHooks(HookProvider):
             session_id,
             customer_id,
             parent_event_id=routing_event_id,
+            orphaned=bool(state.get("audit_orphaned", False)),
         )
         tool_governance[tool_use_id] = {
             "decision": result.decision,
