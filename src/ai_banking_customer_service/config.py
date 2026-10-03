@@ -43,6 +43,53 @@ class Settings(BaseSettings):
     typesafe_default_model: str
     openai_model: str
 
+    # UI and composition
+    demo_customer_id: str = "customer-hackathon-demo"
+    typesafe_timeout_seconds: float = 10.0
+    audit_log_path: str = "data/state/audit/audit.jsonl"
+    audit_fallback_path: str = "data/state/audit/audit_fallback.jsonl"
+    session_max_messages: int = 50
+    session_ttl_seconds: int = 1800
+
+    @field_validator(
+        "demo_customer_id",
+        "audit_log_path",
+        "audit_fallback_path",
+    )
+    @classmethod
+    def _non_empty_ui_string(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("typesafe_timeout_seconds", mode="before")
+    @classmethod
+    def _timeout_must_not_be_bool(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("must be a finite number greater than zero")
+        return value
+
+    @field_validator("typesafe_timeout_seconds")
+    @classmethod
+    def _positive_finite_timeout(cls, value: float) -> float:
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError("must be a finite number greater than zero")
+        return value
+
+    @field_validator("session_max_messages", "session_ttl_seconds", mode="before")
+    @classmethod
+    def _positive_integer_not_bool(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("must be a positive integer")
+        return value
+
+    @field_validator("session_max_messages", "session_ttl_seconds")
+    @classmethod
+    def _positive_integer(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("must be a positive integer")
+        return value
+
     @property
     def duckdb_path(self) -> Path:
         return PROJECT_ROOT / "duckdb" / self.duckdb_name
@@ -57,6 +104,14 @@ class Settings(BaseSettings):
         if path.suffix:
             return path.parent
         return path
+
+    @property
+    def audit_log_full_path(self) -> Path:
+        return PROJECT_ROOT / self.audit_log_path
+
+    @property
+    def audit_fallback_full_path(self) -> Path:
+        return PROJECT_ROOT / self.audit_fallback_path
 
 
 class ScreeningThresholdPolicy(BaseModel):

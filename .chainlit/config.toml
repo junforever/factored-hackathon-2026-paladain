@@ -1,0 +1,8 @@
+[features]
+unsafe_allow_html = false
+
+[UI]
+name = "AI Banking Customer Service"
+
+[meta]
+generated_by = "2.12.0"

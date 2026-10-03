@@ -5,7 +5,84 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from ai_banking_customer_service.config import load_policy
+from ai_banking_customer_service.config import PROJECT_ROOT, Settings, load_policy
+
+
+def _settings(**overrides: object) -> Settings:
+    values: dict[str, object] = {
+        "openai_api_key": "test-openai-key",
+        "typesafe_api_key": "test-typesafe-key",
+        "duckdb_name": "test.duckdb",
+        "sandbox_path": "data/test.parquet",
+        "state_path": "data/state",
+        "typesafe_default_model": "test-jev",
+        "openai_model": "test-openai",
+    }
+    values.update(overrides)
+    return Settings(_env_file=None, **values)
+
+
+def test_settings_ui_defaults_and_resolved_audit_paths() -> None:
+    configured = _settings()
+
+    assert configured.demo_customer_id == "customer-hackathon-demo"
+    assert configured.typesafe_timeout_seconds == 10.0
+    assert configured.audit_log_path == "data/state/audit/audit.jsonl"
+    assert configured.audit_fallback_path == "data/state/audit/audit_fallback.jsonl"
+    assert configured.session_max_messages == 50
+    assert configured.session_ttl_seconds == 1800
+    assert configured.audit_log_full_path == PROJECT_ROOT / configured.audit_log_path
+    assert (
+        configured.audit_fallback_full_path
+        == PROJECT_ROOT / configured.audit_fallback_path
+    )
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["demo_customer_id", "audit_log_path", "audit_fallback_path"],
+)
+def test_settings_rejects_blank_ui_strings(field: str) -> None:
+    with pytest.raises(ValidationError):
+        _settings(**{field: " \t "})
+
+
+@pytest.mark.parametrize(
+    "value",
+    [0, -0.1, float("nan"), float("inf"), float("-inf"), True, False],
+    ids=["zero", "negative", "nan", "infinity", "negative-infinity", "true", "false"],
+)
+def test_settings_rejects_invalid_typesafe_timeout(value: object) -> None:
+    with pytest.raises(ValidationError):
+        _settings(typesafe_timeout_seconds=value)
+
+
+@pytest.mark.parametrize("field", ["session_max_messages", "session_ttl_seconds"])
+@pytest.mark.parametrize(
+    "value",
+    [0, -1, True, False],
+    ids=["zero", "negative", "true", "false"],
+)
+def test_settings_rejects_invalid_positive_integers(
+    field: str,
+    value: object,
+) -> None:
+    with pytest.raises(ValidationError):
+        _settings(**{field: value})
+
+
+def test_env_example_documents_ui_defaults() -> None:
+    env_example = (PROJECT_ROOT / ".env.example").read_text(encoding="utf-8")
+
+    for entry in (
+        "DEMO_CUSTOMER_ID=customer-hackathon-demo",
+        "TYPESAFE_TIMEOUT_SECONDS=10.0",
+        "AUDIT_LOG_PATH=data/state/audit/audit.jsonl",
+        "AUDIT_FALLBACK_PATH=data/state/audit/audit_fallback.jsonl",
+        "SESSION_MAX_MESSAGES=50",
+        "SESSION_TTL_SECONDS=1800",
+    ):
+        assert entry in env_example.splitlines()
 
 
 def _valid_policy_data() -> dict[str, object]:
