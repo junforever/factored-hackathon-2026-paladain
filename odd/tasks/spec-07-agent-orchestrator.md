@@ -36,6 +36,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T1 commits: `98f6eb5` (foundations) and `3e11422` (independent-verification corrections).
 - T2 commit: `c5a5e91` (locked session memory and tests).
 - T3 commit: `eb04d17` (normalized tool-result capture and tests).
+- T4 commit: `6786b0e` (audit sink failover and orphan propagation).
 - Native review boundaries: each authorized work-unit commit, or each selected PR slice.
 
 ## Tasks
@@ -55,7 +56,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
   - Test-first surfaces: Strands before/after tool callbacks, normalization, exceptions, cancellation, retries, and duplicate evidence.
   - Acceptance: focused capture tests observe RED then GREEN and preserve sensitive-action uncertainty.
 
-- [ ] **T4 — Extend audit and governance compatibility**
+- [x] **T4 — Extend audit and governance compatibility**
   - Route: delegated writer; multi-file write trigger.
   - Test-first surfaces: composite audit sink, persistence errors, event validation, and keyword-only `orphaned` propagation through hooks and adapter entry points.
   - Acceptance: focused observability, hook, and adapter tests observe RED then GREEN; existing parent-event semantics remain unchanged.
@@ -89,7 +90,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Completed: T1 — Implement deterministic orchestration foundations.
 - Completed: T2 — Implement locked session memory.
 - Completed: T3 — Capture normalized tool results.
-- Active task: none; T3 native review is pending before T4 starts.
+- Completed: T4 — Extend audit and governance compatibility.
+- Active task: none; T4 native review is pending before T5 starts.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -112,7 +114,12 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T3 GREEN: 19 result-capture tests passed after implementing conservative normalization, callback capture, retry/duplicate preservation, governance-block evidence, and isolated snapshots.
 - T3 lint/format: Ruff check passed and both files were formatted.
 - T3 parent spot check: all 19 result-capture tests passed.
+- T3 native review: approved and acknowledged (`review-fb02c55ae1e66680`). Three informational follow-ups were reported for ambiguous duplicate correlation, defensive handling of invalid invocation state, and non-finite durations; none opened a correction or expands this feature scope.
+- T4 RED: the focused suite failed collection because `AuditPersistenceError` did not exist.
+- T4 GREEN: 102 focused observability, adapter, and hook tests passed after minimal implementation and triangulation.
+- T4 lint/format: Ruff check passed and all 6 files were formatted.
+- T4 parent spot check: all 102 focused tests passed.
 
 ## Next Step
 
-Run native review for the T3 committed range and follow its exact continuation.
+Run native review for the T4 committed range and follow its exact continuation.
