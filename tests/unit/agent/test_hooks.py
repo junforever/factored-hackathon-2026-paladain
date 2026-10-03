@@ -166,6 +166,7 @@ def test_before_invocation_uses_last_user_message_and_concatenates_text_blocks()
         "session-1",
         "customer-1",
         parent_event_id="input-event-1",
+        orphaned=False,
     )
     assert event.cancel is False
     assert event.invocation_state == {
@@ -252,6 +253,33 @@ def test_before_invocation_without_user_text_fails_closed(messages: object) -> N
     assert event.invocation_state["governance_action"] == "block"
     assert event.invocation_state["tool_governance"] == {}
     adapter.screen_and_route.assert_not_called()
+
+
+def test_before_invocation_passes_boolean_orphaned_without_changing_parent() -> None:
+    adapter = _adapter()
+    decision = _decision(GovernanceAction.ALLOW)
+    adapter.screen_and_route.return_value = ScreeningRoutingResult(
+        decision, "transaction_dispute", True, "routing-event-1"
+    )
+    state = {
+        "trace_id": "trace-1",
+        "session_id": "session-1",
+        "customer_id": "customer-1",
+        "input_event_id": None,
+        "audit_orphaned": "truthy",
+    }
+    event = _invocation_event(state=state)
+
+    GovernanceHooks(adapter).before_invocation(event)
+
+    adapter.screen_and_route.assert_called_once_with(
+        "Cargo no reconocido",
+        "trace-1",
+        "session-1",
+        "customer-1",
+        parent_event_id=None,
+        orphaned=True,
+    )
 
 
 def test_before_invocation_clears_stale_derived_state_before_failing_closed() -> None:
@@ -468,6 +496,7 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
         "session-1",
         "customer-1",
         parent_event_id="routing-event-1",
+        orphaned=False,
     )
     assert event.cancel_tool == expected_cancel
     assert state["tool_governance"]["tool-use-1"] == {
@@ -478,6 +507,24 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
     }
     assert _global_state(state) == globals_before
     assert "customer_context" not in state
+
+
+def test_before_tool_call_passes_boolean_orphaned_without_changing_parent() -> None:
+    adapter = _adapter()
+    adapter.build_customer_context.return_value = {"authenticated": True}
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.ALLOW), "tool-governance-event-1"
+    )
+    state = _tool_state()
+    state["audit_orphaned"] = 1
+    event = _tool_event(state=state)
+
+    GovernanceHooks(adapter).before_tool_call(event)
+
+    assert adapter.gate_tool_call.call_args.kwargs == {
+        "parent_event_id": "routing-event-1",
+        "orphaned": True,
+    }
 
 
 def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
@@ -531,7 +578,7 @@ def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
     assert adapter.context_calls == ["CMP-SAME", "CMP-SAME"]
     assert len(adapter.gate_calls) == 2
     assert all(
-        recorded["kwargs"] == {"parent_event_id": "routing-event-1"}
+        recorded["kwargs"] == {"parent_event_id": "routing-event-1", "orphaned": False}
         for recorded in adapter.gate_calls
     )
     assert _global_state(state) == globals_before

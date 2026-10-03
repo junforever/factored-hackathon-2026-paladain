@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno de Jev, el `GovernanceAdapter`, los hooks de Strands, el módulo de observabilidad y el registro de las cuatro tools están **completados**. El orquestador, la UI y la evaluación offline siguen **pendientes**.
+El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad y el orquestador conversacional de Spec #7 están **completados**. La UI y la evaluación offline siguen **pendientes**.
 
-**Siguiente paso:** Spec #7 — Orquestador / flujo conversacional.
+**Siguiente paso:** Spec #8 — UI Chainlit como capa de presentación delgada.
 
 ---
 
@@ -58,10 +58,17 @@ El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno d
 
 - [x] Registro de las 4 tools en el agente Strands.
 - [x] Hooks de gobierno con `HookProvider` y `register_hooks`, validación fail-closed y estado concurrente aislado por `toolUseId`.
+- [x] `BankingOrchestrator` stateful con Agent/modelo/captura efímeros por turno, cancelación y terminales seguros ES/PT.
+- [x] Memoria por sesión con lock, TTL, FIFO, snapshots aislados y persistencia sanitizada.
+- [x] Parser estricto de señales, detección determinística de idioma y prompt sin reglas duras.
+- [x] Captura normalizada de resultados Strands y clasificación conservadora de acciones, retries y side effects inciertos.
+- [x] Cobertura unitaria del flujo y tests de contrato contra Strands 1.57.1 sin red, modelo real ni Jev real.
 
 ### Observabilidad
 
 - [x] Contrato de eventos (`contract.py`) y sink JSONL validado (`sink.py`).
+- [x] `CompositeAuditSink` con fallback diagnóstico no durable y `AuditPersistenceError`.
+- [x] Eventos `input`, `tool_call`, `escalation` y `response` con sanitización, lineage, correlación fallback y descendencia huérfana.
 
 ### Documentación
 
@@ -82,7 +89,7 @@ El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno d
 | 5   | Completado | Evaluaciones Jev: tool gating + output screening                            | #2, #4           | Spec #4       |
 | 6   | Completado | Registro de las 4 tools en el agente Strands                                | tools existentes | Spec #5       |
 | 7   | Completado | Hooks de Strands con Jev (`BeforeInvocationEvent`, `BeforeToolCallEvent`)   | #4, #5, #6       | Spec #6       |
-| 8   | Pendiente  | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
+| 8   | Completado | Orquestador / flujo conversacional (memoria, clarificación, abstención)     | #6, #7           | Spec #7       |
 | 9   | Pendiente  | UI Chainlit (capa de presentación delgada, decisión #11)                    | #8               | Spec #8       |
 | 10  | Pendiente  | Evaluación offline held-out (métricas del hackathon)                        | #8               | Spec #9       |
 | 11  | Pendiente  | Docs finales, slides, video pitch                                           | todo             | Spec #10      |
@@ -94,7 +101,7 @@ El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno d
 
 ## En progreso
 
-- Ninguno actualmente. Spec #6 está completada; el próximo componente es Spec #7.
+- Ninguno actualmente. Spec #7 está completada; el próximo componente es Spec #8.
 
 ---
 
@@ -114,6 +121,7 @@ El transporte tipado, las cuatro etapas de evaluación y decisión de gobierno d
 
 ## Registro de actualizaciones
 
+- **2026-10-02** — Spec #7 v5 implementada con TDD. Se completaron `BankingOrchestrator`, memoria de sesión bloqueada, captura normalizada de tools, señales estrictas, idioma ES/PT, templates seguros y composición de auditoría fail-closed. El flujo cubre respuesta, clarificación, abstención, bloqueo, escalamiento, cancelación e incertidumbre de side effects; emite eventos sanitizados con lineage durable, fallback de correlación y propagación `orphaned`. La integración valida los contratos instalados de Strands 1.57.1 con modelos y adapters falsos, sin red ni llamadas reales a Jev.
 - **2026-10-02** — Advisories de confiabilidad posteriores a Spec #6 resueltos con TDD: el contrato de observabilidad rechaza `cost_usd` no finito (`NaN`, `+Inf`, `-Inf`) y `before_invocation` elimina estado de gobierno derivado de invocaciones previas antes de validar el turno actual, preservando únicamente el contexto propiedad del orquestador. Ambos casos quedan cubiertos por tests de regresión y no son deuda pendiente para specs futuras.
 - **2026-10-02** — Spec #6 v5 implementada con TDD. `GovernanceAdapter` framework-agnostic. `GovernanceHooks` implementa `HookProvider` con `register_hooks`; `cancel`/`cancel_tool` como atributos. `before_tool_call` valida `tool_use`/`name`/`input`/`complaint_id` antes de indexar. Soporte para tools concurrentes: `routing_event_id` como padre estable, resultados por `toolUseId` en `tool_governance`, sin sobrescribir claves globales. `build_actions_taken` compatible con Spec #4: salida con EXACTAMENTE `ACTION_REQUIRED_FIELDS` (sin `target_id`), `ACTION_VERIFICATIONS` consultado por `action_name`. Serialización con `allow_nan=False`, `reasons` como `list[str]`. Módulo de observabilidad completado y `docs/observability.md` actualizado.
 - **2026-10-02** — Spec #5 v3 implementada con TDD. Wrappers `@tool` de Strands para las 4 tools en `agent/tools.py`, docstrings en inglés que reflejan categorías reales de retorno, sincronización con `TOOL_ARG_CONTRACTS`/`ALLOWED_TOOLS` (nombres, exposición) y con firmas originales (tipos, defaults, nullabilidad via `inspect.signature`), tipos JSON verificados, delegación directa sin lógica adicional. `tool_call` asignado al orquestador en `observability.md`. Llamadas directas declaradas como solo-para-tests.

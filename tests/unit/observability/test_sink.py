@@ -5,13 +5,19 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 
 from ai_banking_customer_service.observability import sink as sink_module
-from ai_banking_customer_service.observability.sink import AuditSink, JsonlAuditSink
+from ai_banking_customer_service.observability.sink import (
+    AuditPersistenceError,
+    AuditSink,
+    CompositeAuditSink,
+    JsonlAuditSink,
+)
 
 
 def _valid_event(event_id: str = "event-1") -> dict:
     return {
         "trace_id": "trace-1",
         "event_id": event_id,
+        "parent_event_id": None,
         "timestamp": "2026-01-01T00:00:00+00:00",
         "component": "governance",
         "event_type": "governance",
@@ -27,6 +33,54 @@ def _valid_event(event_id: str = "event-1") -> dict:
 
 def test_audit_sink_is_a_protocol() -> None:
     assert AuditSink._is_protocol is True
+
+
+def test_composite_audit_sink_uses_only_primary_when_primary_succeeds() -> None:
+    primary = Mock()
+    fallback = Mock()
+    event = _valid_event()
+
+    CompositeAuditSink(primary, fallback).emit(event)
+
+    primary.emit.assert_called_once_with(event)
+    fallback.emit.assert_not_called()
+
+
+def test_composite_audit_sink_falls_back_once_but_reports_primary_failure() -> None:
+    primary_error = OSError("primary failed with secret-value")
+    primary = Mock()
+    primary.emit.side_effect = primary_error
+    fallback = Mock()
+    event = _valid_event()
+    event["payload"] = {"credential": "secret-value"}
+
+    with pytest.raises(AuditPersistenceError) as captured:
+        CompositeAuditSink(primary, fallback).emit(event)
+
+    primary.emit.assert_called_once_with(event)
+    fallback.emit.assert_called_once_with(event)
+    assert captured.value.primary_error is primary_error
+    assert captured.value.fallback_error is None
+    assert "secret-value" not in str(captured.value)
+
+
+def test_composite_audit_sink_preserves_both_failures_without_retrying() -> None:
+    primary_error = OSError("primary secret")
+    fallback_error = RuntimeError("fallback secret")
+    primary = Mock()
+    primary.emit.side_effect = primary_error
+    fallback = Mock()
+    fallback.emit.side_effect = fallback_error
+
+    with pytest.raises(AuditPersistenceError) as captured:
+        CompositeAuditSink(primary, fallback).emit(_valid_event())
+
+    assert primary.emit.call_count == 1
+    assert fallback.emit.call_count == 1
+    assert captured.value.primary_error is primary_error
+    assert captured.value.fallback_error is fallback_error
+    assert "primary secret" not in str(captured.value)
+    assert "fallback secret" not in str(captured.value)
 
 
 def test_jsonl_audit_sink_writes_one_json_line_without_ascii_escaping(

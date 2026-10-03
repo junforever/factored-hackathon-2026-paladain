@@ -13,6 +13,46 @@ class AuditSink(Protocol):
     def emit(self, event: dict) -> None: ...
 
 
+class AuditPersistenceError(RuntimeError):
+    """Report a failed primary audit write without exposing event data."""
+
+    def __init__(
+        self,
+        primary_error: Exception,
+        fallback_error: Exception | None = None,
+    ) -> None:
+        self.primary_error = primary_error
+        self.fallback_error = fallback_error
+        message = f"Primary audit persistence failed ({type(primary_error).__name__})"
+        if fallback_error is not None:
+            message += f"; diagnostic fallback failed ({type(fallback_error).__name__})"
+        super().__init__(message)
+
+
+class CompositeAuditSink:
+    """Persist primarily and use a secondary sink only for diagnostics."""
+
+    def __init__(self, primary_sink: AuditSink, fallback_sink: AuditSink) -> None:
+        self._primary_sink = primary_sink
+        self._fallback_sink = fallback_sink
+
+    def emit(self, event: dict) -> None:
+        """Emit once to primary, falling back once without claiming durability."""
+        try:
+            self._primary_sink.emit(event)
+            return
+        except Exception as primary_error:
+            fallback_error = None
+            try:
+                self._fallback_sink.emit(event)
+            except Exception as error:
+                fallback_error = error
+            raise AuditPersistenceError(
+                primary_error,
+                fallback_error,
+            ) from primary_error
+
+
 class JsonlAuditSink:
     """Append validated audit events to a JSON Lines file."""
 
