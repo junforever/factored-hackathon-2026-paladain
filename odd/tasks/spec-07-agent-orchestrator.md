@@ -37,6 +37,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T2 commit: `c5a5e91` (locked session memory and tests).
 - T3 commit: `eb04d17` (normalized tool-result capture and tests).
 - T4 commit: `6786b0e` (audit sink failover and orphan propagation).
+- T5 commit: `91e40c9` (stateful orchestrator and tests).
+- T5 exceeds the per-task 400-line heuristic because the reviewed lifecycle contract and its behavior tests form one cohesive, non-separable execution path; it remains an isolated chain slice.
 - Native review boundaries: each authorized work-unit commit, or each selected PR slice.
 
 ## Tasks
@@ -61,7 +63,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
   - Test-first surfaces: composite audit sink, persistence errors, event validation, and keyword-only `orphaned` propagation through hooks and adapter entry points.
   - Acceptance: focused observability, hook, and adapter tests observe RED then GREEN; existing parent-event semantics remain unchanged.
 
-- [ ] **T5 — Implement the stateful Strands orchestrator**
+- [x] **T5 — Implement the stateful Strands orchestrator**
   - Route: delegated writer; multi-file write trigger.
   - Test-first surfaces: ephemeral Agent lifecycle, cancellation/exception precedence, action certainty, canonical facts/actions, output screening, localization templates, persistence, and terminal result types.
   - Acceptance: focused orchestrator tests observe RED then GREEN for normal, clarification, abstention, escalation, cancellation, and uncertain sensitive-action paths.
@@ -91,7 +93,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Completed: T2 — Implement locked session memory.
 - Completed: T3 — Capture normalized tool results.
 - Completed: T4 — Extend audit and governance compatibility.
-- Active task: none; T4 native review is pending before T5 starts.
+- Completed: T5 — Implement the stateful Strands orchestrator.
+- Active task: none; T5 native review is pending before T6 starts.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -119,7 +122,12 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T4 GREEN: 102 focused observability, adapter, and hook tests passed after minimal implementation and triangulation.
 - T4 lint/format: Ruff check passed and all 6 files were formatted.
 - T4 parent spot check: all 102 focused tests passed.
+- T4 native review: approved and acknowledged (`review-680c43715573a062`) with no advisory findings.
+- T5 RED: the first orchestrator test failed collection because the module did not exist.
+- T5 GREEN: 36 orchestrator tests and all 197 agent unit tests passed after implementing and triangulating the full lifecycle.
+- T5 lint/format: Ruff check passed and both files were formatted.
+- T5 parent spot check: all 36 orchestrator tests passed.
 
 ## Next Step
 
-Run native review for the T4 committed range and follow its exact continuation.
+Run native review for the T5 committed range and follow its exact continuation.
