@@ -38,6 +38,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T3 commit: `eb04d17` (normalized tool-result capture and tests).
 - T4 commit: `6786b0e` (audit sink failover and orphan propagation).
 - T5 commit: `91e40c9` (stateful orchestrator and tests).
+- T6 commit: `f502891` (Strands contract integration and documentation closure).
 - T5 exceeds the per-task 400-line heuristic because the reviewed lifecycle contract and its behavior tests form one cohesive, non-separable execution path; it remains an isolated chain slice.
 - Native review boundaries: each authorized work-unit commit, or each selected PR slice.
 
@@ -68,7 +69,7 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
   - Test-first surfaces: ephemeral Agent lifecycle, cancellation/exception precedence, action certainty, canonical facts/actions, output screening, localization templates, persistence, and terminal result types.
   - Acceptance: focused orchestrator tests observe RED then GREEN for normal, clarification, abstention, escalation, cancellation, and uncertain sensitive-action paths.
 
-- [ ] **T6 — Verify Strands integration and close documentation**
+- [x] **T6 — Verify Strands integration and close documentation**
   - Route: delegated writer for integration/docs; verifier routing follows native assessment and RDD state.
   - Test-first surfaces: installed Strands 1.57.1 hook/event contract integration.
   - Acceptance: required focused/full tests, Ruff checks, format check, documentation readback, and `docs/STATUS.md` update all pass.
@@ -94,7 +95,8 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - Completed: T3 — Capture normalized tool results.
 - Completed: T4 — Extend audit and governance compatibility.
 - Completed: T5 — Implement the stateful Strands orchestrator.
-- Active task: none; T5 native review is pending before T6 starts.
+- Completed: T6 — Verify Strands integration and close documentation.
+- Active task: none; final T6 native review is pending.
 - Engram mirror: observation 152.
 
 ## Verification Evidence
@@ -127,7 +129,14 @@ The project has tool wrappers, governance hooks, Jev-backed policy evaluation, a
 - T5 GREEN: 36 orchestrator tests and all 197 agent unit tests passed after implementing and triangulating the full lifecycle.
 - T5 lint/format: Ruff check passed and both files were formatted.
 - T5 parent spot check: all 36 orchestrator tests passed.
+- T5 native review: approved and acknowledged (`review-2bf8995f83b4e349`). Three informational follow-ups were reported for persistence failures, read-tool failures, and setup failures; none opened a correction or expands this feature scope.
+- T6 RED exception: the smallest installed-Strands contract test passed immediately, so no meaningful RED existed without manufacturing a failure; passive documentation also used the narrow non-behavioral exception.
+- T6 GREEN: 5 Strands integration contract tests, 202 agent/integration tests, and 739 unit tests passed.
+- T6 lint: repository-wide `ruff check` passed.
+- T6 format: the new integration test is formatted; repository-wide `ruff format --check` still reports exactly 12 files proven unchanged from the base and current feature range. This pre-existing formatting debt is outside Spec 07 scope.
+- T6 structural verification: documentation readback, terminology checks, and `git diff --check` passed; `handoff_id` wording was corrected after independent verification.
+- T6 parent spot check: all 5 Strands integration tests passed.
 
 ## Next Step
 
-Run native review for the T5 committed range and follow its exact continuation.
+Run native review for the T6 committed range, record the result, then close the feature.
