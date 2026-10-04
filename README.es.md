@@ -2,6 +2,8 @@
 
 # Guía del repositorio
 
+Para conocer de qué trata el proyecto, consulte la [sección 1: Resumen ejecutivo](AGENTS.md#1-resumen-ejecutivo).
+
 Esta página facilita la navegación del repositorio y reúne comandos operativos verificados. Ejecute todos los comandos desde la raíz del repositorio.
 
 ## Ejecutar la demostración localmente

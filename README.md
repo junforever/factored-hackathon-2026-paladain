@@ -2,6 +2,8 @@
 
 # Repository guide
 
+For a project overview, read [Section 1: Executive summary](AGENTS.md#1-resumen-ejecutivo).
+
 Use this page for repository navigation and verified operator commands. Run all commands from the repository root.
 
 ## Run the demo locally
