@@ -102,6 +102,7 @@ Acceptance:
 - 2026-10-04: T2 committed as `ad02e04d412c7b16ed4f87847809b96c15dd0768`.
 - 2026-10-04: T3 published the six-case judge workflow and reset/repeat instructions in README, Chainlit, and status documentation.
 - 2026-10-04: T3 committed as `8bbadf44e859b119881b3ab53ca8dec3ad560fb4`.
+- 2026-10-04: Feature implementation closed with all automated checks passing; live Chainlit execution remains an explicit manual check.
 
 ## Verification evidence
 
@@ -151,8 +152,8 @@ Acceptance:
 - Manual check pending: live Chainlit interaction was not exercised because it requires the configured runtime/model credentials.
 - Rollback boundary: revert only `README.md`, `chainlit.md`, and `docs/STATUS.md`.
 - Commit: `8bbadf44e859b119881b3ab53ca8dec3ad560fb4` (`docs(demo): publish repeatable judge workflow`).
-- Native assessment/review: pending.
+- Native assessment: passive (`non_executable_only`); structural readback was the complete required review path, with no reviewer run due.
 
 ## Next step
 
-Run native assessment/review for the T3 slice, record closure, and hand control back to the user.
+User may exercise the six documented prompts in live Chainlit, then choose whether to push or open the planned PR chain.
