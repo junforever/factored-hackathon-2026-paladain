@@ -67,30 +67,7 @@ Copie un prompt de la siguiente tabla o de la [guía de la demostración](chainl
 
 ## Restablecer y repetir un caso de demostración
 
-Detenga primero las escrituras activas de la demostración: espere a que terminen los turnos en curso y detenga el proceso de Chainlit antes de restablecer el estado.
-
-Previsualice el restablecimiento de un caso:
-
-```bash
-uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
-```
-
-Restablezca ese caso:
-
-```bash
-uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
-```
-
-Para previsualizar y luego restablecer los seis casos del catálogo, omita `--case`:
-
-```bash
-uv run python scripts/reset_demo_state.py --dry-run
-uv run python scripts/reset_demo_state.py
-```
-
-Reinicie Chainlit y repita el prompt. El restablecimiento es idempotente y modifica únicamente las filas SQLite mutables de los servicios de tarjetas y escalamiento correspondientes a los casos del catálogo y sus productos. Nunca modifica Parquet, DuckDB, la configuración, los secretos ni los archivos de auditoría.
-
-Las bases de datos de los servicios usan transacciones separadas. Si el restablecimiento de escalamiento —el segundo paso de servicio— falla después de que el restablecimiento de la tarjeta se complete correctamente, corrija la causa y ejecute nuevamente el mismo comando; el reintento es seguro. El restablecimiento de un solo caso restaura el estado de la tarjeta a nivel de producto, por lo que otra reclamación que comparta ese producto observará el estado restaurado de la tarjeta.
+Consulte [Restablecer y repetir un caso de demostración](chainlit.md#restablecer-y-repetir-un-caso-de-demostración) en la guía de la demostración.
 
 ## Modelo de datos portátil
 

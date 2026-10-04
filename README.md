@@ -67,30 +67,7 @@ Copy a prompt from the table below or from the [demo guide](chainlit.md), paste 
 
 ## Reset and repeat a demo case
 
-Stop active demo writes first: wait for in-flight turns to finish and stop the Chainlit process before resetting state.
-
-Preview the reset for one case:
-
-```bash
-uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
-```
-
-Reset that case:
-
-```bash
-uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
-```
-
-To preview and then reset all six catalog cases, omit `--case`:
-
-```bash
-uv run python scripts/reset_demo_state.py --dry-run
-uv run python scripts/reset_demo_state.py
-```
-
-Restart Chainlit and repeat the prompt. Reset is idempotent and changes only mutable card-service and escalation-service SQLite rows scoped to catalog cases and their products. It never changes Parquet, DuckDB, configuration, secrets, or audit files.
-
-The service databases use separate transactions. If the escalation reset (the second service step) fails after the card reset succeeds, fix the cause and run the same command again; the retry is safe. A single-case reset restores card state at product scope, so another complaint that shares the product will observe the restored card state.
+See [Reset and repeat a demo case](chainlit.md#reset-and-repeat-a-demo-case) in the demo guide.
 
 ## Portable data model
 

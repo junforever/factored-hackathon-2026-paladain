@@ -21,21 +21,24 @@ From the repository root:
    ```
 
 3. Open <http://127.0.0.1:8000>, copy one prompt below, and compare the response with its expected behavior.
-4. Before resetting, wait for active turns to finish and stop the Chainlit process. Preview either one case or the complete catalog:
-
-   ```bash
-   uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
-   uv run python scripts/reset_demo_state.py --dry-run
-   ```
-
-5. Reset one case or, by omitting `--case`, all catalog cases; then restart Chainlit and repeat:
-
-   ```bash
-   uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
-   uv run python scripts/reset_demo_state.py
-   ```
 
 `configs/demo_cases.yaml` is the source of truth for the current IDs, prompts, and expected behavior. If the sandbox is regenerated or replaced, regenerate the catalog before using its IDs.
+
+### Reset and repeat a demo case
+
+Before resetting, wait for active turns to finish and stop the Chainlit process. Preview either one case or the complete catalog:
+
+```bash
+uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py --dry-run
+```
+
+Reset one case or, by omitting `--case`, all catalog cases; then restart Chainlit and repeat:
+
+```bash
+uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py
+```
 
 Reset changes only mutable card-service and escalation-service SQLite rows scoped to catalog cases and products. It never changes Parquet, DuckDB, configuration, secrets, or audit files. The two service databases use separate transactions: if the escalation reset (the second service step) fails, fix the cause and rerun the same command safely. A single-case reset restores card state at product scope, so another complaint sharing that product observes the restored state.
 
@@ -122,21 +125,24 @@ Desde la raíz del repositorio:
    ```
 
 3. Abre <http://127.0.0.1:8000>, copia uno de los prompts siguientes y compara la respuesta con el comportamiento esperado.
-4. Antes de restablecer el estado, espera que terminen los turnos activos y detén el proceso de Chainlit. Previsualiza un caso o el catálogo completo:
-
-   ```bash
-   uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
-   uv run python scripts/reset_demo_state.py --dry-run
-   ```
-
-5. Restablece un caso o, si omites `--case`, todos los casos del catálogo; luego reinicia Chainlit y repite:
-
-   ```bash
-   uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
-   uv run python scripts/reset_demo_state.py
-   ```
 
 `configs/demo_cases.yaml` es la fuente de verdad para los IDs, prompts y comportamientos esperados actuales. Si el sandbox se regenera o reemplaza, regenera el catálogo antes de usar sus IDs.
+
+### Restablecer y repetir un caso de demostración
+
+Antes de restablecer el estado, espera que terminen los turnos activos y detén el proceso de Chainlit. Previsualiza un caso o el catálogo completo:
+
+```bash
+uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py --dry-run
+```
+
+Restablece un caso o, si omites `--case`, todos los casos del catálogo; luego reinicia Chainlit y repite:
+
+```bash
+uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py
+```
 
 El reset modifica únicamente filas SQLite mutables de los servicios de tarjetas y escalamiento dentro del alcance de los casos y productos del catálogo. Nunca modifica Parquet, DuckDB, configuración, secretos ni archivos de auditoría. Las bases de datos de ambos servicios usan transacciones separadas: si falla el reset de escalamiento (el segundo paso de servicio), corrige la causa y ejecuta de nuevo el mismo comando de forma segura. El reset de un caso restaura el estado de la tarjeta a nivel de producto; por eso, otra reclamación que comparta ese producto observará el estado restaurado.
 
