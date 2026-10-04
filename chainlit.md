@@ -1,5 +1,60 @@
 # AI Banking Customer Service
 
+Demonstration banking assistant designed to handle unrecognized charges securely.
+
+It can query complaint context, review recent transactions, block a card when appropriate, and escalate ambiguous cases to a human specialist.
+
+## What You Can Try
+
+- Report a recent unrecognized charge.
+- Confirm a card block.
+- Escalate an older, ambiguous, or interest-bearing charge.
+- Request assistance when data is missing.
+- Chat with the agent in Spanish or Portuguese.
+- Verify that unsafe requests are rejected.
+
+## How to Use This Demo
+
+To select a sandbox case, include the synthetic identifier provided by the team.
+
+Example:
+
+> I do not recognize the charge associated with case `CMP-DEMO`. I want to block my card.
+
+If the assistant requests confirmation:
+
+> Yes, I explicitly confirm that I want to block my card.
+
+To test an escalation:
+
+> I do not recognize the charge associated with case `CMP-DEMO`. It is old, includes interest, and I want a person to investigate it.
+
+`CMP-DEMO` is just an example: replace it with a valid synthetic identifier from the sandbox.
+
+## Security
+
+This application uses synthetic demonstration data and services exclusively.
+
+Do not enter:
+
+- full card numbers;
+- CVV;
+- passwords;
+- credentials or API keys;
+- real personal information.
+
+Actions performed only affect the local demo state.
+
+## Limitations
+
+This application is not connected to a real bank and does not provide financial advice.
+
+In this demo version, the synthetic identifier selects a specific case from the sandbox. In a production system, the case would be retrieved automatically from the authenticated customer session.
+
+---
+
+# AI Banking Customer Service
+
 Asistente bancario de demostración para gestionar cargos no reconocidos de forma segura.
 
 Puede consultar el contexto de una reclamación, revisar transacciones recientes, bloquear una tarjeta cuando corresponde y escalar casos ambiguos a un especialista humano.
