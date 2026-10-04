@@ -11,7 +11,9 @@ Requisito del hackathon:
  supporting evidence, unresolved questions, and recommended next steps."
 """
 
+from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 
 from ai_banking_customer_service.config import policy
 from ai_banking_customer_service.services.card_service import is_card_blocked
@@ -72,6 +74,50 @@ def escalate_case(
     Returns:
         dict con el resultado del escalamiento y el handoff.
     """
+    return _execute_escalate_case(
+        complaint_id,
+        reason,
+        unresolved_questions,
+        agent_notes,
+        card_db_path=None,
+        escalation_db_path=None,
+    )
+
+
+def _build_escalate_case(
+    *,
+    card_db_path: Path,
+    escalation_db_path: Path,
+) -> Callable[[str, str, list | None, str | None], dict]:
+    """Bind internal service paths without exposing them to the model."""
+
+    def bound(
+        complaint_id: str,
+        reason: str,
+        unresolved_questions: list | None = None,
+        agent_notes: str | None = None,
+    ) -> dict:
+        return _execute_escalate_case(
+            complaint_id,
+            reason,
+            unresolved_questions,
+            agent_notes,
+            card_db_path=card_db_path,
+            escalation_db_path=escalation_db_path,
+        )
+
+    return bound
+
+
+def _execute_escalate_case(
+    complaint_id: str,
+    reason: str,
+    unresolved_questions: list | None,
+    agent_notes: str | None,
+    *,
+    card_db_path: Path | None,
+    escalation_db_path: Path | None,
+) -> dict:
     # 1. Validar inputs
     if not complaint_id or not isinstance(complaint_id, str):
         return {"error": "complaint_id es requerido y debe ser un string"}
@@ -92,7 +138,9 @@ def escalate_case(
 
     # 4. Verificar acciones previas: ¿la tarjeta ya fue bloqueada?
     product_id = context.get("product_id")
-    card_blocked = is_card_blocked(product_id) if product_id else False
+    card_blocked = (
+        is_card_blocked(product_id, db_path=card_db_path) if product_id else False
+    )
 
     # 5. Determinar prioridad con política determinística
     priority = _determine_priority(context)
@@ -176,6 +224,7 @@ def escalate_case(
         reason=reason,
         priority=priority,
         handoff=handoff,
+        db_path=escalation_db_path,
     )
 
     if not persistence.get("success"):

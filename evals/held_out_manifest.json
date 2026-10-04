@@ -1,0 +1,21 @@
+{
+  "dataset_version": "1.0.0",
+  "pipeline_version": "3.0.0",
+  "cases_file": "evals/cases/held_out_v1.0.0.yaml",
+  "sha256": "1f54342841658e6227c9e8826d0a0e7a68d8e3472df6cb2fdbed55f4e7ffc170",
+  "frozen_at": "2026-10-02T12:00:00Z",
+  "owner": "equipo-hackathon",
+  "total_cases": 50,
+  "coverage": {
+    "total_cases": 50,
+    "portuguese_cases": 12,
+    "cases_per_scenario": {
+      "normal_resolution": 15,
+      "ambiguous": 10,
+      "human_required": 10,
+      "attack": 5,
+      "missing_data": 5,
+      "edge_case": 5
+    }
+  }
+}

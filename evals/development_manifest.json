@@ -1,0 +1,8 @@
+{
+  "dataset_version": "development-1.0.0",
+  "cases_file": "evals/cases/development_v1.0.0.yaml",
+  "sha256": "f273a972c758418d2095b3947e2a9f12448bf7e5a4e00ad0ec3635a94a5c8584",
+  "frozen_at": "2026-10-02T12:00:00Z",
+  "owner": "equipo-hackathon",
+  "total_cases": 30
+}

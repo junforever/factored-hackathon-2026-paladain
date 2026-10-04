@@ -17,7 +17,7 @@ from ai_banking_customer_service.config import settings
 STATE_PATH: Path = settings.state_dir / "card_service.sqlite3"
 
 
-def _get_conn() -> sqlite3.Connection:
+def _get_conn(db_path: Path | None = None) -> sqlite3.Connection:
     """
     Abre una conexión SQLite configurada para concurrencia.
 
@@ -25,8 +25,9 @@ def _get_conn() -> sqlite3.Connection:
     - isolation_level=None: autocommit, para controlar transacciones manualmente.
     - WAL mode: permite múltiples lectores concurrentes sin bloquearse.
     """
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(STATE_PATH), timeout=30, isolation_level=None)
+    resolved_path = STATE_PATH if db_path is None else db_path
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(resolved_path), timeout=30, isolation_level=None)
     conn.execute("PRAGMA journal_mode=WAL;")
     return conn
 
@@ -52,14 +53,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     """)
 
 
-def block_card(product_id: str, complaint_id: str, reason: str) -> dict:
+def block_card(
+    product_id: str,
+    complaint_id: str,
+    reason: str,
+    *,
+    db_path: Path | None = None,
+) -> dict:
     """
     Bloquea una tarjeta de forma atómica y verifica el resultado.
 
     Returns:
         dict con success, verification y metadatos.
     """
-    conn = _get_conn()
+    conn = _get_conn(db_path)
     try:
         _init_schema(conn)
         now = datetime.now().isoformat()
@@ -138,9 +145,13 @@ def block_card(product_id: str, complaint_id: str, reason: str) -> dict:
         conn.close()
 
 
-def is_card_blocked(product_id: str) -> bool:
+def is_card_blocked(
+    product_id: str,
+    *,
+    db_path: Path | None = None,
+) -> bool:
     """Consulta si una tarjeta está bloqueada (operación de solo lectura)."""
-    conn = _get_conn()
+    conn = _get_conn(db_path)
     try:
         _init_schema(conn)
         row = conn.execute(

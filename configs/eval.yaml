@@ -1,8 +1,13 @@
-held_out_start: '2026-05-01'
-held_out_end: '2026-06-17'
-min_sample_size: 200
-metrics:
-  - safe_automated_resolution_rate
-  - unsafe_outcomes
-  - escalation_quality
-  - latency_p95
+pipeline_version: '3.0.0'
+dataset_version: '1.0.0'
+held_out_manifest: 'evals/held_out_manifest.json'
+development_manifest: 'evals/development_manifest.json'
+output_dir: 'evals/reports'
+baseline: 'all_human'
+case_timeout_seconds: 120
+grace_period_seconds: 5
+max_result_bytes: 1048576
+min_coverage:
+  total_cases: 50
+  min_portuguese_cases: 10
+  min_cases_per_scenario: 5

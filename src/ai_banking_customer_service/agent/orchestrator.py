@@ -2,7 +2,7 @@
 
 import json
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
@@ -201,12 +201,14 @@ class BankingOrchestrator:
         model_factory: Callable[[], Any] | None = None,
         model_id: str | None = None,
         model: Any | None = None,
+        tools: Sequence[Any] | None = None,
     ) -> None:
         if model_factory is not None and model is not None:
             raise ValueError("model_factory and model are mutually exclusive")
         self._adapter = adapter
         self._governance_hooks = governance_hooks
         self._audit_sink = audit_sink
+        self._tools = _validated_tools(tools)
         self._session_manager = (
             SessionManager() if session_manager is None else session_manager
         )
@@ -272,7 +274,7 @@ class BankingOrchestrator:
                 result_capture = ResultCaptureHooks()
                 agent = Agent(
                     model=model_instance,
-                    tools=list(REGISTERED_TOOLS),
+                    tools=list(self._tools),
                     hooks=[self._governance_hooks, result_capture],
                     system_prompt=SYSTEM_PROMPT,
                     messages=history_snapshot,
@@ -673,6 +675,25 @@ class BankingOrchestrator:
         except AuditPersistenceError:
             return None
         return event["event_id"]
+
+
+def _validated_tools(tools: Sequence[Any] | None) -> tuple[Any, ...]:
+    try:
+        candidates = tuple(REGISTERED_TOOLS if tools is None else tools)
+    except TypeError as error:
+        raise ValueError("tools must match the canonical tool contract") from error
+    expected = tuple(REGISTERED_TOOLS)
+    if len(candidates) != len(expected):
+        raise ValueError("tools must match the canonical tool contract")
+    for candidate, registered in zip(candidates, expected, strict=True):
+        if (
+            not isinstance(getattr(candidate, "tool_name", None), str)
+            or not isinstance(getattr(candidate, "tool_spec", None), dict)
+            or candidate.tool_name != registered.tool_name
+            or candidate.tool_spec != registered.tool_spec
+        ):
+            raise ValueError("tools must match the canonical tool contract")
+    return candidates
 
 
 def _validate_turn_inputs(

@@ -89,8 +89,11 @@ Reglas:
 - `baseline` acepta únicamente `all_human`.
 - `case_timeout_seconds` y `grace_period_seconds` son números finitos; el timeout
   es mayor que cero y la gracia es mayor o igual a cero.
-- `max_result_bytes` es entero positivo, excluye `bool` y tiene un límite máximo
-  de 16 MiB para evitar envelopes sin cota.
+- `max_result_bytes` es entero, excluye `bool` y está entre **873 bytes** y
+  16 MiB. El mínimo no es arbitrario: se calcula serializando el envelope
+  canónico `ERROR/result_envelope_too_large` con un `case_id` máximo de 128
+  caracteres y seis bytes JSON por carácter (el peor caso, `\\u0000`). Por ello
+  todo límite válido puede contener siempre ese envelope acotado.
 - Los mínimos de cobertura son enteros positivos, excluyen `bool`.
 - Los paths relativos se resuelven contra la raíz del proyecto. No se aceptan
   escapes fuera de la raíz mediante `..` o symlinks resueltos.
@@ -242,8 +245,12 @@ metadata:
 ```
 
 Todos los campos de `expected` son obligatorios, aunque una lista esté vacía.
-`metadata` no participa en la clasificación y solo aporta segmentación o notas.
-Se elimina `is_sensitive`: era redundante y no determinaba ningún cálculo.
+`case_id` es un string no vacío de máximo 128 caracteres Unicode; caracteres
+como `/` son válidos y forman parte de la identidad. Este máximo cubre
+holgadamente los identificadores determinísticos del corpus y acota el peor
+caso serializado usado para validar `max_result_bytes`. `metadata` no
+participa en la clasificación y solo aporta segmentación o notas. Se elimina
+`is_sensitive`: era redundante y no determinaba ningún cálculo.
 
 ### 4.2 Relaciones obligatorias
 
@@ -438,6 +445,14 @@ event["payload"]["verified"]
 
 No se consulta ni se exige un evento `action`.
 
+El sink aplica su propia sanitización recursiva antes de conservar el snapshot,
+incluso si recibe directamente un payload canónico incompleto o malformado:
+redacta PAN, CVV, valores bajo claves de credenciales y secretos
+credential-like en strings. También elimina keys de paths internos y redacta
+paths Windows/POSIX completos aunque sus segmentos contengan espacios. Esta
+sanitización conserva los campos canónicos necesarios para clasificación
+(`tool_name`, `tool_use_id`, `args.complaint_id`, `result_status`, `verified`).
+
 ## 8. Proceso por caso y timeout duro
 
 ### 8.1 Tipos públicos
@@ -485,9 +500,17 @@ hijo:
 5. convierte enums y resultados a un único dict JSON-safe;
 6. sanitiza errores como nombre de tipo más mensaje acotado;
 7. serializa con UTF-8 y `allow_nan=False`;
-8. si excede `max_result_bytes`, reemplaza el resultado por un envelope mínimo
-   `ERROR/result_envelope_too_large` que también cabe en el límite;
+8. si excede `max_result_bytes`, reemplaza el resultado por el envelope mínimo
+   canónico `ERROR/result_envelope_too_large`; la validación fail-fast de
+   configuración y el máximo de `case_id` garantizan que siempre cabe en el
+   límite, por lo que el hijo nunca omite el envelope por falta de espacio;
 9. envía como máximo un envelope y cierra su extremo del pipe en `finally`.
+
+Tras validar `EvalCase`, el hijo trata `case_id` como identidad confiable y lo
+copia sin normalizar, recortar ni sanitizar al envelope y a los IDs de sesión.
+La sanitización de mensajes, paths y secretos solo se aplica a errores y al
+fallback de identidad de requests que todavía no superaron la validación; ese
+fallback puede ser `invalid_case` y nunca expone el valor no confiable.
 
 El hijo no crea ni elimina el `state_dir`; el padre es el único dueño del cleanup.
 Todas las conexiones SQLite siguen cerrándose en los `finally` de los services.
@@ -1178,6 +1201,7 @@ tests/unit/evaluation/test_factory.py
 tests/unit/evaluation/test_report.py
 tests/unit/evaluation/test_runner.py
 tests/unit/evaluation/test_sink.py
+tests/unit/evaluation/test_worker.py
 tests/unit/evaluation/test_cli.py
 ```
 

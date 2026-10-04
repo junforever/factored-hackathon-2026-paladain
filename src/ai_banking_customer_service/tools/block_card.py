@@ -6,6 +6,9 @@ Aplica política fuera del prompt, ejecuta la acción en el servicio mock,
 y verifica el resultado.
 """
 
+from collections.abc import Callable
+from pathlib import Path
+
 from ai_banking_customer_service.services.card_service import (
     block_card as service_block_card,
 )
@@ -27,6 +30,32 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
     Returns:
         dict con el resultado de la acción y su verificación.
     """
+    return _execute_block_card(
+        complaint_id,
+        confirmed_by_customer,
+        db_path=None,
+    )
+
+
+def _build_block_card(*, db_path: Path) -> Callable[[str, bool], dict]:
+    """Bind an internal card database path without exposing it to the model."""
+
+    def bound(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
+        return _execute_block_card(
+            complaint_id,
+            confirmed_by_customer,
+            db_path=db_path,
+        )
+
+    return bound
+
+
+def _execute_block_card(
+    complaint_id: str,
+    confirmed_by_customer: bool,
+    *,
+    db_path: Path | None,
+) -> dict:
     # 1. Validar input
     if not complaint_id or not isinstance(complaint_id, str):
         return {"error": "complaint_id es requerido y debe ser un string"}
@@ -77,7 +106,7 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
         }
 
     # 6. POLÍTICA: ¿ya está bloqueada?
-    if is_card_blocked(product_id):
+    if is_card_blocked(product_id, db_path=db_path):
         return {
             "action": "block_card",
             "executed": False,
@@ -91,6 +120,7 @@ def block_card(complaint_id: str, confirmed_by_customer: bool = False) -> dict:
         product_id=product_id,
         complaint_id=complaint_id,
         reason="fraud_dispute",
+        db_path=db_path,
     )
 
     # 8. RETORNAR con verificación explícita

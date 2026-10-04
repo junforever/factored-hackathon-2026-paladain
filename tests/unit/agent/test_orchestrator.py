@@ -1,4 +1,6 @@
+import inspect
 from dataclasses import FrozenInstanceError, fields
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -15,6 +17,10 @@ from ai_banking_customer_service.agent.orchestrator import (
 )
 from ai_banking_customer_service.agent.result_capture import NormalizedToolResult
 from ai_banking_customer_service.agent.session_manager import SessionManager
+from ai_banking_customer_service.agent.tools import (
+    REGISTERED_TOOLS,
+    build_registered_tools,
+)
 from ai_banking_customer_service.governance.adapter import (
     GovernanceAdapter,
     GovernanceResult,
@@ -134,6 +140,7 @@ def _install_turn(
     sink: RecordingSink | None = None,
     session_manager: SessionManager | None = None,
     model_factory=None,
+    tools=None,
 ):
     if agent_result is None:
         agent_result = SimpleNamespace(
@@ -175,6 +182,7 @@ def _install_turn(
         session_manager=session_manager,
         model_factory=model_factory,
         model=None if model_factory else object(),
+        tools=tools,
     )
     return orchestrator, adapter, sink, constructed
 
@@ -248,6 +256,8 @@ def test_factory_and_capture_are_ephemeral_and_agent_receives_exact_contract(
     orchestrator.handle_turn("Dos", "s2", "c2")
 
     assert factory.call_count == 2
+    assert isinstance(orchestrator._tools, tuple)
+    assert orchestrator._tools == tuple(REGISTERED_TOOLS)
     assert [entry["model"] for entry in constructed] == models
     assert all(
         entry["tools"] == list(orchestrator_module.REGISTERED_TOOLS)
@@ -261,6 +271,61 @@ def test_factory_and_capture_are_ephemeral_and_agent_receives_exact_contract(
         entry["system_prompt"] == orchestrator_module.SYSTEM_PROMPT
         for entry in constructed
     )
+
+
+def test_constructor_adds_only_optional_tools_seam_at_the_end() -> None:
+    parameters = inspect.signature(BankingOrchestrator).parameters
+
+    assert list(parameters)[-1] == "tools"
+    assert parameters["tools"].default is None
+
+
+def test_injected_canonical_tools_reach_agent_in_exact_order(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    injected = build_registered_tools(
+        card_db_path=tmp_path / "card_service.sqlite3",
+        escalation_db_path=tmp_path / "escalation_service.sqlite3",
+    )
+    expected = list(injected)
+    orchestrator, _, _, constructed = _install_turn(monkeypatch, tools=injected)
+    injected.clear()
+
+    orchestrator.handle_turn("Cargo", "session", "customer")
+
+    assert constructed[0]["tools"] == expected
+    assert constructed[0]["tools"] is not injected
+
+
+def test_tool_collection_validation_rejects_contract_changes(tmp_path: Path) -> None:
+    valid = build_registered_tools(
+        card_db_path=tmp_path / "card_service.sqlite3",
+        escalation_db_path=tmp_path / "escalation_service.sqlite3",
+    )
+    invalid_collections = [
+        valid[:-1],
+        [valid[0], valid[1], valid[1], valid[3]],
+        [valid[1], valid[0], valid[2], valid[3]],
+        [*valid, valid[0]],
+        [
+            SimpleNamespace(
+                tool_name=REGISTERED_TOOLS[0].tool_name,
+                tool_spec={},
+            ),
+            *valid[1:],
+        ],
+    ]
+
+    for invalid in invalid_collections:
+        with pytest.raises(ValueError, match="canonical tool contract"):
+            BankingOrchestrator(
+                _adapter(),
+                object(),
+                RecordingSink(),
+                model=object(),
+                tools=invalid,
+            )
 
 
 @pytest.mark.parametrize(
@@ -787,6 +852,9 @@ def test_tool_event_uses_routing_fallback_and_sanitizes_auditable_args(
             "days_before": 30,
             "limit": 10,
             "password": "hidden",
+            "state_dir": "internal-state",
+            "card_db_path": "internal-card.sqlite3",
+            "escalation_db_path": "internal-escalation.sqlite3",
         },
         status="success",
         content={"transactions": []},

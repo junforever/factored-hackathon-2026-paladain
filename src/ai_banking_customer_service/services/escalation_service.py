@@ -19,11 +19,12 @@ from ai_banking_customer_service.config import settings
 STATE_PATH: Path = settings.state_dir / "escalation_service.sqlite3"
 
 
-def _get_conn() -> sqlite3.Connection:
+def _get_conn(db_path: Path | None = None) -> sqlite3.Connection:
     """Abre una conexión SQLite configurada para concurrencia."""
 
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(STATE_PATH), timeout=30, isolation_level=None)
+    resolved_path = STATE_PATH if db_path is None else db_path
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(resolved_path), timeout=30, isolation_level=None)
     conn.execute("PRAGMA journal_mode=WAL;")
     return conn
 
@@ -52,6 +53,8 @@ def create_escalation(
     reason: str,
     priority: str,
     handoff: dict,
+    *,
+    db_path: Path | None = None,
 ) -> dict:
     """
     Persiste un escalamiento con su handoff estructurado.
@@ -59,7 +62,7 @@ def create_escalation(
     Returns:
         dict con success, escalation_id y verificación.
     """
-    conn = _get_conn()
+    conn = _get_conn(db_path)
     try:
         _init_schema(conn)
 
@@ -127,9 +130,13 @@ def create_escalation(
         conn.close()
 
 
-def get_escalation(escalation_id: str) -> dict | None:
+def get_escalation(
+    escalation_id: str,
+    *,
+    db_path: Path | None = None,
+) -> dict | None:
     """Consulta un escalamiento por su ID."""
-    conn = _get_conn()
+    conn = _get_conn(db_path)
     try:
         _init_schema(conn)
         row = conn.execute(

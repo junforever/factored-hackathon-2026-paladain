@@ -1,4 +1,5 @@
 import inspect
+from pathlib import Path
 from unittest.mock import Mock, call
 
 import pytest
@@ -7,6 +8,7 @@ from ai_banking_customer_service.agent import tools as agent_tools
 from ai_banking_customer_service.agent.tools import (
     REGISTERED_TOOLS,
     block_card,
+    build_registered_tools,
     escalate_case,
     get_dispute_context,
     get_recent_transactions,
@@ -233,6 +235,40 @@ def test_action_docstrings_cover_real_outcome_categories() -> None:
     ):
         assert value in escalation_doc
     assert "not a closed vocabulary" in escalation_doc
+
+
+def test_bound_registration_passes_internal_paths_only_to_business_factories(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    card_path = tmp_path / "card_service.sqlite3"
+    escalation_path = tmp_path / "escalation_service.sqlite3"
+    bound_block = Mock(return_value={"action": "block_card"})
+    bound_escalation = Mock(return_value={"action": "escalate_case"})
+    block_factory = Mock(return_value=bound_block)
+    escalation_factory = Mock(return_value=bound_escalation)
+    monkeypatch.setattr(agent_tools, "_build_block_card", block_factory)
+    monkeypatch.setattr(agent_tools, "_build_escalate_case", escalation_factory)
+
+    registered = {
+        item.tool_name: item
+        for item in build_registered_tools(
+            card_db_path=card_path,
+            escalation_db_path=escalation_path,
+        )
+    }
+
+    assert registered["block_card"]("CMP-BOUND", True) == {"action": "block_card"}
+    assert registered["escalate_case"]("CMP-BOUND", "review") == {
+        "action": "escalate_case"
+    }
+    block_factory.assert_called_once_with(db_path=card_path)
+    escalation_factory.assert_called_once_with(
+        card_db_path=card_path,
+        escalation_db_path=escalation_path,
+    )
+    bound_block.assert_called_once_with("CMP-BOUND", True)
+    bound_escalation.assert_called_once_with("CMP-BOUND", "review", None, None)
 
 
 def test_delegation_fixtures_are_secret_safe() -> None:
