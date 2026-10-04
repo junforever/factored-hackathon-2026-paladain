@@ -4,7 +4,7 @@ Asistente bancario de demostración para gestionar cargos no reconocidos de form
 
 Puede consultar el contexto de una reclamación, revisar transacciones recientes, bloquear una tarjeta cuando corresponde y escalar casos ambiguos a un especialista humano.
 
-## Qué podés probar
+## Qué puedes probar
 
 - Reportar un cargo reciente no reconocido.
 - Confirmar el bloqueo de una tarjeta.
@@ -15,7 +15,7 @@ Puede consultar el contexto de una reclamación, revisar transacciones recientes
 
 ## Cómo usar esta demo
 
-Para seleccionar un caso del sandbox, incluí el identificador sintético proporcionado por el equipo.
+Para seleccionar un caso del sandbox, incluye el identificador sintético proporcionado por el equipo.
 
 Ejemplo:
 
