@@ -77,9 +77,7 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 
 ## 5. Arquitectura actual
 
-Esta vista resume los componentes activos. El estado detallado y el próximo
-trabajo viven en `docs/STATUS.md`; los artefactos bajo `data/`, `duckdb/` y
-`evals/reports/` son locales o generados.
+Esta vista resume los componentes activos. El estado detallado y el próximo trabajo viven en `docs/STATUS.md`; los artefactos bajo `data/`, `duckdb/` y `evals/reports/` son locales o generados.
 
 ```text
 ├── .chainlit/
@@ -161,10 +159,7 @@ trabajo viven en `docs/STATUS.md`; los artefactos bajo `data/`, `duckdb/` y
 └── uv.lock                            # Lockfile reproducible
 ```
 
-Los directorios `api/`, `data_access/`, `domain/`, `handoff/`, `policies/` y
-`sandbox/` bajo `src/ai_banking_customer_service/` están reservados y no tienen
-implementación propia en las Specs 1–9. Sus responsabilidades actuales viven en
-las capas activas mostradas arriba.
+Los directorios `api/`, `data_access/`, `domain/`, `handoff/`, `policies/` y `sandbox/` bajo `src/ai_banking_customer_service/` están reservados y no tienen implementación propia en las Specs 1–9. Sus responsabilidades actuales viven en las capas activas mostradas arriba.
 
 ---
 
