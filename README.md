@@ -4,23 +4,51 @@
 
 Use this page for repository navigation and verified operator commands. Run all commands from the repository root.
 
-## Set up the environment
+## Run the demo locally
 
-Prepare the environment:
+Follow these steps in order from a clean clone.
+
+### 1. Install prerequisites
+
+Install Git, Python 3.12 or newer, and `uv`.
+
+### 2. Install dependencies
 
 ```bash
 uv sync --frozen
 ```
 
-Complete the [canonical repository configuration](AGENTS.md) before starting the application or an evaluation.
+### 3. Create and configure the environment file
 
-## Start the application
+Create `.env` from the versioned template:
+
+```bash
+uv run python -c "from pathlib import Path; Path('.env').write_bytes(Path('.env.example').read_bytes())"
+```
+
+Before continuing, complete the [canonical repository configuration](AGENTS.md).
+
+### 4. Verify the portable demo artifacts
+
+```bash
+uv run python scripts/verify_demo_artifacts.py
+```
+
+### 5. Start the application
 
 ```bash
 uv run chainlit run app/chainlit_app.py --headless --host 127.0.0.1 --port 8000 --ci
 ```
 
-Then open <http://127.0.0.1:8000>. For interaction guidance, consult the [demo guide](chainlit.md).
+Open <http://127.0.0.1:8000>.
+
+### 6. Follow the demo interaction guide
+
+Use the scenarios and interaction instructions in the [demo guide](chainlit.md).
+
+## Portable data model
+
+The distributed DuckDB materializes only transactions relevant to the sandbox, which keeps the local demo reproducible without shipping the full source dataset. The canonical full-data preparation instead uses CSV-backed views to avoid duplicating the source data.
 
 ## Run repository checks
 
@@ -45,8 +73,8 @@ uv run python -m ai_banking_customer_service.evaluation --config configs/eval.ya
 
 ## Documentation index
 
-- [Stable project context and contributor rules](AGENTS.md)
-- [Demo usage, safety guidance, and limitations](chainlit.md)
+- [Repository guidance](AGENTS.md)
+- [Demo guide](chainlit.md)
 - [Current implementation status and roadmap](docs/STATUS.md)
 - [Implementation specifications](docs/specs/)
 - [Evaluation configuration](configs/eval.yaml)

@@ -49,6 +49,11 @@ def test_chainlit_server_starts_and_responds_on_loopback(tmp_path: Path) -> None
     child_app_root.mkdir()
     parent_app_root = os.environ.get("CHAINLIT_APP_ROOT")
     environment = _smoke_environment(child_app_root)
+    chainlit_markdown = PROJECT_ROOT / "chainlit.md"
+    chainlit_markdown_before = (
+        chainlit_markdown.exists(),
+        chainlit_markdown.read_bytes() if chainlit_markdown.is_file() else None,
+    )
 
     assert os.environ.get("CHAINLIT_APP_ROOT") == parent_app_root
     assert {
@@ -108,4 +113,7 @@ def test_chainlit_server_starts_and_responds_on_loopback(tmp_path: Path) -> None
                 proc.kill()
                 proc.wait(timeout=SHUTDOWN_TIMEOUT_SECONDS)
 
-    assert not (PROJECT_ROOT / "chainlit.md").exists()
+    assert (
+        chainlit_markdown.exists(),
+        chainlit_markdown.read_bytes() if chainlit_markdown.is_file() else None,
+    ) == chainlit_markdown_before

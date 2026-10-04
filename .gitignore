@@ -38,7 +38,10 @@ eval_results/
 *.db
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/sandbox/
+data/sandbox/*
+!data/sandbox/agent_sandbox_final.parquet
 storage/
 .chroma/
 .cache/

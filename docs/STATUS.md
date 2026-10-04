@@ -27,6 +27,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 - [x] `agent_sandbox_final.parquet` con contexto completo y `recommended_action` determinística.
 - [x] Data Quality Gate con Pandera (`scripts/data_preparation/10_validate_sandbox.py`).
+- [x] Artefactos portátiles `agent_sandbox_final.parquet` y `ai_banking.duckdb`, generados con `scripts/data_preparation/11_build_portable_demo.py` y validados mediante `scripts/verify_demo_artifacts.py` y su manifiesto SHA-256.
 
 ### Tools
 
@@ -77,6 +78,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 - [x] Render seguro ES/PT con acciones exhaustivas y fallback cerrado ante acciones desconocidas o fallos de entrega.
 - [x] Task retenido por turno, cancelación cooperativa, monitor de finalización y reconciliación de resultados tardíos sin ejecución duplicada.
 - [x] Cobertura unitaria, de contrato Chainlit 2.12 y smoke portable con aislamiento del app-root entre proceso padre e hijo.
+- [x] Contratos de side effects corregidos para comparar paths y bytes antes/después sin rechazar traducciones ni `chainlit.md` intencionales.
 - [x] Validación completada: 78 tests enfocados y 842 tests del repositorio; Ruff check, Ruff format y diff check pasaron.
 
 ### Evaluación offline — held-out
@@ -91,7 +93,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ### Documentación
 
-- [x] `README.md` y `README.es.md` — punto de entrada bilingüe del repositorio.
+- [x] `README.md` y `README.es.md` — punto de entrada bilingüe del repositorio con recorrido local completo y verificado.
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
 - [x] `findings/data_quality.md` — hallazgos de calidad de datos.
 - [x] `typesafe_jev/README.md` — investigación de Jev (contratos, límites, umbrales).
