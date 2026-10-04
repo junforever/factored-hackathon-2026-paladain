@@ -91,6 +91,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ### Documentación
 
+- [x] `README.md` y `README.es.md` — punto de entrada bilingüe del repositorio.
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
 - [x] `findings/data_quality.md` — hallazgos de calidad de datos.
 - [x] `typesafe_jev/README.md` — investigación de Jev (contratos, límites, umbrales).
