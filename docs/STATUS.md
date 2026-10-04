@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-10-03
+> Última actualización: 2026-10-04
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline held-out de Spec #9 están **completados**.
+El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline held-out de Spec #9 están **completados**. La demo local cuenta además con un catálogo reproducible de seis casos, reset SQLite acotado y una guía de ejecución para jueces.
 
-**Siguiente paso:** Spec #10 — documentación final, slides y video pitch.
+**Siguiente paso:** completar la validación integral y manual del flujo de demo; después continuar con slides y video pitch de Spec #10.
 
 ---
 
@@ -41,6 +41,26 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 - [x] `card_service.py` — SQLite, atómico, idempotente.
 - [x] `escalation_service.py` — SQLite, persiste handoffs.
+
+### Demo local reproducible
+
+- [x] `configs/demo_cases.yaml` — fuente de verdad versionada con seis escenarios, IDs reales, prompts ES/PT y resultados esperados.
+- [x] `scripts/data_preparation/12_build_demo_cases.py` — selección determinística y validación del catálogo contra el sandbox actual.
+- [x] `scripts/reset_demo_state.py` — dry-run y reset idempotente de un caso o del catálogo completo, limitado al estado SQLite mutable relacionado.
+- [x] `README.md` y `chainlit.md` — recorrido para generar, iniciar Chainlit, copiar un prompt, observar, previsualizar el reset, restablecer y repetir.
+
+Comandos operativos exactos:
+
+```bash
+uv run python scripts/data_preparation/12_build_demo_cases.py
+uv run chainlit run app/chainlit_app.py --headless --host 127.0.0.1 --port 8000 --ci
+uv run python scripts/reset_demo_state.py --dry-run --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py --case CMP-04WL95SE9CYXX4A8MSPV
+uv run python scripts/reset_demo_state.py --dry-run
+uv run python scripts/reset_demo_state.py
+```
+
+Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo_cases.yaml` solo garantiza IDs para el sandbox con el que se generó; si el sandbox se regenera o reemplaza, también debe regenerarse el catálogo.
 
 ### Configuración
 
@@ -93,7 +113,8 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ### Documentación
 
-- [x] `README.md` y `README.es.md` — punto de entrada bilingüe del repositorio con recorrido local completo y verificado.
+- [x] `README.md` y `README.es.md` — punto de entrada bilingüe del repositorio.
+- [x] `README.md` y `chainlit.md` — catálogo de seis escenarios y recorrido local repetible para jueces.
 - [x] `AGENTS.md` — contexto estable, decisiones de diseño, no-negociables.
 - [x] `findings/data_quality.md` — hallazgos de calidad de datos.
 - [x] `typesafe_jev/README.md` — investigación de Jev (contratos, límites, umbrales).
@@ -123,7 +144,20 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ## En progreso
 
-- Ninguno actualmente. Spec #9 está completada; el próximo componente es Spec #10.
+- Validación final del flujo de demo: suite completa, Ruff, verificación de artefactos portátiles, evaluación nativa final y recorrido manual/live de los seis casos en Chainlit. Ninguna de estas comprobaciones se declara ejecutada en esta actualización documental.
+
+### Estado de verificación del catálogo y reset
+
+- Catálogo: `uv run pytest -q tests/unit/test_demo_cases.py` — 3 tests pasaron en la entrega T1; `uv run ruff check scripts/data_preparation/12_build_demo_cases.py tests/unit/test_demo_cases.py` también pasó.
+- Reset: `uv run pytest -q tests/unit/services/test_demo_state_reset.py` — 5 tests pasaron en la entrega T2; la verificación independiente cubrió además 33 tests existentes de factory/tools y Ruff.
+- Documentación T3: `python -c "from pathlib import Path; files=[Path('README.md'),Path('chainlit.md'),Path('docs/STATUS.md')]; text='\n'.join(p.read_text(encoding='utf-8') for p in files); ids=[line.split(': ',1)[1] for line in Path('configs/demo_cases.yaml').read_text(encoding='utf-8').splitlines() if line.strip().startswith('complaint_id: ')]; assert len(ids)==6 and all(value in text for value in ids); assert 'CMP-DEMO' not in Path('chainlit.md').read_text(encoding='utf-8')"` — pasó la verificación estructural de IDs y placeholders.
+- Documentación T3: `git diff --check -- README.md chainlit.md docs/STATUS.md` — pasó sin errores de whitespace.
+- Pendiente: `uv run pytest -q`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run python scripts/verify_demo_artifacts.py` y el recorrido live/manual de Chainlit. La verificación final se ejecutará después de esta tarea documental.
+
+### Limitaciones informativas del reset
+
+- Las bases SQLite de tarjetas y escalamiento son independientes. Si el segundo paso falla después de que el primero se confirma, debe corregirse la causa y repetirse el mismo comando; el reset es idempotente y el retry es seguro.
+- `--case` restaura el estado de tarjeta a nivel de `product_id`, aunque el estado de escalamiento se acota al `complaint_id`. Otra reclamación que comparta ese producto observará el estado de tarjeta restaurado.
 
 ---
 
@@ -145,6 +179,7 @@ El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapte
 
 ## Registro de actualizaciones
 
+- **2026-10-04** — Se documentó el flujo local reproducible de seis casos: generación y validación del catálogo, arranque de Chainlit, prompts ES/PT con IDs reales, resultados esperados, dry-run, reset acotado y repetición. La verificación estructural documental y `git diff --check` pasaron; suite completa, Ruff, artefactos portátiles y recorrido live/manual permanecen pendientes de la validación final. Se registraron como límites informativos las transacciones separadas entre servicios y el alcance de tarjeta por producto para `--case`.
 - **2026-10-03** — Spec #9 v4 implementada con TDD. Se completaron configuración/casos/manifests fail-closed, aislamiento por caso con tools enlazadas a SQLite privados, worker y runner `spawn` con lifecycle parent-owned, clasificación/métricas determinísticas, reportes JSON/Markdown atómicos y CLI pública. Pasaron 150 tests de evaluación, 65 tests afectados del agente, 984 tests unitarios y 996 tests del repositorio; Ruff check, Ruff format, diff check, hashes, cobertura, independencia, APIs públicas, schemas de tools y lifecycle real `spawn` quedaron verificados. El comando productivo con modelo/Jev real no se ejecutó; se verificaron el parser, el entry point y el pipeline completo con fakes, sin generar `evals/reports/`.
 - **2026-10-02** — Spec #8 v5 verificada. Se completó la UI Chainlit como capa delgada, con startup fail-closed, composition root exacto y lazy, render seguro ES/PT, task retenido, cancelación cooperativa y reconciliación de resultados tardíos. La cobertura incluye contratos de Chainlit y smoke portable con app-roots aislados para padre e hijo. Pasaron 78 tests enfocados, 842 tests del repositorio, Ruff check, Ruff format y diff check. Permanecen explícitos el límite de durabilidad in-memory y la advertencia de deprecación de terceros Traceloop/Pydantic.
 - **2026-10-02** — Spec #7 v5 implementada con TDD. Se completaron `BankingOrchestrator`, memoria de sesión bloqueada, captura normalizada de tools, señales estrictas, idioma ES/PT, templates seguros y composición de auditoría fail-closed. El flujo cubre respuesta, clarificación, abstención, bloqueo, escalamiento, cancelación e incertidumbre de side effects; emite eventos sanitizados con lineage durable, fallback de correlación y propagación `orphaned`. La integración valida los contratos instalados de Strands 1.57.1 con modelos y adapters falsos, sin red ni llamadas reales a Jev.
