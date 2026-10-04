@@ -65,3 +65,8 @@ logs/
 Thumbs.db
 # Local Pi runtime state
 .atl/
+
+# Chainlit generated translations (keep Spanish and Portuguese variants)
+.chainlit/translations/*
+!.chainlit/translations/es*.json
+!.chainlit/translations/pt*.json
