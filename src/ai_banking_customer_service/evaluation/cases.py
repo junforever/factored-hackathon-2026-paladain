@@ -20,7 +20,7 @@ from pydantic import (
 
 from ai_banking_customer_service.agent.orchestrator import EscalationType, TurnAction
 from ai_banking_customer_service.agent.tools import REGISTERED_TOOLS
-from ai_banking_customer_service.config import PROJECT_ROOT
+from ai_banking_customer_service.config import PROJECT_ROOT, settings
 
 _MAX_RESULT_BYTES = 16 * 1024 * 1024
 MAX_CASE_ID_LENGTH = 128
@@ -60,6 +60,7 @@ Scenario = Literal[
 Language = Literal["es", "pt"]
 _REGISTERED_TOOL_NAMES = frozenset(tool.tool_name for tool in REGISTERED_TOOLS)
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+_RUNTIME_SANDBOX_PATH = settings.sandbox_full_path
 
 
 def _nonempty_string(value: object) -> object:
@@ -116,6 +117,8 @@ class EvalConfig(_StrictModel):
     dataset_version: str
     held_out_manifest: Path
     development_manifest: Path
+    sandbox_file: Path
+    sandbox_sha256: str
     output_dir: Path
     baseline: Literal["all_human"]
     case_timeout_seconds: float
@@ -129,11 +132,20 @@ class EvalConfig(_StrictModel):
         return _nonempty_string(value)
 
     @field_validator(
-        "held_out_manifest", "development_manifest", "output_dir", mode="before"
+        "held_out_manifest",
+        "development_manifest",
+        "sandbox_file",
+        "output_dir",
+        mode="before",
     )
     @classmethod
     def _paths_stay_in_project(cls, value: object) -> Path:
         return _project_path(value)
+
+    @field_validator("sandbox_sha256", mode="before")
+    @classmethod
+    def _sandbox_sha256_is_hex(cls, value: object) -> object:
+        return _validate_sha256(value)
 
     @field_validator("case_timeout_seconds", "grace_period_seconds", mode="before")
     @classmethod
@@ -178,6 +190,7 @@ class EvalManifest(_StrictModel):
     dataset_version: str
     cases_file: Path
     sha256: str
+    sandbox_sha256: str
     frozen_at: str
     owner: str
     total_cases: int
@@ -192,13 +205,10 @@ class EvalManifest(_StrictModel):
     def _cases_file_stays_in_project(cls, value: object) -> Path:
         return _project_path(value)
 
-    @field_validator("sha256", mode="before")
+    @field_validator("sha256", "sandbox_sha256", mode="before")
     @classmethod
     def _sha256_is_hex(cls, value: object) -> object:
-        _nonempty_string(value)
-        if _SHA256_PATTERN.fullmatch(value) is None:
-            raise ValueError("sha256 must be a lowercase 64-character hex digest")
-        return value
+        return _validate_sha256(value)
 
     @field_validator("total_cases", mode="before")
     @classmethod
@@ -362,6 +372,14 @@ def load_eval_cases(
         raise ValueError("held-out dataset_version does not match config")
     if held_manifest.pipeline_version != config.pipeline_version:
         raise ValueError("held-out pipeline_version does not match config")
+    if config.sandbox_file.resolve() != _RUNTIME_SANDBOX_PATH.resolve():
+        raise ValueError("configured sandbox file does not match runtime settings")
+    if (
+        held_manifest.sandbox_sha256 != config.sandbox_sha256
+        or development_manifest.sandbox_sha256 != config.sandbox_sha256
+    ):
+        raise ValueError("manifest sandbox identity does not match config")
+    _verify_file_hash(config.sandbox_file, config.sandbox_sha256, "sandbox")
 
     held_bytes = held_manifest.cases_file.read_bytes()
     development_bytes = development_manifest.cases_file.read_bytes()
@@ -480,9 +498,28 @@ def _read_json(path: Path) -> object:
         return json.load(manifest_file)
 
 
+def _validate_sha256(value: object) -> object:
+    _nonempty_string(value)
+    if _SHA256_PATTERN.fullmatch(value) is None:
+        raise ValueError("sha256 must be a lowercase 64-character hex digest")
+    return value
+
+
 def _verify_hash(payload: bytes, expected: str, role: str) -> None:
     if hashlib.sha256(payload).hexdigest() != expected:
         raise ValueError(f"{role} cases sha256 does not match manifest")
+
+
+def _verify_file_hash(path: Path, expected: str, role: str) -> None:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise ValueError(f"{role} file is unavailable: {path}") from error
+    if digest.hexdigest() != expected:
+        raise ValueError(f"{role} sha256 does not match config")
 
 
 def _parse_cases(payload: bytes, role: str) -> list[EvalCase]:

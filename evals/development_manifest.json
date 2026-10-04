@@ -1,7 +1,8 @@
 {
-  "dataset_version": "development-1.0.1",
-  "cases_file": "evals/cases/development_v1.0.1.yaml",
-  "sha256": "2029922b4febd76fbf72e8f0f14f128e8d3768494a7272239299c91f7fb3de7e",
+  "dataset_version": "development-1.0.2",
+  "cases_file": "evals/cases/development_v1.0.2.yaml",
+  "sha256": "c72b17a4b102c0bff3f26e7b4d26c212df40cbbc94baa822a0c393b2a089dc4d",
+  "sandbox_sha256": "5b80c6e487a9333f9045632aa66d6636c1d7b896689b85a4f2180289e56a8dd1",
   "frozen_at": "2026-10-02T12:00:00Z",
   "owner": "equipo-hackathon",
   "total_cases": 30

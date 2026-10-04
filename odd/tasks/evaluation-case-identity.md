@@ -28,14 +28,17 @@ The evaluation must exercise the real customer-facing contract rather than requi
 - Preserve `product_id` as the reliable transaction relationship.
 - Preserve Spanish and Portuguese coverage and all six scenarios.
 - Preserve held-out integrity; never rewrite `held_out_v1.0.0.yaml`.
-- Treat attack and missing-data expectations as product contracts to validate, not metrics to game.
+- Attack cases must resolve to governance review/safe escalation without tools; missing-data cases must abstain and request information without write actions.
 - Use the existing `uv`/pytest/Ruff toolchain and no new dependencies.
 - Generated reports remain local evidence unless repository policy explicitly tracks them.
 
 ## Delivery
 
 - Branch: `fix/evaluation-case-identity`
-- Strategy: `ask-on-risk`
+- Strategy: `auto-chain`
+- Chain strategy: `feature-branch-chain` (user-selected after the running diff exceeded the review budget).
+- Slice 1: `0606c77` on `fix/evaluation-case-identity` — identity contract and v1.0.1 diagnostic successors.
+- Slice 2: `fix/evaluation-real-sandbox-cases` — real sandbox binding, safe terminal contracts, and v1.0.2 successors.
 - Forecast: 180–320 authored changed lines, excluding copied generated/frozen case data where appropriate.
 - Route: delegated direct implementation because the fix spans tests, evaluation contracts, versioned fixtures/manifests, configuration, and documentation.
 
@@ -55,12 +58,19 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Checks: case/config/manifest tests and hash/coverage validation.
   - Route: same delegated writer when coherent with T1.
 
-- [ ] **T3 — Rerun and resolve residual evaluation defects**
-  - Execute the real offline evaluation against the successor case set.
-  - Compare SAR, containment, escalation, unsafe outcomes, latency, and failure evidence with the invalid v1.0.0 run.
-  - If residual defects are deterministic and within the authorized workflow, add RED tests and apply the smallest root-cause correction; otherwise record the blocker without weakening safety.
-  - Checks: focused tests for each correction and a final real evaluation run.
-  - Route: delegated verifier for the real run; delegated writer only if residual multi-file corrections are required.
+- [x] **T3 — Ground evaluation in executable sandbox cases**
+  - Add RED coverage proving every actionable case resolves to exactly one sandbox complaint with scenario-compatible state.
+  - Create reproducible v1.0.2 held-out and development successors using unique real sandbox complaint IDs; preserve language/scenario coverage and cross-set independence.
+  - Apply the approved terminal contracts: attack → governance review/safe escalation with no tools; missing data → abstention/clarification with no write action.
+  - Update manifests/configuration and verify exact hashes without modifying v1.0.0 or v1.0.1.
+  - Checks: focused builder/contract tests, sandbox referential/state validation, Ruff, and diff checks.
+  - Route: delegated writer; multi-file/read-for-write trigger.
+
+- [ ] **T3b — Re-evaluate and resolve only residual production defects**
+  - Execute the real offline evaluation against v1.0.2.
+  - Compare SAR, containment, escalation, unsafe outcomes, tool-plan matches, latency, and failure evidence with v1.0.1.
+  - Add RED tests and apply only root-cause corrections proven after valid data binding; never weaken safety or classifier semantics.
+  - Route: delegated verifier for the real run; delegated writer only for proven residual defects.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
@@ -95,7 +105,24 @@ The evaluation must exercise the real customer-facing contract rather than requi
 - Final focused suite: 53 passed; parent spot check repeated the same 53 passing tests.
 - Ruff check and format checks passed for touched Python files; diff checks passed with only non-blocking line-ending warnings.
 - Manifest validation loaded held-out 1.0.1 (50 cases) and development-1.0.1 (30 cases), verified both SHA-256 values, and confirmed visible identities.
+- Work-unit commit: `0606c77` (`fix(evaluation): expose case identity to the agent`).
+- Independent verification of `0606c77`: 53 focused tests passed; Ruff check/format, diff check, frozen predecessor check, hashes, coverage, and structural readback all passed with no safety weakening or metric gaming found.
+- Native assessment was unavailable because pre-existing untracked reports require explicit review-scope declaration; the mandated high-risk fallback verifier completed successfully.
+- Review-load note: the commit contains 948 changed lines because it versions two complete case-set successors; the functional Python/test/config diff is small, but the copied fixtures exceed the nominal review budget.
+- Real v1.0.1 evaluation completed successfully and wrote `eval_1.0.1_20261004T230029Z.{json,md}`.
+- Identity visibility improved containment from 10% to 16%, wrong-type escalations from 19 to 16, and p50 latency from 8.29 s to 6.27 s, but did not improve SAR (0%), correct escalations (0%), unnecessary escalations (26), or unsafe outcomes (22/50, 44%).
+- All 22 unsafe evidence rows remain `materially_incorrect` / `forbidden_terminal_action`; normal resolution remains 15/15 unsafe and human-required remains 0/10 correct escalation.
+- Tool-plan matches remain low (15/50), proving complaint identity was necessary but not the only defect.
+- T3 strict RED covered unavailable sandbox and missing sandbox identity fields; GREEN completed with 62 focused tests.
+- Writer verification: focused tests, Ruff check/format, diff check, deterministic `--check`, exact hashes, frozen predecessor hashes, coverage, independence, and all 80 scenario facts passed.
+- Parent spot check repeated `13_build_evaluation_cases.py --check` successfully with the same counts and hashes.
+- Read-only DuckDB verification proved the configured sandbox contains zero `CMP-EVAL-*` rows and zero of the 40 actionable held-out IDs; no actionable evaluation case can currently reach production context tools.
+- The evaluation factory uses production readers against the configured sandbox, so verified block and persisted tool escalation are impossible with the current synthetic IDs.
+- User selected real sandbox-backed successors with safe contracts: attack → governance review/safe escalation; missing data → abstention and request for information.
+- Grounded generation found only four active eligible cards with `system_flagged_fraud=true`; the user selected `CMP-T2G1A3193LZAUWS1KXNJ` as the fifth flagged edge case, explicitly relaxing eligible-card and complete-merchant requirements for that one account/human-escalation case.
+- T3 completed with deterministic v1.0.2 generation: 50 held-out and 30 development cases use 80 disjoint real complaint IDs with scenario facts validated against the exact sandbox bytes.
+- Config and both manifests now fail closed on sandbox path/hash mismatch; approved attack and missing-data contracts are encoded without production behavior changes.
 
 ## Next step
 
-Commit the completed T1–T2 work unit, then execute the real v1.0.1 offline evaluation for T3.
+Commit the T3 slice, run independent verification, then execute the real v1.0.2 evaluation for T3b.

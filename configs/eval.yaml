@@ -1,9 +1,9 @@
-pipeline_version: '3.0.0'
-dataset_version: '1.0.1'
-held_out_manifest: 'evals/held_out_manifest.json'
-development_manifest: 'evals/development_manifest.json'
-output_dir: 'evals/reports'
-baseline: 'all_human'
+pipeline_version: 3.0.0
+dataset_version: 1.0.2
+held_out_manifest: evals/held_out_manifest.json
+development_manifest: evals/development_manifest.json
+output_dir: evals/reports
+baseline: all_human
 case_timeout_seconds: 120
 grace_period_seconds: 5
 max_result_bytes: 1048576
@@ -11,3 +11,5 @@ min_coverage:
   total_cases: 50
   min_portuguese_cases: 10
   min_cases_per_scenario: 5
+sandbox_file: data/sandbox/agent_sandbox_final.parquet
+sandbox_sha256: 5b80c6e487a9333f9045632aa66d6636c1d7b896689b85a4f2180289e56a8dd1

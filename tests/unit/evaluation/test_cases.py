@@ -27,6 +27,8 @@ def _config_payload() -> dict:
         "dataset_version": "1.0.0",
         "held_out_manifest": "evals/held_out_manifest.json",
         "development_manifest": "evals/development_manifest.json",
+        "sandbox_file": "data/sandbox/agent_sandbox_final.parquet",
+        "sandbox_sha256": "0" * 64,
         "output_dir": "evals/reports",
         "baseline": "all_human",
         "case_timeout_seconds": 120,
@@ -44,10 +46,17 @@ def test_load_eval_config_resolves_normative_paths_inside_project() -> None:
     config = load_eval_config(PROJECT_ROOT / "configs" / "eval.yaml")
 
     assert config.pipeline_version == "3.0.0"
-    assert config.dataset_version == "1.0.1"
+    assert config.dataset_version == "1.0.2"
     assert config.held_out_manifest == PROJECT_ROOT / "evals/held_out_manifest.json"
     assert config.development_manifest == (
         PROJECT_ROOT / "evals/development_manifest.json"
+    )
+    assert config.sandbox_file == (
+        PROJECT_ROOT / "data/sandbox/agent_sandbox_final.parquet"
+    )
+    assert (
+        config.sandbox_sha256
+        == "5b80c6e487a9333f9045632aa66d6636c1d7b896689b85a4f2180289e56a8dd1"
     )
     assert config.output_dir == PROJECT_ROOT / "evals/reports"
     assert config.baseline == "all_human"
@@ -116,6 +125,7 @@ def test_eval_config_forbids_unknown_fields() -> None:
         ("pipeline_version", ""),
         ("dataset_version", "   "),
         ("held_out_manifest", ""),
+        ("sandbox_sha256", "not-a-hash"),
         ("case_timeout_seconds", 0),
         ("case_timeout_seconds", float("inf")),
         ("grace_period_seconds", -1),
@@ -408,7 +418,9 @@ def test_short_messages_use_the_complete_token_sequence_as_one_shingle() -> None
         validate_held_out_independence([held], [development], b"held", b"development")
 
 
-def _write_dataset(root: Path) -> tuple[EvalConfig, Path, Path]:
+def _write_dataset(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[EvalConfig, Path, Path]:
     cases_dir = root / "evals" / "cases"
     cases_dir.mkdir(parents=True)
     scenarios = [
@@ -446,6 +458,11 @@ def _write_dataset(root: Path) -> tuple[EvalConfig, Path, Path]:
     development_file.write_text(
         yaml.safe_dump(development_payload, sort_keys=False), encoding="utf-8"
     )
+    sandbox_file = root / "data" / "sandbox" / "sandbox.parquet"
+    sandbox_file.parent.mkdir(parents=True)
+    sandbox_file.write_bytes(b"validated sandbox identity")
+    monkeypatch.setattr(cases_module, "_RUNTIME_SANDBOX_PATH", sandbox_file)
+    sandbox_sha256 = hashlib.sha256(sandbox_file.read_bytes()).hexdigest()
     held_manifest = root / "evals" / "held.json"
     development_manifest = root / "evals" / "development.json"
     held_manifest.write_text(
@@ -455,6 +472,7 @@ def _write_dataset(root: Path) -> tuple[EvalConfig, Path, Path]:
                 "pipeline_version": "3.0.0",
                 "cases_file": "evals/cases/custom-held.yaml",
                 "sha256": hashlib.sha256(held_file.read_bytes()).hexdigest(),
+                "sandbox_sha256": sandbox_sha256,
                 "frozen_at": "2026-10-02T12:00:00Z",
                 "owner": "evaluation-team",
                 "total_cases": 6,
@@ -473,6 +491,7 @@ def _write_dataset(root: Path) -> tuple[EvalConfig, Path, Path]:
                 "dataset_version": "development-1.0.0",
                 "cases_file": "evals/cases/custom-development.yaml",
                 "sha256": hashlib.sha256(development_file.read_bytes()).hexdigest(),
+                "sandbox_sha256": sandbox_sha256,
                 "frozen_at": "2026-10-02T12:00:00Z",
                 "owner": "evaluation-team",
                 "total_cases": 1,
@@ -483,6 +502,8 @@ def _write_dataset(root: Path) -> tuple[EvalConfig, Path, Path]:
     config_payload = _config_payload()
     config_payload["held_out_manifest"] = "evals/held.json"
     config_payload["development_manifest"] = "evals/development.json"
+    config_payload["sandbox_file"] = "data/sandbox/sandbox.parquet"
+    config_payload["sandbox_sha256"] = sandbox_sha256
     config_payload["min_coverage"] = {
         "total_cases": 6,
         "min_portuguese_cases": 1,
@@ -496,7 +517,7 @@ def test_loader_uses_declared_files_and_validates_both_hashes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
-    config, held_manifest, development_manifest = _write_dataset(tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
 
     cases = load_eval_cases(held_manifest, development_manifest, config)
 
@@ -507,7 +528,7 @@ def test_loader_resolves_relative_manifest_arguments_from_project_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
-    config, _, _ = _write_dataset(tmp_path)
+    config, _, _ = _write_dataset(tmp_path, monkeypatch)
 
     cases = load_eval_cases(
         Path("evals/held.json"),
@@ -523,7 +544,7 @@ def test_loader_rejects_hash_mismatch(
     dataset: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
-    config, held_manifest, development_manifest = _write_dataset(tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
     manifest_path = held_manifest if dataset == "held" else development_manifest
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     payload["sha256"] = "0" * 64
@@ -533,12 +554,61 @@ def test_loader_rejects_hash_mismatch(
         load_eval_cases(held_manifest, development_manifest, config)
 
 
+def test_loader_rejects_sandbox_path_that_differs_from_runtime_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        cases_module, "_RUNTIME_SANDBOX_PATH", tmp_path / "different.parquet"
+    )
+
+    with pytest.raises(ValueError, match="runtime settings"):
+        load_eval_cases(held_manifest, development_manifest, config)
+
+
+def test_loader_rejects_configured_sandbox_hash_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    config.sandbox_file.write_bytes(b"different sandbox bytes")
+
+    with pytest.raises(ValueError, match="sandbox sha256"):
+        load_eval_cases(held_manifest, development_manifest, config)
+
+
+def test_loader_rejects_unavailable_configured_sandbox(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    config = config.model_copy(update={"sandbox_file": tmp_path / "missing.parquet"})
+    monkeypatch.setattr(cases_module, "_RUNTIME_SANDBOX_PATH", config.sandbox_file)
+
+    with pytest.raises(ValueError, match="sandbox file is unavailable"):
+        load_eval_cases(held_manifest, development_manifest, config)
+
+
+def test_loader_rejects_manifest_sandbox_identity_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    payload = json.loads(development_manifest.read_text(encoding="utf-8"))
+    payload["sandbox_sha256"] = "0" * 64
+    development_manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="sandbox identity"):
+        load_eval_cases(held_manifest, development_manifest, config)
+
+
 @pytest.mark.parametrize("count_field", ["total_cases", "coverage.total_cases"])
 def test_loader_rejects_declared_count_mismatch(
     count_field: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
-    config, held_manifest, development_manifest = _write_dataset(tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
     payload = json.loads(held_manifest.read_text(encoding="utf-8"))
     if count_field == "total_cases":
         payload["total_cases"] = 7
@@ -555,6 +625,7 @@ def test_manifest_rejects_invalid_identity_and_unknown_fields() -> None:
         "dataset_version": "1.0.0",
         "cases_file": "evals/cases/file.yaml",
         "sha256": "not-a-hash",
+        "sandbox_sha256": "also-not-a-hash",
         "frozen_at": "2026-10-02T12:00:00Z",
         "owner": "evaluation-team",
         "total_cases": True,
@@ -565,8 +636,11 @@ def test_manifest_rejects_invalid_identity_and_unknown_fields() -> None:
         EvalManifest.model_validate(payload)
 
 
-def test_committed_fixtures_match_hash_identity_coverage_and_independence() -> None:
+def test_committed_fixtures_match_hash_identity_coverage_and_independence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     config = load_eval_config(PROJECT_ROOT / "configs" / "eval.yaml")
+    monkeypatch.setattr(cases_module, "_RUNTIME_SANDBOX_PATH", config.sandbox_file)
 
     cases = load_eval_cases(
         config.held_out_manifest,
@@ -594,10 +668,12 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence() -> N
     development_manifest = json.loads(
         config.development_manifest.read_text(encoding="utf-8")
     )
-    assert held_manifest["dataset_version"] == "1.0.1"
-    assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.1.yaml"
-    assert development_manifest["dataset_version"] == "development-1.0.1"
-    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.1.yaml"
+    assert held_manifest["dataset_version"] == "1.0.2"
+    assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.2.yaml"
+    assert development_manifest["dataset_version"] == "development-1.0.2"
+    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.2.yaml"
+    assert held_manifest["sandbox_sha256"] == config.sandbox_sha256
+    assert development_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert (
         held_manifest["sha256"]
         == hashlib.sha256(
@@ -621,4 +697,16 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence() -> N
             (PROJECT_ROOT / "evals/cases/development_v1.0.0.yaml").read_bytes()
         ).hexdigest()
         == "f273a972c758418d2095b3947e2a9f12448bf7e5a4e00ad0ec3635a94a5c8584"
+    )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/held_out_v1.0.1.yaml").read_bytes()
+        ).hexdigest()
+        == "380f06f4f39ad7bdafd8b70d71160a362d113954dc67917871054f32ac882f4b"
+    )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/development_v1.0.1.yaml").read_bytes()
+        ).hexdigest()
+        == "2029922b4febd76fbf72e8f0f14f128e8d3768494a7272239299c91f7fb3de7e"
     )

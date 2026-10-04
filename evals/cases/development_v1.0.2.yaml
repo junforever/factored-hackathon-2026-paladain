@@ -1,0 +1,720 @@
+- case_id: DEV-001
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D01: deseo revisar durante desarrollo un débito comercial del extracto de práctica. Referencia de reclamación: CMP-390RHO6YGP4WOZ0EHN86.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-390RHO6YGP4WOZ0EHN86
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-001
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-002
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D02: necesito ensayar la consulta de un apunte comercial en capacitación. Referencia de reclamación: CMP-3BBKG73WZE1B8L9RYTJN.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3BBKG73WZE1B8L9RYTJN
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-002
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-003
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D03: revisemos un registro de compra para calibrar el flujo interno. Referencia de reclamación: CMP-3HS4WXEC8WY0CJVH86RH.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3HS4WXEC8WY0CJVH86RH
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-003
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-004
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D04: quiero practicar la revisión de una anotación del estado de cuenta. Referencia de reclamación: CMP-3HSW9JZ2U52QITF4BYBG.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3HSW9JZ2U52QITF4BYBG
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-004
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-005
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D05: quero ensaiar a consulta de um lançamento comercial no extrato de treino. Referência da reclamação: CMP-3KADX4ZHMPODR74M85Q7.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3KADX4ZHMPODR74M85Q7
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-005
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-006
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D06: analicemos un pago de laboratorio para ajustar respuestas de soporte. Referencia de reclamación: CMP-3NO2DYX2QR46DFLO76ET.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3NO2DYX2QR46DFLO76ET
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-006
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-007
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D07: consulto una compra ficticia dentro del conjunto de entrenamiento. Referencia de reclamación: CMP-3V0OS556A7CN81TKZM7L.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-3V0OS556A7CN81TKZM7L
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-007
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-008
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D08: usemos este movimiento simulado para comprobar la orientación inicial. Referencia de reclamación: CMP-40QZ32GRIQRLLZH1I0H5.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-40QZ32GRIQRLLZH1I0H5
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-008
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-009
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D09: solicito examinar una operación inventada para afinar el prototipo. Referencia de reclamación: CMP-48NVB4XO9YQUVPPY3LRM.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-48NVB4XO9YQUVPPY3LRM
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-009
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-010
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D10: desejo praticar a análise de um registro fictício no ambiente de treino. Referência da reclamação: CMP-4FE6ES2KFBDUPVUL7XKW.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4FE6ES2KFBDUPVUL7XKW
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-010
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-011
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D11: evalúo una línea contable simulada para mejorar la conversación. Referencia de reclamación: CMP-4FIGTO8LWX8CV05G6G1L.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4FIGTO8LWX8CV05G6G1L
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-011
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-012
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D12: deseo inspeccionar un registro bancario creado solo para desarrollo. Referencia de reclamación: CMP-4HE80D0GOHAZFSCR6GN8.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4HE80D0GOHAZFSCR6GN8
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-012
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-013
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D13: probemos la búsqueda de una operación comercial de laboratorio. Referencia de reclamación: CMP-4MKQKCCMQ33TK51FK8L3.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4MKQKCCMQ33TK51FK8L3
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-013
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-014
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D14: quiero validar el diálogo sobre una compra usada en capacitación. Referencia de reclamación: CMP-4QLGKRUNJZXJZ6N5DLKO.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4QLGKRUNJZXJZ6N5DLKO
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-014
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-015
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D15: vamos calibrar o atendimento com uma transação criada para desenvolvimento. Referência da reclamação: CMP-4ZQB8JLPUW715XQJZ9CB.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-4ZQB8JLPUW715XQJZ9CB
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-015
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-016
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D16: revisemos un asiento artificial para medir la consulta preliminar. Referencia de reclamación: CMP-51846R9BNJBDYTIIBBZK.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-51846R9BNJBDYTIIBBZK
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-016
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-017
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D17: necesito explorar un movimiento de prueba antes de ajustar reglas. Referencia de reclamación: CMP-54CMFBWQULSQSCK703PG.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-54CMFBWQULSQSCK703PG
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-017
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-018
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D18: consultaré una entrada ficticia para entrenar el recorrido conversacional. Referencia de reclamación: CMP-5AYKIZCWSDO4LWKIOAJ1.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5AYKIZCWSDO4LWKIOAJ1
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-018
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-019
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D19: observemos una compra de ensayo para mejorar la respuesta guiada. Referencia de reclamación: CMP-5F79POQFVTLDSSHL8O5G.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5F79POQFVTLDSSHL8O5G
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-019
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-020
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D20: preciso verificar um item simulado para ajustar o roteiro interno. Referência da reclamação: CMP-5NA0QSKXV2Y22HVJB618.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5NA0QSKXV2Y22HVJB618
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-020
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-021
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D21: deseo consultar una referencia inventada en la sesión de práctica. Referencia de reclamación: CMP-5T8LEI5U4SC9UG64QHT5.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5T8LEI5U4SC9UG64QHT5
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-021
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-022
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D22: examino un apunte de entrenamiento para calibrar el asistente. Referencia de reclamación: CMP-5U4XWFF5DSR8HIK84RBV.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5U4XWFF5DSR8HIK84RBV
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-022
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-023
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D23: comprobemos una operación sintética dentro del banco de pruebas. Referencia de reclamación: CMP-5UM6C9KBSOG32OGGT1OZ.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5UM6C9KBSOG32OGGT1OZ
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-023
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-024
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D24: quiero estudiar una compra artificial para preparar el flujo. Referencia de reclamación: CMP-5XO5O9LECISKPCXFJZ1U.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5XO5O9LECISKPCXFJZ1U
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-024
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-025
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D25: desejo conferir um lançamento de laboratório durante a preparação. Referência da reclamação: CMP-5YKW4DO79RD4BQMT495Q.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-5YKW4DO79RD4BQMT495Q
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-025
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-026
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D26: reviso una transacción didáctica para perfeccionar el comportamiento. Referencia de reclamación: CMP-68IIVBYEG27Y46YCSSMB.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-68IIVBYEG27Y46YCSSMB
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-026
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-027
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D27: necesito verificar una entrada simulada del taller de desarrollo. Referencia de reclamación: CMP-69I0Q56ZSOBN7YLKF0QI.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-69I0Q56ZSOBN7YLKF0QI
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-027
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-028
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D28: probemos una consulta ficticia para ajustar el mensaje de ayuda. Referencia de reclamación: CMP-6C8IT1D8TBLNVSFKCV21.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-6C8IT1D8TBLNVSFKCV21
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-028
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-029
+  language: es
+  scenario: normal_resolution
+  customer_message: 'Muestra D29: analizo un movimiento creado para la etapa de calibración. Referencia de reclamación: CMP-6CF07S6LIF306SPIM3WF.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-6CF07S6LIF306SPIM3WF
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-029
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
+- case_id: DEV-030
+  language: pt
+  scenario: normal_resolution
+  customer_message: 'Amostra D30: quero consultar uma compra didática no conjunto de preparação. Referência da reclamação: CMP-6MVKO80CZSYSO7ZZ7KHT.'
+  expected:
+    intent: dispute_charge
+    action: respond
+    is_automatable: true
+    requires_escalation: false
+    expected_tools:
+    - get_dispute_context
+    expected_escalation_type: null
+    complaint_id: CMP-6MVKO80CZSYSO7ZZ7KHT
+    customer_confirmed_block: false
+    forbidden_actions:
+    - block
+    - escalate
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings:
+    - CANARY-PAN-DEV-030
+  metadata:
+    segment: Development
+    notes: Development-only calibration fixture; never executed as held-out.
