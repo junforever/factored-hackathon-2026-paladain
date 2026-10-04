@@ -36,8 +36,8 @@ A generated catalog plus a bounded reset workflow makes the portable demo easy t
 - Branch point: `c1e66a399f873a3823506cefa33d79de1047c6f2`
 - Strategy: `auto-chain` with `chain_strategy=feature-branch-chain`, selected by the user after T1 reached 410 authored lines.
 - Forecast: revised from approximately 350 to more than 400 authored changed lines; generated catalog data excluded.
-- Running authored count: 410 lines from T1.
-- Planned slices: PR 1 contains T1 commit `5fac720`; PR 2 will contain the reset work unit; PR 3 will contain documentation and final integration evidence.
+- Running authored count: 923 lines across T1 and T2.
+- Planned slices: PR 1 contains T1 commit `5fac720`; PR 2 contains reset commit `ad02e04`; PR 3 will contain documentation and final integration evidence.
 - Native review boundary: each work-unit commit, subject to the repository RDD switch and native assessment.
 
 ## Tasks
@@ -60,10 +60,10 @@ Acceptance:
 
 ### T2 — Reset catalog demo state safely
 
-- [ ] Add failing tests for scoped cleanup, idempotency, preservation of unrelated rows/files, transactional verification, and lock failure behavior.
-- [ ] Add minimal service reset operations and a CLI that defaults to catalog scope.
-- [ ] Observe focused GREEN, triangulate relevant alternate cases, and record evidence.
-- [ ] Commit as one Conventional Commit work unit.
+- [x] Add failing tests for scoped cleanup, idempotency, preservation of unrelated rows/files, transactional verification, and lock failure behavior.
+- [x] Add minimal service reset operations and a CLI that defaults to catalog scope.
+- [x] Observe focused GREEN, triangulate relevant alternate cases, and record evidence.
+- [x] Commit as one Conventional Commit work unit.
 
 Route: delegated to `gentle-ai-worker` because multiple service/CLI/test files trigger mandatory delegation.
 
@@ -98,6 +98,8 @@ Acceptance:
 - 2026-10-04: T1 generated six deterministic, sandbox-validated demo cases without modifying Parquet, DuckDB, or SQLite state.
 - 2026-10-04: T1 committed as `5fac720ed361cd37150dfbe25fd17cfd2748362d`; its 410 authored lines triggered the configured `ask-on-risk` delivery decision.
 - 2026-10-04: User selected `feature-branch-chain`; delivery will use three focused slices for catalog, reset, and documentation.
+- 2026-10-04: T2 added a catalog-scoped reset with dry-run and single-case selection; unrestricted `--all` was intentionally omitted to preserve the safe default.
+- 2026-10-04: T2 committed as `ad02e04d412c7b16ed4f87847809b96c15dd0768`.
 
 ## Verification evidence
 
@@ -111,8 +113,26 @@ Acceptance:
 - Parent spot check: `uv run pytest -q tests/unit/test_demo_cases.py` — 3 passed in 1.47s.
 - Rollback boundary: remove `configs/demo_cases.yaml`, `scripts/data_preparation/12_build_demo_cases.py`, and `tests/unit/test_demo_cases.py`.
 - Commit: `5fac720ed361cd37150dfbe25fd17cfd2748362d` (`feat(demo): add reproducible case catalog`).
-- Native assessment: unavailable because the untracked ODD feature document required explicit declaration; native plan treats the candidate as high risk and requires an independent verifier.
+- Initial native assessment: unavailable because the untracked ODD feature document required explicit declaration.
+- Final native assessment after committing tracking metadata: medium risk (`configuration_change`); writer verification stood without a separate verifier.
+- Native review: approved and acknowledged; lineage `review-6599edc08586ca8f`, consumed revision `sha256:9444eb7faf9dfe6801626f7d4e3887221f2616c52f6e1bb10b457220b0773cdb`.
+- Advisory follow-up: `R3-edge-card-selector` at `scripts/data_preparation/12_build_demo_cases.py:130-135` was informational and opened no correction.
+
+### T2
+
+- RED: `uv run pytest -q tests/unit/services/test_demo_state_reset.py` — 1 failed because the reset CLI did not exist.
+- GREEN: focused reset behavior passed with 1 test after minimum implementation.
+- TRIANGULATE/REFACTOR: 5 tests passed in 1.60s covering scope, preservation, idempotency, dry-run, selection, locking, database errors, and CLI failure.
+- Worker lint: Ruff passed for both services, the reset CLI, and reset tests.
+- Worker dry-run: validated six catalog complaints/products and reported zero matching rows without mutation.
+- Invalid requested check: two nonexistent service test paths caused exit 4; repository inspection confirmed the authorization error.
+- Independent verifier: 5 reset tests and 33 existing factory/tool tests passed; Ruff, dry-run, and `git diff --check` passed.
+- Parent spot check: `uv run pytest -q tests/unit/services/test_demo_state_reset.py` — 5 passed in 1.60s.
+- Risk: card and escalation databases use separate transactions; a safe targeted partial reset may require an idempotent retry if the second database fails.
+- Rollback boundary: remove `scripts/reset_demo_state.py` and `tests/unit/services/test_demo_state_reset.py`, then revert only the reset functions in both service modules.
+- Commit: `ad02e04d412c7b16ed4f87847809b96c15dd0768` (`feat(demo): add scoped state reset`).
+- Native assessment/review: pending.
 
 ## Next step
 
-Independently verify and review the T1 slice, then continue with T2.
+Run native assessment/review for the T2 slice, then delegate T3.
