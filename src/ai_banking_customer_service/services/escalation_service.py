@@ -153,3 +153,83 @@ def get_escalation(
         }
     finally:
         conn.close()
+
+
+def reset_demo_state(
+    complaint_ids: list[str],
+    *,
+    db_path: Path | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """Remove escalations for exact catalog complaints without deleting files."""
+    resolved_path = STATE_PATH if db_path is None else db_path
+    affected = {"escalations": 0}
+    if not complaint_ids or not resolved_path.is_file():
+        return {
+            "success": True,
+            "affected": affected,
+            "verification": "dry_run_no_changes" if dry_run else "confirmed_reset",
+        }
+
+    complaint_ids = sorted(set(complaint_ids))
+    placeholders = ", ".join("?" for _ in complaint_ids)
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = sqlite3.connect(
+            resolved_path.resolve().as_uri() + "?mode=rw",
+            timeout=0,
+            isolation_level=None,
+            uri=True,
+        )
+        if not dry_run:
+            conn.execute("BEGIN IMMEDIATE")
+        affected["escalations"] = conn.execute(
+            f"SELECT COUNT(*) FROM escalations "
+            f"WHERE complaint_id IN ({placeholders})",
+            complaint_ids,
+        ).fetchone()[0]
+        if dry_run:
+            return {
+                "success": True,
+                "affected": affected,
+                "verification": "dry_run_no_changes",
+            }
+
+        conn.execute(
+            f"DELETE FROM escalations WHERE complaint_id IN ({placeholders})",
+            complaint_ids,
+        )
+        remaining = conn.execute(
+            f"SELECT COUNT(*) FROM escalations "
+            f"WHERE complaint_id IN ({placeholders})",
+            complaint_ids,
+        ).fetchone()[0]
+        if remaining:
+            conn.execute("ROLLBACK")
+            return {
+                "success": False,
+                "affected": {"escalations": 0},
+                "error": "Escalation reset failed verification",
+                "verification": "reset_not_confirmed",
+            }
+        conn.execute("COMMIT")
+        return {
+            "success": True,
+            "affected": affected,
+            "verification": "confirmed_reset",
+        }
+    except sqlite3.Error as error:
+        if conn is not None:
+            try:
+                conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass
+        return {
+            "success": False,
+            "affected": {"escalations": 0},
+            "error": f"Database error: {error}",
+            "verification": "reset_failed_db_error",
+        }
+    finally:
+        if conn is not None:
+            conn.close()

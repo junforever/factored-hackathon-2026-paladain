@@ -161,3 +161,86 @@ def is_card_blocked(
         return row is not None
     finally:
         conn.close()
+
+
+def reset_demo_state(
+    product_ids: list[str],
+    *,
+    db_path: Path | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """Remove card state for exact sandbox-derived products without deleting files."""
+    resolved_path = STATE_PATH if db_path is None else db_path
+    affected = {"blocked_cards": 0, "actions_log": 0}
+    if not product_ids or not resolved_path.is_file():
+        return {
+            "success": True,
+            "affected": affected,
+            "verification": "dry_run_no_changes" if dry_run else "confirmed_reset",
+        }
+
+    product_ids = sorted(set(product_ids))
+    placeholders = ", ".join("?" for _ in product_ids)
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = sqlite3.connect(
+            resolved_path.resolve().as_uri() + "?mode=rw",
+            timeout=0,
+            isolation_level=None,
+            uri=True,
+        )
+        if not dry_run:
+            conn.execute("BEGIN IMMEDIATE")
+        for table in affected:
+            affected[table] = conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE product_id IN ({placeholders})",
+                product_ids,
+            ).fetchone()[0]
+        if dry_run:
+            return {
+                "success": True,
+                "affected": affected,
+                "verification": "dry_run_no_changes",
+            }
+
+        for table in affected:
+            conn.execute(
+                f"DELETE FROM {table} WHERE product_id IN ({placeholders})",
+                product_ids,
+            )
+        remaining = sum(
+            conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE product_id IN ({placeholders})",
+                product_ids,
+            ).fetchone()[0]
+            for table in affected
+        )
+        if remaining:
+            conn.execute("ROLLBACK")
+            return {
+                "success": False,
+                "affected": {key: 0 for key in affected},
+                "error": "Card reset failed verification",
+                "verification": "reset_not_confirmed",
+            }
+        conn.execute("COMMIT")
+        return {
+            "success": True,
+            "affected": affected,
+            "verification": "confirmed_reset",
+        }
+    except sqlite3.Error as error:
+        if conn is not None:
+            try:
+                conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass
+        return {
+            "success": False,
+            "affected": {key: 0 for key in affected},
+            "error": f"Database error: {error}",
+            "verification": "reset_failed_db_error",
+        }
+    finally:
+        if conn is not None:
+            conn.close()
