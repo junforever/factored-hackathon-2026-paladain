@@ -326,6 +326,13 @@ class EvalCase(_StrictModel):
     def _customer_message_is_nonempty(cls, value: object) -> object:
         return _nonempty_string(value)
 
+    @model_validator(mode="after")
+    def _complaint_identity_is_customer_visible(self) -> "EvalCase":
+        complaint_id = self.expected.complaint_id
+        if complaint_id is not None and complaint_id not in self.customer_message:
+            raise ValueError("customer_message must contain expected complaint_id")
+        return self
+
 
 def load_eval_config(path: Path) -> EvalConfig:
     """Load and validate evaluation configuration from YAML."""

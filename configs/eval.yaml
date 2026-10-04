@@ -1,5 +1,5 @@
 pipeline_version: '3.0.0'
-dataset_version: '1.0.0'
+dataset_version: '1.0.1'
 held_out_manifest: 'evals/held_out_manifest.json'
 development_manifest: 'evals/development_manifest.json'
 output_dir: 'evals/reports'

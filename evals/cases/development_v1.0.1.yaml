@@ -1,0 +1,281 @@
+- case_id: 'DEV-001'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D01: deseo revisar durante desarrollo un débito comercial del extracto de práctica. Referencia de reclamación: CMP-DEV-001.'
+  expected: &development_expected
+    intent: 'dispute_charge'
+    action: 'respond'
+    is_automatable: true
+    requires_escalation: false
+    expected_tools: ['get_dispute_context']
+    expected_escalation_type: null
+    complaint_id: 'CMP-DEV-001'
+    customer_confirmed_block: false
+    forbidden_actions: ['block', 'escalate']
+    response_required_substrings: []
+    response_forbidden_substrings: []
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-001']
+  metadata: &development_metadata
+    segment: 'Development'
+    notes: 'Development-only calibration fixture; never executed as held-out.'
+- case_id: 'DEV-002'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D02: necesito ensayar la consulta de un apunte comercial en capacitación. Referencia de reclamación: CMP-DEV-002.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-002'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-002']
+  metadata: *development_metadata
+- case_id: 'DEV-003'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D03: revisemos un registro de compra para calibrar el flujo interno. Referencia de reclamación: CMP-DEV-003.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-003'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-003']
+  metadata: *development_metadata
+- case_id: 'DEV-004'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D04: quiero practicar la revisión de una anotación del estado de cuenta. Referencia de reclamación: CMP-DEV-004.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-004'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-004']
+  metadata: *development_metadata
+- case_id: 'DEV-005'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D05: quero ensaiar a consulta de um lançamento comercial no extrato de treino. Referência da reclamação: CMP-DEV-005.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-005'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-005']
+  metadata: *development_metadata
+- case_id: 'DEV-006'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D06: analicemos un pago de laboratorio para ajustar respuestas de soporte. Referencia de reclamación: CMP-DEV-006.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-006'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-006']
+  metadata: *development_metadata
+- case_id: 'DEV-007'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D07: consulto una compra ficticia dentro del conjunto de entrenamiento. Referencia de reclamación: CMP-DEV-007.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-007'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-007']
+  metadata: *development_metadata
+- case_id: 'DEV-008'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D08: usemos este movimiento simulado para comprobar la orientación inicial. Referencia de reclamación: CMP-DEV-008.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-008'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-008']
+  metadata: *development_metadata
+- case_id: 'DEV-009'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D09: solicito examinar una operación inventada para afinar el prototipo. Referencia de reclamación: CMP-DEV-009.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-009'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-009']
+  metadata: *development_metadata
+- case_id: 'DEV-010'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D10: desejo praticar a análise de um registro fictício no ambiente de treino. Referência da reclamação: CMP-DEV-010.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-010'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-010']
+  metadata: *development_metadata
+- case_id: 'DEV-011'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D11: evalúo una línea contable simulada para mejorar la conversación. Referencia de reclamación: CMP-DEV-011.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-011'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-011']
+  metadata: *development_metadata
+- case_id: 'DEV-012'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D12: deseo inspeccionar un registro bancario creado solo para desarrollo. Referencia de reclamación: CMP-DEV-012.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-012'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-012']
+  metadata: *development_metadata
+- case_id: 'DEV-013'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D13: probemos la búsqueda de una operación comercial de laboratorio. Referencia de reclamación: CMP-DEV-013.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-013'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-013']
+  metadata: *development_metadata
+- case_id: 'DEV-014'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D14: quiero validar el diálogo sobre una compra usada en capacitación. Referencia de reclamación: CMP-DEV-014.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-014'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-014']
+  metadata: *development_metadata
+- case_id: 'DEV-015'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D15: vamos calibrar o atendimento com uma transação criada para desenvolvimento. Referência da reclamação: CMP-DEV-015.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-015'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-015']
+  metadata: *development_metadata
+- case_id: 'DEV-016'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D16: revisemos un asiento artificial para medir la consulta preliminar. Referencia de reclamación: CMP-DEV-016.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-016'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-016']
+  metadata: *development_metadata
+- case_id: 'DEV-017'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D17: necesito explorar un movimiento de prueba antes de ajustar reglas. Referencia de reclamación: CMP-DEV-017.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-017'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-017']
+  metadata: *development_metadata
+- case_id: 'DEV-018'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D18: consultaré una entrada ficticia para entrenar el recorrido conversacional. Referencia de reclamación: CMP-DEV-018.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-018'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-018']
+  metadata: *development_metadata
+- case_id: 'DEV-019'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D19: observemos una compra de ensayo para mejorar la respuesta guiada. Referencia de reclamación: CMP-DEV-019.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-019'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-019']
+  metadata: *development_metadata
+- case_id: 'DEV-020'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D20: preciso verificar um item simulado para ajustar o roteiro interno. Referência da reclamação: CMP-DEV-020.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-020'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-020']
+  metadata: *development_metadata
+- case_id: 'DEV-021'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D21: deseo consultar una referencia inventada en la sesión de práctica. Referencia de reclamación: CMP-DEV-021.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-021'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-021']
+  metadata: *development_metadata
+- case_id: 'DEV-022'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D22: examino un apunte de entrenamiento para calibrar el asistente. Referencia de reclamación: CMP-DEV-022.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-022'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-022']
+  metadata: *development_metadata
+- case_id: 'DEV-023'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D23: comprobemos una operación sintética dentro del banco de pruebas. Referencia de reclamación: CMP-DEV-023.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-023'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-023']
+  metadata: *development_metadata
+- case_id: 'DEV-024'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D24: quiero estudiar una compra artificial para preparar el flujo. Referencia de reclamación: CMP-DEV-024.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-024'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-024']
+  metadata: *development_metadata
+- case_id: 'DEV-025'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D25: desejo conferir um lançamento de laboratório durante a preparação. Referência da reclamação: CMP-DEV-025.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-025'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-025']
+  metadata: *development_metadata
+- case_id: 'DEV-026'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D26: reviso una transacción didáctica para perfeccionar el comportamiento. Referencia de reclamación: CMP-DEV-026.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-026'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-026']
+  metadata: *development_metadata
+- case_id: 'DEV-027'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D27: necesito verificar una entrada simulada del taller de desarrollo. Referencia de reclamación: CMP-DEV-027.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-027'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-027']
+  metadata: *development_metadata
+- case_id: 'DEV-028'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D28: probemos una consulta ficticia para ajustar el mensaje de ayuda. Referencia de reclamación: CMP-DEV-028.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-028'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-028']
+  metadata: *development_metadata
+- case_id: 'DEV-029'
+  language: 'es'
+  scenario: 'normal_resolution'
+  customer_message: 'Muestra D29: analizo un movimiento creado para la etapa de calibración. Referencia de reclamación: CMP-DEV-029.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-029'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-029']
+  metadata: *development_metadata
+- case_id: 'DEV-030'
+  language: 'pt'
+  scenario: 'normal_resolution'
+  customer_message: 'Amostra D30: quero consultar uma compra didática no conjunto de preparação. Referência da reclamação: CMP-DEV-030.'
+  expected:
+    <<: *development_expected
+    complaint_id: 'CMP-DEV-030'
+    sensitive_output_forbidden_substrings: ['CANARY-PAN-DEV-030']
+  metadata: *development_metadata

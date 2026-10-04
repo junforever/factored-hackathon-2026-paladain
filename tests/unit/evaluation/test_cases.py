@@ -44,7 +44,7 @@ def test_load_eval_config_resolves_normative_paths_inside_project() -> None:
     config = load_eval_config(PROJECT_ROOT / "configs" / "eval.yaml")
 
     assert config.pipeline_version == "3.0.0"
-    assert config.dataset_version == "1.0.0"
+    assert config.dataset_version == "1.0.1"
     assert config.held_out_manifest == PROJECT_ROOT / "evals/held_out_manifest.json"
     assert config.development_manifest == (
         PROJECT_ROOT / "evals/development_manifest.json"
@@ -162,6 +162,8 @@ def _case_payload(
     requires_escalation: bool = False,
     expected_escalation_type: str | None = None,
 ) -> dict:
+    if complaint_id is not None and complaint_id not in customer_message:
+        customer_message = f"{customer_message} {complaint_id}"
     return {
         "case_id": case_id,
         "language": language,
@@ -201,6 +203,20 @@ def test_eval_case_parses_the_exact_ground_truth_contract() -> None:
     assert case.expected.action is TurnAction.ESCALATE
     assert case.expected.expected_escalation_type is EscalationType.TOOL_ESCALATION
     assert case.metadata.segment == "Retail"
+
+
+def test_eval_case_rejects_hidden_expected_complaint_identity() -> None:
+    payload = _case_payload(complaint_id="CMP-001")
+    payload["customer_message"] = "I do not recognize this charge and confirm blocking."
+
+    with pytest.raises(ValidationError, match="customer_message"):
+        EvalCase.model_validate(payload)
+
+
+def test_eval_case_allows_null_expected_complaint_identity() -> None:
+    payload = _case_payload(complaint_id=None)
+
+    assert EvalCase.model_validate(payload).expected.complaint_id is None
 
 
 @pytest.mark.parametrize(
@@ -349,17 +365,14 @@ def test_independence_rejects_identity_and_message_leakage(
         development_payload["case_id"] = held.case_id
     elif mutation == "complaint_id":
         development_payload["expected"]["complaint_id"] = held.expected.complaint_id
+        development_payload["customer_message"] += f" {held.expected.complaint_id}"
     elif mutation == "normalized_message":
-        development_payload["customer_message"] = (
-            "  ALPHA beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
-            "nu xi omicron pi rho sigma tau upsilon phi chi psi omega one two "
-            "three four five held  "
-        )
+        development_payload["expected"]["complaint_id"] = None
+        development_payload["customer_message"] = f"  {held.customer_message.upper()}  "
     elif mutation == "near_duplicate":
-        development_payload["customer_message"] = (
-            "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
-            "nu xi omicron pi rho sigma tau upsilon phi chi psi omega one two "
-            "three four five changed"
+        development_payload["expected"]["complaint_id"] = None
+        development_payload["customer_message"] = held.customer_message.replace(
+            "CMP-HELD", "CMP-CHANGED"
         )
     development = EvalCase.model_validate(development_payload)
 
@@ -572,10 +585,19 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence() -> N
         "missing_data": 5,
         "edge_case": 5,
     }
+    assert all(
+        case.expected.complaint_id is None
+        or case.expected.complaint_id in case.customer_message
+        for case in cases
+    )
     held_manifest = json.loads(config.held_out_manifest.read_text(encoding="utf-8"))
     development_manifest = json.loads(
         config.development_manifest.read_text(encoding="utf-8")
     )
+    assert held_manifest["dataset_version"] == "1.0.1"
+    assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.1.yaml"
+    assert development_manifest["dataset_version"] == "development-1.0.1"
+    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.1.yaml"
     assert (
         held_manifest["sha256"]
         == hashlib.sha256(
@@ -587,4 +609,16 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence() -> N
         == hashlib.sha256(
             Path(development_manifest["cases_file"]).resolve().read_bytes()
         ).hexdigest()
+    )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/held_out_v1.0.0.yaml").read_bytes()
+        ).hexdigest()
+        == "1f54342841658e6227c9e8826d0a0e7a68d8e3472df6cb2fdbed55f4e7ffc170"
+    )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/development_v1.0.0.yaml").read_bytes()
+        ).hexdigest()
+        == "f273a972c758418d2095b3947e2a9f12448bf7e5a4e00ad0ec3635a94a5c8584"
     )
