@@ -36,8 +36,8 @@ A generated catalog plus a bounded reset workflow makes the portable demo easy t
 - Branch point: `c1e66a399f873a3823506cefa33d79de1047c6f2`
 - Strategy: `auto-chain` with `chain_strategy=feature-branch-chain`, selected by the user after T1 reached 410 authored lines.
 - Forecast: revised from approximately 350 to more than 400 authored changed lines; generated catalog data excluded.
-- Running authored count: 923 lines across T1 and T2.
-- Planned slices: PR 1 contains T1 commit `5fac720`; PR 2 contains reset commit `ad02e04`; PR 3 will contain documentation and final integration evidence.
+- Running authored count: 1,174 lines across T1, T2, and T3.
+- Planned slices: PR 1 contains T1 commit `5fac720`; PR 2 contains T2 commit `ad02e04`; PR 3 contains T3 commit `8bbadf4`.
 - Native review boundary: each work-unit commit, subject to the repository RDD switch and native assessment.
 
 ## Tasks
@@ -76,11 +76,11 @@ Acceptance:
 
 ### T3 — Document and verify the local demo workflow
 
-- [ ] Replace placeholder examples with the six cataloged cases and copy-ready prompts.
-- [ ] Add concise generate/run/reset instructions to the README and Chainlit guide.
-- [ ] Update `docs/STATUS.md` with the delivered workflow and remaining limitations.
-- [ ] Run focused tests, the applicable full suite, Ruff, and portable artifact verification.
-- [ ] Commit documentation and integration evidence as one Conventional Commit work unit.
+- [x] Replace placeholder examples with the six cataloged cases and copy-ready prompts.
+- [x] Add concise generate/run/reset instructions to the README and Chainlit guide.
+- [x] Update `docs/STATUS.md` with the delivered workflow and remaining limitations.
+- [x] Run focused tests, the applicable full suite, Ruff, and portable artifact verification.
+- [x] Commit documentation and integration evidence as one Conventional Commit work unit.
 
 Route: documentation write delegated to `gentle-ai-worker`; final command verification delegated to `gentle-ai-verify` when required by native assessment or verification policy.
 
@@ -100,6 +100,8 @@ Acceptance:
 - 2026-10-04: User selected `feature-branch-chain`; delivery will use three focused slices for catalog, reset, and documentation.
 - 2026-10-04: T2 added a catalog-scoped reset with dry-run and single-case selection; unrestricted `--all` was intentionally omitted to preserve the safe default.
 - 2026-10-04: T2 committed as `ad02e04d412c7b16ed4f87847809b96c15dd0768`.
+- 2026-10-04: T3 published the six-case judge workflow and reset/repeat instructions in README, Chainlit, and status documentation.
+- 2026-10-04: T3 committed as `8bbadf44e859b119881b3ab53ca8dec3ad560fb4`.
 
 ## Verification evidence
 
@@ -131,8 +133,26 @@ Acceptance:
 - Risk: card and escalation databases use separate transactions; a safe targeted partial reset may require an idempotent retry if the second database fails.
 - Rollback boundary: remove `scripts/reset_demo_state.py` and `tests/unit/services/test_demo_state_reset.py`, then revert only the reset functions in both service modules.
 - Commit: `ad02e04d412c7b16ed4f87847809b96c15dd0768` (`feat(demo): add scoped state reset`).
+- Native assessment: medium risk (`executable_change`); existing writer and independent verification evidence stood.
+- Native review: approved and acknowledged; lineage `review-cfe36180a35f72ee`, consumed revision `sha256:278d7c615c6c3b71ac38e9704cf0b4e6f559a28ce5dee336a5979e2596804e55`.
+- Advisory follow-ups: `R3-cross-db-partial-reset` and `R3-shared-product-scope` were informational and opened no correction.
+
+### T3
+
+- TDD exception: passive documentation has no meaningful RED behavior test; structural verification was used instead.
+- Worker structural checks: all six catalog IDs appeared in the docs, `CMP-DEMO` was absent from `chainlit.md`, and documentation diff checks passed.
+- Full suite: `uv run pytest -q` — 1,015 passed, 0 failed, with 1 deprecation warning.
+- Ruff: `uv run ruff check .` — all checks passed.
+- Portable artifacts: `uv run python scripts/verify_demo_artifacts.py` — 2 artifacts verified with 89,472 rows.
+- Reset dry-run: completed without mutation and reported zero matching mutable rows.
+- Documentation consistency: all six IDs documented and no Chainlit placeholder remained.
+- Parent spot check: documentation consistency command passed with no output.
+- `git diff --check` passed with only an informational line-ending warning for `chainlit.md`.
+- Manual check pending: live Chainlit interaction was not exercised because it requires the configured runtime/model credentials.
+- Rollback boundary: revert only `README.md`, `chainlit.md`, and `docs/STATUS.md`.
+- Commit: `8bbadf44e859b119881b3ab53ca8dec3ad560fb4` (`docs(demo): publish repeatable judge workflow`).
 - Native assessment/review: pending.
 
 ## Next step
 
-Run native assessment/review for the T2 slice, then delegate T3.
+Run native assessment/review for the T3 slice, record closure, and hand control back to the user.
