@@ -77,63 +77,94 @@ Combina _Card Support_ (caso normal) y _Transaction Dispute_ (caso de escalamien
 
 ## 5. Arquitectura actual
 
+Esta vista resume los componentes activos. El estado detallado y el próximo
+trabajo viven en `docs/STATUS.md`; los artefactos bajo `data/`, `duckdb/` y
+`evals/reports/` son locales o generados.
+
 ```text
+├── .chainlit/
+│   └── config.toml                    # Configuración segura de Chainlit
+├── app/
+│   ├── bootstrap.py                   # Composition root lazy e inyectable
+│   ├── chainlit_app.py                # UI delgada, turnos y cancelación
+│   └── ui_helpers.py                  # Validación y render seguro ES/PT
 ├── configs/
-│   ├── eval.yaml          # Config de evaluación held-out
-│   └── policy.yaml        # Parámetros de negocio y umbrales
-│
-├── docs/
-│   ├── STATUS.md          # Estado vivo: qué hay, qué falta
-│   ├── findings/          # Hallazgos importantes en la data del proyecto
-│   │   └── data_quality.md
-│   ├── specs/             # Especificaciones técnicas para la implementación de funcionalidades
-│   └── typesafe_jev/
-│       └── README.md      # Investigación de Jev (contratos, límites, umbrales)
-│
-├── duckdb/
-│   └── ai_banking.duckdb  # Base persistente con vistas raw_*
-│
+│   ├── eval.yaml                      # Política de evaluación held-out
+│   └── policy.yaml                    # Reglas y umbrales de negocio/gobierno
 ├── data/
-│   ├── raw/               # CSV descargados de S3
+│   ├── raw/                           # CSV fuente locales
 │   ├── sandbox/
-│   │   └── agent_sandbox_final.parquet  # Sandbox validado con Pandera
-│   └── state/             # Directorio de archivos SQLite de estado
-│       ├── card_service.sqlite3
-│       └── escalation_service.sqlite3
-│
+│   │   └── agent_sandbox_final.parquet # Sandbox validado con Pandera
+│   └── state/                         # SQLite y auditoría de ejecución local
+├── docs/
+│   ├── STATUS.md                      # Estado vivo y siguiente paso
+│   ├── observability.md               # Contrato de eventos auditables
+│   ├── findings/data_quality.md       # Hallazgos de calidad de datos
+│   ├── specs/                         # Especificaciones 1–9
+│   └── typesafe_jev/README.md         # Investigación y contratos de Jev
+├── duckdb/
+│   └── ai_banking.duckdb              # Base local con vistas raw_*
+├── evals/
+│   ├── cases/
+│   │   ├── development_v1.0.0.yaml    # Casos de desarrollo
+│   │   └── held_out_v1.0.0.yaml       # Casos held-out congelados
+│   ├── development_manifest.json      # Identidad del set de desarrollo
+│   ├── held_out_manifest.json         # Hash, versión y cobertura held-out
+│   └── reports/                       # Reportes JSON/Markdown generados
 ├── scripts/
-│   ├── data_preparation/  # Pipeline de datos y sandbox
-│   ├── diagnoses/         # Diagnóstico de integridad referencial
-│   └── tools_preparation/ # Pruebas de las tools
-│
+│   ├── data_preparation/              # Pipeline, contratos y sandbox
+│   ├── diagnoses/                     # Diagnósticos de integridad/calidad
+│   └── tools_preparation/             # Checks manuales de tools
 ├── src/ai_banking_customer_service/
-│   ├── tools/
-│   │   ├── get_dispute_context.py       # LECTURA: contexto del caso
-│   │   ├── get_recent_transactions.py   # LECTURA: transacciones del producto
-│   │   ├── block_card.py                # ACCIÓN: bloquea tarjeta (policy + verificación)
-│   │   └── escalate_case.py             # ACCIÓN: genera Structured JSON Handoff
+│   ├── agent/                         # Orquestador, hooks, sesión y tools Strands
+│   │   ├── orchestrator.py
+│   │   ├── hooks.py
+│   │   ├── session_manager.py
+│   │   ├── result_capture.py
+│   │   ├── language_detector.py
+│   │   ├── signal_parser.py
+│   │   ├── system_prompt.py
+│   │   └── tools.py
+│   ├── evaluation/                    # Evaluación offline aislada por proceso
+│   │   ├── cases.py                   # Config, manifests y casos tipados
+│   │   ├── factory.py                 # Dependencias y tools aisladas por caso
+│   │   ├── sink.py                    # Captura de auditoría para evaluación
+│   │   ├── worker.py                  # Ejecución hija compatible con spawn
+│   │   ├── runner.py                  # Lifecycle, timeout, join y cleanup
+│   │   ├── classification.py          # Unsafe outcomes y métricas
+│   │   ├── report.py                  # Reportes JSON/Markdown atómicos
+│   │   ├── cli.py
+│   │   └── __main__.py
+│   ├── governance/
+│   │   ├── adapter.py                 # Pipeline fail-closed de cuatro etapas
+│   │   └── jev/                       # Cliente, schemas, evaluaciones y decisión
+│   ├── observability/
+│   │   ├── contract.py                # Contrato tipado de eventos
+│   │   └── sink.py                    # JSONL, composición y fallback
 │   ├── services/
-│   │   ├── card_service.py              # Mock bancario, SQLite
-│   │   └── escalation_service.py        # Mock bancario, SQLite
-│   ├── agent/              # PENDIENTE: orquestador Strands
-│   ├── api/                # PENDIENTE: FastAPI backend
-│   ├── config.py           # COMPLETO: objeto Settings (pydantic-settings)
-│   ├── data_access/        # PENDIENTE: repositorios sobre DuckDB/Parquet
-│   ├── domain/             # PENDIENTE: modelos Pydantic de dominio
-│   ├── evaluation/         # PENDIENTE: métricas y runner held-out
-│   ├── governance/         # PENDIENTE: evaluaciones Jev, hooks, decisión
-│   ├── handoff/            # PENDIENTE: generación de handoff estructurado
-│   ├── observability/      # PENDIENTE: tracing, auditoría
-│   ├── policies/           # PENDIENTE: reglas duras fuera del prompt
-│   └── sandbox/            # PENDIENTE: gestión del sandbox del agente
-│
-├── app/                    # PENDIENTE: UI (Chainlit)
-├── evals/                  # PENDIENTE: casos held-out y reportes
-├── tests/                  # PENDIENTE: tests unitarios e integración
-├── AGENTS.md               # Este documento (contexto estable)
-├── .env                    # Secretos y rutas (NO commitear)
-└── .env.example            # Plantilla de .env (SÍ commitear)
+│   │   ├── card_service.py            # Mock SQLite atómico e idempotente
+│   │   └── escalation_service.py      # Persistencia de handoffs
+│   ├── tools/
+│   │   ├── get_dispute_context.py     # Contexto de la reclamación
+│   │   ├── get_recent_transactions.py # Transacciones por product_id
+│   │   ├── block_card.py              # Bloqueo con política y verificación
+│   │   └── escalate_case.py           # Structured JSON Handoff verificado
+│   └── config.py                      # Settings y Policy tipados
+├── tests/
+│   ├── unit/                          # Agente, app, evaluación y gobierno
+│   ├── contract/                      # Contratos públicos de Chainlit
+│   ├── integration/                   # Integración con Strands sin red
+│   └── smoke/                         # Arranque HTTP portable de Chainlit
+├── .env.example                       # Plantilla sin secretos
+├── chainlit.md                        # Bienvenida de la demo
+├── pyproject.toml                     # Dependencias, pytest y Ruff
+└── uv.lock                            # Lockfile reproducible
 ```
+
+Los directorios `api/`, `data_access/`, `domain/`, `handoff/`, `policies/` y
+`sandbox/` bajo `src/ai_banking_customer_service/` están reservados y no tienen
+implementación propia en las Specs 1–9. Sus responsabilidades actuales viven en
+las capas activas mostradas arriba.
 
 ---
 
