@@ -719,6 +719,94 @@ def test_manifest_rejects_invalid_identity_and_unknown_fields() -> None:
         EvalManifest.model_validate(payload)
 
 
+def test_development_manifest_targets_v104_successor() -> None:
+    manifest_path = PROJECT_ROOT / "evals/development_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    cases_path = PROJECT_ROOT / manifest["cases_file"]
+
+    assert manifest["dataset_version"] == "development-1.0.4"
+    assert manifest["cases_file"] == "evals/cases/development_v1.0.4.yaml"
+    assert manifest["sandbox_sha256"] == (
+        "5b80c6e487a9333f9045632aa66d6636c1d7b896689b85a4f2180289e56a8dd1"
+    )
+    assert manifest["total_cases"] == 30
+    assert manifest["sha256"] == hashlib.sha256(cases_path.read_bytes()).hexdigest()
+
+
+def test_development_v104_changes_only_missing_merchant_decisions() -> None:
+    previous = yaml.safe_load(
+        (PROJECT_ROOT / "evals/cases/development_v1.0.3.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    successor = yaml.safe_load(
+        (PROJECT_ROOT / "evals/cases/development_v1.0.4.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    previous_by_id = {case["case_id"]: case for case in previous}
+    successor_by_id = {case["case_id"]: case for case in successor}
+
+    assert len(successor) == 30
+    assert successor_by_id.keys() == previous_by_id.keys()
+
+    decision_changes = {
+        "DEV-021": "nombre del comercio",
+        "DEV-022": "nome do estabelecimento",
+        "DEV-025": "nombre del comercio",
+    }
+    for case_id, required_substring in decision_changes.items():
+        previous_case = previous_by_id[case_id]
+        expected_successor = previous_case | {
+            "expected": previous_case["expected"]
+            | {
+                "action": "respond",
+                "is_automatable": True,
+                "forbidden_actions": ["abstain", "block", "escalate"],
+                "response_required_substrings": [required_substring],
+            }
+        }
+        assert successor_by_id[case_id] == expected_successor
+        assert successor_by_id[case_id]["expected"]["requires_escalation"] is False
+        assert successor_by_id[case_id]["expected"]["expected_escalation_type"] is None
+
+    for case_id in previous_by_id.keys() - decision_changes.keys():
+        assert successor_by_id[case_id] == previous_by_id[case_id]
+
+    denied_context = successor_by_id["DEV-023"]["expected"]
+    assert denied_context["action"] == "abstain"
+    assert denied_context["authorization"] == {
+        "authenticated": True,
+        "product_authorized": False,
+    }
+    assert denied_context["expected_tools"] == ["get_dispute_context"]
+    assert denied_context["forbidden_actions"] == ["block", "escalate"]
+
+    unauthenticated = successor_by_id["DEV-024"]["expected"]
+    assert unauthenticated["action"] == "abstain"
+    assert unauthenticated["authorization"] == {
+        "authenticated": False,
+        "product_authorized": False,
+    }
+    assert unauthenticated["expected_tools"] == ["get_recent_transactions"]
+    assert unauthenticated["forbidden_actions"] == ["block", "escalate"]
+
+
+def test_held_out_fixture_and_manifest_keep_anchored_byte_identity() -> None:
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/held_out_v1.0.2.yaml").read_bytes()
+        ).hexdigest()
+        == "739d6cb7c3238a56b7cefffe4c683c7b1bd49222819d99c5bf13c95636e0b7e3"
+    )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/held_out_manifest.json").read_bytes()
+        ).hexdigest()
+        == "62d2bf4c7ec0feae2c23e80efed1ef74efa6808775f0453a2a763c645cdf6de9"
+    )
+
+
 def test_committed_fixtures_match_hash_identity_coverage_and_independence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -753,8 +841,8 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
     )
     assert held_manifest["dataset_version"] == "1.0.2"
     assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.2.yaml"
-    assert development_manifest["dataset_version"] == "development-1.0.3"
-    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.3.yaml"
+    assert development_manifest["dataset_version"] == "development-1.0.4"
+    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.4.yaml"
     assert held_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert development_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert (
@@ -785,7 +873,7 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
         config,
         "development",
     )
-    assert development.dataset_version == "development-1.0.3"
+    assert development.dataset_version == "development-1.0.4"
     assert len(development.cases) == 30
     assert Counter(case.scenario for case in development.cases) == {
         "normal_resolution": 5,
