@@ -43,7 +43,7 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 
 ## Tareas
 
-- [ ] **S09A-T1 — Seam de autorización y precedencia fail-closed** *(en progreso)*
+- [x] **S09A-T1 — Seam de autorización y precedencia fail-closed**
   - Ruta: writer delegado; disparador: múltiples archivos de producción y tests de seguridad.
   - Crear resultado/provider tipados, validar tuplas y booleanos estrictos, resolver reclamación/producto antes del provider y negar por defecto sin llamar a Jev.
   - Cubrir autorizado, no autenticado, producto denegado, provider ausente/excepción/timeout, respuesta malformada, complaint mismatch y producto ausente.
@@ -52,14 +52,18 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Verificación independiente: 225 tests, Ruff check, Ruff format y `git diff --check` pasaron; sin defectos.
   - ASSESS nativo: `unassessable` porque el task ODD nuevo no estaba declarado; el plan exigió verificador independiente y se cumplió.
   - Tamaño autorado del work unit: 531 líneas (445 adiciones + 86 eliminaciones), por encima del umbral orientativo de 400; requiere elegir estrategia de entrega antes del commit.
-  - Entrega: commit autorizado con estrategia `feature-branch-chain`; identidad pendiente de creación.
+  - Entrega: commit `4354752` (`feat(governance): add explicit product authorization seam`); primer slice de `feature-branch-chain`.
+  - Revisión nativa: ASSESS medio y review due por presupuesto; dos START posteriores a INSPECT explícito devolvieron `consent-binding-expired`, sin lineage creado. Se conserva la verificación independiente aprobada y el outcome nativo queda unavailable para este candidato.
 
-- [ ] **S09A-T2 — Composición uniforme para cuatro tools**
+- [ ] **S09A-T2 — Composición uniforme para cuatro tools** *(en progreso)*
   - Ruta: writer delegado; disparador: cambios coordinados en bootstrap, hooks, factory/worker y tests.
   - Aplicar autorización a lecturas y escrituras; producción deny-all; evaluación con sentinel y provider case-local creados dentro del hijo.
   - Preservar principal/IDs fuera de Jev, auditoría, reportes y schemas; conservar confirmación y contratos exactos.
   - Superficies previstas: `app/bootstrap.py`, `src/ai_banking_customer_service/agent/hooks.py`, `src/ai_banking_customer_service/evaluation/factory.py`, `src/ai_banking_customer_service/evaluation/worker.py` y tests correspondientes.
-  - Evidencia de commit: pendiente de autorización explícita.
+  - TDD: RED focal `5 failed, 58 deselected` y privacidad/excepción `1 failed, 8 deselected`; GREEN equivalentes `5 passed` y `1 passed`; triangulación final `143 passed`.
+  - Checks del writer: 143 tests, Ruff check y Ruff format pasaron; sin scope expansion.
+  - ASSESS nativo: riesgo medio, 386 líneas cambiadas, `reviewDue=false`; la auto-verificación del writer es suficiente. Spot-check parent: `tests/unit/evaluation/test_factory.py` — 14 passed.
+  - Commit autorizado: identidad pendiente de creación (`feat(auth): wire product authorization composition`).
 
 - [ ] **S09A-T3 — Juicio semántico y calibración development-only**
   - Ruta: writer delegado; disparador: cambio Jev y matriz ES/PT con tests.
@@ -106,7 +110,11 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 - 2026-10-05: S09A-T1 iniciado; la aprobación de `agent/orchestrator.py` se difiere hasta S09A-T4 y bloqueará cualquier edición de esa superficie.
 - 2026-10-05: S09A-T1 implementado y verificado independientemente: 225 tests pasan, Ruff y diff check pasan; no se ejecutaron held-out, red, modelo ni Jev real.
 - 2026-10-05: el work unit suma 531 líneas autoradas; el usuario autorizó el commit y eligió `feature-branch-chain` para futuros slices de PR.
+- 2026-10-05: S09A-T1 cerrado en commit `4354752`; el parent spot-check pasó (`1 passed, 68 deselected`). La revisión nativa no creó lineage por dos consent bindings expirados consecutivos; no se repitió nuevamente.
+- 2026-10-05: S09A-T2 iniciado sobre composición deny-all y grants case-local.
+- 2026-10-05: S09A-T2 implementado: producción deny-all; cada hijo crea un sentinel privado y concede solo el principal/producto exactos. Pasaron 143 tests y los checks Ruff; ASSESS medio bajo presupuesto y spot-check parent de 14 tests pasaron.
+- 2026-10-05: el usuario autorizó el commit de S09A-T2; push, PR y merge permanecen sin autorizar.
 
 ## Próximo paso
 
-Crear el commit autorizado de S09A-T1, registrar su identidad y luego iniciar S09A-T2.
+Crear el commit autorizado de S09A-T2, registrar su identidad y luego iniciar S09A-T3.

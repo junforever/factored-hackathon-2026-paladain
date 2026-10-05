@@ -16,8 +16,14 @@ from ai_banking_customer_service.governance.jev.decision import GovernanceAction
 class GovernanceHooks(HookProvider):
     """Provide governance callbacks for the Strands lifecycle."""
 
-    def __init__(self, adapter: GovernanceAdapter) -> None:
+    def __init__(
+        self,
+        adapter: GovernanceAdapter,
+        *,
+        principal: object | None = None,
+    ) -> None:
         self._adapter = adapter
+        self._principal = principal
 
     def register_hooks(self, registry: HookRegistry) -> None:
         """Register input and tool governance callbacks."""
@@ -131,7 +137,11 @@ class GovernanceHooks(HookProvider):
             customer_message,
             routing_event_id,
         ) = required
-        customer_context = self._adapter.build_customer_context(complaint_id)
+        principal = customer_id if self._principal is None else self._principal
+        customer_context = self._adapter.build_customer_context(
+            complaint_id,
+            principal=principal,
+        )
         result = self._adapter.gate_tool_call(
             tool_name,
             tool_args,

@@ -4,7 +4,10 @@ from ai_banking_customer_service.agent.hooks import GovernanceHooks
 from ai_banking_customer_service.agent.orchestrator import BankingOrchestrator
 from ai_banking_customer_service.agent.session_manager import SessionManager
 from ai_banking_customer_service.config import policy, settings
-from ai_banking_customer_service.governance.adapter import GovernanceAdapter
+from ai_banking_customer_service.governance.adapter import (
+    GovernanceAdapter,
+    ProductAuthorization,
+)
 from ai_banking_customer_service.governance.jev import JevClient
 from ai_banking_customer_service.governance.jev.decision import (
     GovernanceThresholds,
@@ -16,6 +19,18 @@ from ai_banking_customer_service.observability.sink import (
     JsonlAuditSink,
 )
 from ai_banking_customer_service.tools.get_dispute_context import get_dispute_context
+
+
+class _DenyAllProductAuthorizationProvider:
+    """Keep sensitive production tools closed until real authorization is wired."""
+
+    def authorize_product(
+        self,
+        *,
+        principal: object,
+        product_id: str,
+    ) -> ProductAuthorization:
+        return ProductAuthorization(False, False, "not_authenticated")
 
 
 def build_orchestrator() -> BankingOrchestrator:
@@ -43,6 +58,7 @@ def build_orchestrator() -> BankingOrchestrator:
         output_screening_thresholds=output_screening_thresholds,
         audit_sink=audit_sink,
         dispute_context_loader=dispute_context_loader,
+        product_authorization_provider=_DenyAllProductAuthorizationProvider(),
     )
     governance_hooks = GovernanceHooks(adapter)
     session_manager = SessionManager(

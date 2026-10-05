@@ -485,7 +485,9 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
 
     GovernanceHooks(adapter).before_tool_call(event)
 
-    adapter.build_customer_context.assert_called_once_with("CMP-1")
+    adapter.build_customer_context.assert_called_once_with(
+        "CMP-1", principal="customer-1"
+    )
     adapter.gate_tool_call.assert_called_once_with(
         "block_card",
         {"complaint_id": "CMP-1", "confirmed_by_customer": True},
@@ -507,6 +509,70 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
     }
     assert _global_state(state) == globals_before
     assert "customer_context" not in state
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "tool_args", "customer_message"),
+    [
+        ("get_dispute_context", {"complaint_id": "CMP-Exact"}, "Cargo no reconocido"),
+        (
+            "get_recent_transactions",
+            {"complaint_id": "CMP-Exact"},
+            "Quais foram minhas transações recentes?",
+        ),
+        (
+            "block_card",
+            {"complaint_id": "CMP-Exact", "confirmed_by_customer": True},
+            "Confirmo el bloqueo de la tarjeta",
+        ),
+        (
+            "escalate_case",
+            {"complaint_id": "CMP-Exact", "reason": "cliente_pede_humano"},
+            "Quero falar com uma pessoa",
+        ),
+    ],
+)
+def test_before_tool_call_uses_one_explicit_principal_gate_for_all_sensitive_tools(
+    tool_name: str,
+    tool_args: dict,
+    customer_message: str,
+) -> None:
+    adapter = _adapter()
+    principal = object()
+    customer_context = {
+        "authenticated": True,
+        "verified_complaint_ids": ("CMP-Exact",),
+        "authorized_product_ids": ("PRD-Exact",),
+        "authorization_reason": "authorized",
+    }
+    adapter.build_customer_context.return_value = customer_context
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.ALLOW), "tool-governance-event-1"
+    )
+    state = _tool_state()
+    state["customer_message"] = customer_message
+    event = _tool_event(
+        tool_use={
+            "toolUseId": "tool-use-1",
+            "name": tool_name,
+            "input": tool_args,
+        },
+        state=state,
+    )
+
+    GovernanceHooks(adapter, principal=principal).before_tool_call(event)
+
+    adapter.build_customer_context.assert_called_once_with(
+        "CMP-Exact", principal=principal
+    )
+    assert adapter.gate_tool_call.call_args.args[:5] == (
+        tool_name,
+        tool_args,
+        "transaction_dispute",
+        customer_message,
+        customer_context,
+    )
+    assert event.cancel_tool is False
 
 
 def test_before_tool_call_passes_boolean_orphaned_without_changing_parent() -> None:
@@ -535,7 +601,13 @@ def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
             self.gate_calls: list[dict] = []
             self.context_calls: list[str] = []
 
-        def build_customer_context(self, complaint_id: str) -> dict:
+        def build_customer_context(
+            self,
+            complaint_id: str,
+            *,
+            principal: object,
+        ) -> dict:
+            assert principal == "customer-1"
             with self.lock:
                 self.context_calls.append(complaint_id)
             return {"verified_complaint_ids": (complaint_id,)}

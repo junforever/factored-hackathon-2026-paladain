@@ -10,8 +10,12 @@ from ai_banking_customer_service.agent.orchestrator import BankingOrchestrator
 from ai_banking_customer_service.agent.session_manager import SessionManager
 from ai_banking_customer_service.agent.tools import build_registered_tools
 from ai_banking_customer_service.config import policy, settings
+from ai_banking_customer_service.evaluation.cases import EvalCase
 from ai_banking_customer_service.evaluation.sink import RecordingAuditSink
-from ai_banking_customer_service.governance.adapter import GovernanceAdapter
+from ai_banking_customer_service.governance.adapter import (
+    GovernanceAdapter,
+    ProductAuthorization,
+)
 from ai_banking_customer_service.governance.jev import JevClient
 from ai_banking_customer_service.governance.jev.decision import (
     GovernanceThresholds,
@@ -28,9 +32,31 @@ class EvaluationDependencies:
     recording_sink: RecordingAuditSink
 
 
+class _CaseProductAuthorizationProvider:
+    __slots__ = ("_principal", "_product_id")
+
+    def __init__(self, *, principal: object, product_id: str) -> None:
+        self._principal = principal
+        self._product_id = product_id
+
+    def authorize_product(
+        self,
+        *,
+        principal: object,
+        product_id: str,
+    ) -> ProductAuthorization:
+        if principal is not self._principal:
+            return ProductAuthorization(False, False, "not_authenticated")
+        if product_id != self._product_id:
+            return ProductAuthorization(True, False, "product_not_authorized")
+        return ProductAuthorization(True, True, "authorized")
+
+
 def build_evaluation_dependencies(
     *,
     state_dir: Path,
+    case: EvalCase,
+    principal: object,
     model_factory: Callable[[], Any] | None = None,
 ) -> EvaluationDependencies:
     """Build the complete case-local dependency graph inside a child process."""
@@ -42,6 +68,7 @@ def build_evaluation_dependencies(
         model=settings.typesafe_default_model,
         timeout_seconds=settings.typesafe_timeout_seconds,
     )
+    authorization_provider = _build_case_authorization_provider(case, principal)
     adapter = GovernanceAdapter(
         client=client,
         thresholds=GovernanceThresholds.from_policy(policy.governance),
@@ -51,16 +78,41 @@ def build_evaluation_dependencies(
         ),
         audit_sink=audit_sink,
         dispute_context_loader=get_dispute_context,
+        product_authorization_provider=authorization_provider,
     )
     orchestrator = BankingOrchestrator(
         adapter=adapter,
-        governance_hooks=GovernanceHooks(adapter),
+        governance_hooks=GovernanceHooks(adapter, principal=principal),
         audit_sink=audit_sink,
         session_manager=SessionManager(),
         model_factory=model_factory,
         tools=build_evaluation_tools(state_dir=state_dir),
     )
     return EvaluationDependencies(orchestrator, recording_sink)
+
+
+def _build_case_authorization_provider(
+    case: EvalCase,
+    principal: object,
+) -> _CaseProductAuthorizationProvider:
+    complaint_id = case.expected.complaint_id
+    if not isinstance(complaint_id, str) or not complaint_id.strip():
+        raise ValueError("evaluation authorization context unavailable")
+    try:
+        context = get_dispute_context(complaint_id)
+    except Exception:
+        raise ValueError("evaluation authorization context unavailable") from None
+    if not isinstance(context, dict) or "error" in context:
+        raise ValueError("evaluation authorization context unavailable")
+    if context.get("complaint_id") != complaint_id:
+        raise ValueError("evaluation authorization context unavailable")
+    product_id = context.get("product_id")
+    if not isinstance(product_id, str) or not product_id.strip():
+        raise ValueError("evaluation authorization context unavailable")
+    return _CaseProductAuthorizationProvider(
+        principal=principal,
+        product_id=product_id,
+    )
 
 
 def build_evaluation_tools(*, state_dir: Path) -> list:

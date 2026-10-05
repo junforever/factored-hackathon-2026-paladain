@@ -4,6 +4,7 @@ from unittest.mock import Mock, sentinel
 
 import pytest
 
+from ai_banking_customer_service.governance.adapter import ProductAuthorization
 from app import bootstrap, chainlit_app
 
 
@@ -127,7 +128,14 @@ def test_build_orchestrator_composes_dependencies_in_normative_order(
         "output_screening_thresholds": sentinel.output_thresholds,
         "audit_sink": sentinel.shared_audit_sink,
         "dispute_context_loader": sentinel.loader,
+        "product_authorization_provider": adapter_kwargs[
+            "product_authorization_provider"
+        ],
     }
+    deny_all = adapter_kwargs["product_authorization_provider"]
+    assert deny_all.authorize_product(
+        principal=object(), product_id="PRD-1"
+    ) == ProductAuthorization(False, False, "not_authenticated")
     assert calls[8][1] is sentinel.adapter
     assert calls[9][1] == {
         "max_messages_per_session": settings.session_max_messages,

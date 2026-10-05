@@ -86,7 +86,12 @@ def execute_case_child(request: WorkerRequest, child_pipe: _ChildPipe) -> None:
             validated = _validate_request(request)
             result_limit = validated.config.max_result_bytes
             case_id = validated.case.case_id
-            dependencies = build_evaluation_dependencies(state_dir=validated.state_dir)
+            principal = object()
+            dependencies = build_evaluation_dependencies(
+                state_dir=validated.state_dir,
+                case=validated.case,
+                principal=principal,
+            )
             result = dependencies.orchestrator.handle_turn(
                 validated.case.customer_message,
                 f"eval:{case_id}",

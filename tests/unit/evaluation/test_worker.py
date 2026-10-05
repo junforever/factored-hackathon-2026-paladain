@@ -157,11 +157,11 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
         escalation_id=None,
     )
     dependencies = _dependencies(result, [_tool_call_event()])
-    built_for: list[Path] = []
+    builds: list[tuple[Path, object, object]] = []
 
-    def build(*, state_dir: Path, model_factory=None):
+    def build(*, state_dir: Path, case: object, principal: object, model_factory=None):
         assert model_factory is None
-        built_for.append(state_dir)
+        builds.append((state_dir, case, principal))
         return dependencies
 
     monkeypatch.setattr(worker, "build_evaluation_dependencies", build)
@@ -171,7 +171,11 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
 
     envelope = _decode(pipe)
     assert pipe.closed is True
-    assert built_for == [tmp_path.resolve()]
+    assert len(builds) == 1
+    built_state_dir, built_case, built_principal = builds[0]
+    assert built_state_dir == tmp_path.resolve()
+    assert built_case.case_id == "EVAL-WORKER-001"
+    assert type(built_principal) is object
     assert dependencies.orchestrator.calls == [
         (
             "Complaint CMP-EVAL; block card.",
@@ -190,6 +194,7 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
     assert envelope["case_id"] == "EVAL-WORKER-001"
     assert envelope["status"] == "completed"
     assert envelope["error"] is None
+    assert repr(built_principal) not in json.dumps(envelope)
     assert envelope["observation"] == {
         "action": "respond",
         "response_text": "El cargo fue revisado.",
@@ -200,6 +205,42 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
         "escalation_id": None,
         "audit_events": [_tool_call_event()],
     }
+
+
+def test_each_valid_child_execution_creates_a_fresh_nonserialized_principal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = OrchestratorResult(
+        action=TurnAction.RESPOND,
+        response_text="safe",
+        trace_id="trace-worker",
+        session_id="eval:EVAL-WORKER-001",
+        intent="dispute_charge",
+        escalation_type=None,
+        escalation_id=None,
+    )
+    principals: list[object] = []
+
+    def build(*, state_dir: Path, case: object, principal: object, model_factory=None):
+        assert state_dir == tmp_path.resolve()
+        assert case.case_id == "EVAL-WORKER-001"
+        assert model_factory is None
+        principals.append(principal)
+        return _dependencies(result)
+
+    monkeypatch.setattr(worker, "build_evaluation_dependencies", build)
+    pipes = [_Pipe(), _Pipe()]
+
+    for pipe in pipes:
+        execute_case_child(_request(tmp_path), pipe)
+
+    assert len(principals) == 2
+    assert principals[0] is not principals[1]
+    for principal, pipe in zip(principals, pipes, strict=True):
+        serialized = pipe.messages[0].decode("utf-8")
+        assert repr(principal) not in serialized
+        assert _decode(pipe)["status"] == "completed"
 
 
 def test_valid_unicode_slash_case_id_round_trips_unchanged(
@@ -222,7 +263,7 @@ def test_valid_unicode_slash_case_id_round_trips_unchanged(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: dependencies,
+        lambda *, state_dir, **_kwargs: dependencies,
     )
     pipe = _Pipe()
 
@@ -256,7 +297,7 @@ def test_child_serializes_enum_values_for_escalation_result(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(result),
+        lambda *, state_dir, **_kwargs: _dependencies(result),
     )
     pipe = _Pipe()
 
@@ -279,7 +320,7 @@ def test_child_sanitizes_exception_secrets_and_internal_paths(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(failure),
+        lambda *, state_dir, **_kwargs: _dependencies(failure),
     )
     pipe = _Pipe()
 
@@ -312,7 +353,7 @@ def test_child_replaces_oversize_result_with_bounded_error_envelope(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(result),
+        lambda *, state_dir, **_kwargs: _dependencies(result),
     )
     pipe = _Pipe()
     limit = cases_module.MIN_RESULT_BYTES
@@ -346,7 +387,7 @@ def test_calculated_minimum_fits_the_canonical_error_for_the_largest_case_id(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(result),
+        lambda *, state_dir, **_kwargs: _dependencies(result),
     )
     request = _request(
         tmp_path,
@@ -382,7 +423,7 @@ def test_child_turns_non_json_audit_data_into_a_sanitized_error(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(result, [malformed]),
+        lambda *, state_dir, **_kwargs: _dependencies(result, [malformed]),
     )
     pipe = _Pipe()
 
@@ -436,7 +477,7 @@ def test_child_closes_pipe_when_malformed_unicode_cannot_be_serialized(
     monkeypatch.setattr(
         worker,
         "build_evaluation_dependencies",
-        lambda *, state_dir, model_factory=None: _dependencies(result),
+        lambda *, state_dir, **_kwargs: _dependencies(result),
     )
     pipe = _Pipe()
 
