@@ -140,11 +140,15 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Workspace note: a Windows-reserved `NUL` path was reported but could not be safely characterized; no candidate/reference evidence linked it to this work, so it remains untouched and untracked pending user-controlled investigation.
   - Commit: `e28febc` (`feat(eval): expose bounded case outcomes`).
 
-- [ ] **T4 — Close verification and documentation**
+- [x] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
   - Update `docs/STATUS.md` with exact observed metrics, limitations, and commands.
   - Inspect native review authority when the final candidate is normalized.
   - Route: delegated verifier for commands; bounded writer for documentation if needed.
+  - Evidence: the 27 stale unit fixtures were repaired to satisfy the shared complaint-identity contract without relaxing validation; 34 focused tests and the full 1044-test suite passed with 0 skips and one pre-existing third-party warning. `uv run ruff check .`, candidate-scoped format checks for 14 changed Python files, the frozen-fixture identity test, and `git diff --check` passed.
+  - Known debt: the repository-wide format check still identifies only two files proven unchanged from the merge base (`src/ai_banking_customer_service/services/escalation_service.py` and `tests/unit/services/test_demo_state_reset.py`). Generated reports and the Windows-reserved `NUL` path remain intentionally untracked and untouched.
+  - Native review: approved and acknowledged for the final four-file workspace candidate under lineage `review-bd55b4d17ff99631`; advisory `R3-001` at `tests/unit/evaluation/test_worker.py:35` was informational and opened no correction.
+  - Commit: `67ae25b` (`test(eval): align fixtures with identity contract`).
 
 ## Acceptance criteria
 
@@ -202,4 +206,4 @@ The evaluation must exercise the real customer-facing contract rather than requi
 
 ## Next step
 
-Delegate T3b deterministic terminal correction with RED/GREEN evidence, then calibrate provisional gates and model-facing contracts in T3c.
+Start a separate evidence-driven work unit for SAR recovery and escalation-type correction using positive and negative development cases. Keep held-out `v1.0.2` frozen for measurement, and retain latency plus `EVAL-009` as explicit product limitations until independently corrected and re-evaluated.
