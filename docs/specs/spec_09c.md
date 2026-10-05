@@ -8,6 +8,14 @@
 > **Método futuro:** TDD estricto en microciclos RED → GREEN → TRIANGULATE →
 > REFACTOR.
 > **Lenguaje normativo:** `MUST` y `MUST NOT` expresan requisitos obligatorios.
+>
+> **Baseline activo y precedencia:** Spec #9 es la base histórica v4. La
+> implementación activa usa el sucesor congelado `v1.0.2` y los contratos vigentes
+> de configuración y manifest; `sandbox_file` y `sandbox_sha256` son campos
+> obligatorios de la configuración actual. Los ejemplos `v1.0.0` de Spec #9 son
+> históricos y **MUST NOT** restaurarse. Si esos ejemplos entran en conflicto con
+> la fuente tipada/configuración vigentes o con 09A–09C, la implementación **MUST**
+> detenerse y reconciliar el conflicto explícitamente; **MUST NOT** adivinar.
 
 ## 0. Contrato ejecutivo
 
