@@ -80,13 +80,22 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Strengthen model-facing instructions to preserve the exact complaint ID across tools, gather context first, use canonical action plans, and pass escalation argument types correctly.
   - Route: delegated writer; focused governance/prompt tests.
   - Evidence: RED boundary tests failed 4/4 against the old 0.50/0.70 thresholds and model-contract tests failed 3/3; GREEN/Triangulate: 488 config/prompt/governance tests and 26 agent-tool tests passed, with Ruff, format, and diff checks clean. Independent verification confirmed deterministic governance code was unchanged.
-  - Commit: pending.
+  - Commit: `c56b13a` (`fix(agent): calibrate governed tool routing`).
 
-- [ ] **T3d — Re-evaluate grounded production behavior**
+- [x] **T3d — Re-evaluate grounded production behavior**
   - Execute the real offline evaluation against v1.0.2 after deterministic and calibrated fixes.
   - Compare SAR, containment, escalation, unsafe outcomes, tool-plan matches, latency, and failure evidence with the initial grounded run.
   - Apply no further change without new deterministic trace evidence.
   - Route: delegated verifier.
+  - Evidence: one unretried run completed 50/50 with 0 execution failures. Tool-plan match improved 32% → 74%, unsafe outcomes 48% → 38%, containment 18% → 22%, correct escalations 2 → 5, and unnecessary escalations 21 → 19; SAR remains 0% and p95 latency regressed 12.07s → 19.29s.
+  - Report: `evals/reports/eval_1.0.2_20261005T002134Z.{json,md}` (generated local artifact, not versioned).
+  - Commit: pending.
+
+- [ ] **T3e — Diagnose residual grounded failures**
+  - Analyze the new report without rerunning cases or changing code.
+  - Select representative report-safe case IDs for remaining unsafe, wrong-terminal, wrong-escalation, and tool-plan failure classes.
+  - Capture sanitized traces only for distinct unresolved production branches; do not retune from aggregate metrics alone.
+  - Route: delegated explorer/verifier.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
