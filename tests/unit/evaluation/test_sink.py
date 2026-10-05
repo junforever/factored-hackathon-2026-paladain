@@ -32,6 +32,7 @@ def _event(event_type: str = "tool_call", payload: dict | None = None) -> dict:
             "result_status": "success",
             "result_summary": "success",
             "verified": True,
+            "authorization_verified": True,
         },
     }
 
@@ -40,6 +41,7 @@ def test_recording_sink_keeps_defensive_copies_on_write_and_read() -> None:
     sink = RecordingAuditSink()
     original = _event()
     expected = deepcopy(original)
+    expected["payload"].pop("authorization_verified")
 
     sink.emit(original)
     original["payload"]["args"]["complaint_id"] = "MUTATED"
@@ -56,7 +58,13 @@ def test_tool_call_filters_use_only_the_canonical_payload() -> None:
     canonical["args"] = {"complaint_id": "WRONG-TOP-LEVEL"}
     action = _event("action")
     action["event_id"] = "event-action"
-    malformed = _event(payload={"tool_name": "block_card", "args": {}})
+    malformed = _event(
+        payload={
+            "tool_name": "block_card",
+            "args": {},
+            "authorization_verified": False,
+        }
+    )
     malformed["event_id"] = "event-malformed"
 
     sink.emit(canonical)
@@ -120,8 +128,10 @@ def test_recording_sink_redacts_direct_and_malformed_secrets_independently() -> 
     )
     malformed = _event(
         payload={
+            "tool_name": "block_card",
             "args": {"credential": "credential-value"},
             "result_summary": "password=direct-secret",
+            "authorization_verified": False,
         }
     )
     malformed["event_id"] = "event-malformed-secret"

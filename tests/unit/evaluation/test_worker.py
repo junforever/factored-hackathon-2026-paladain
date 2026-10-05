@@ -89,6 +89,7 @@ def _tool_call_event() -> dict:
             "result_status": "success",
             "result_summary": "success",
             "verified": True,
+            "authorization_verified": True,
         },
     }
 
@@ -195,6 +196,8 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
     assert envelope["status"] == "completed"
     assert envelope["error"] is None
     assert repr(built_principal) not in json.dumps(envelope)
+    recorded_event = _tool_call_event()
+    recorded_event["payload"].pop("authorization_verified")
     assert envelope["observation"] == {
         "action": "respond",
         "response_text": "El cargo fue revisado.",
@@ -203,7 +206,7 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
         "intent": "dispute_charge",
         "escalation_type": None,
         "escalation_id": None,
-        "audit_events": [_tool_call_event()],
+        "audit_events": [recorded_event],
     }
 
 

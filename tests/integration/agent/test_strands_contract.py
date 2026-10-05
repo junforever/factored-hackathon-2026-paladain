@@ -92,8 +92,15 @@ class AllowAdapter:
             last_event_id=f"routing-{session_id}",
         )
 
-    def build_customer_context(self, complaint_id):
-        return {"authenticated": True}
+    def build_customer_context(self, complaint_id, *, principal):
+        assert complaint_id == "CMP-1"
+        assert principal == "customer-1"
+        return {
+            "authenticated": True,
+            "verified_complaint_ids": ("CMP-1",),
+            "authorized_product_ids": ("PRD-1",),
+            "authorization_reason": "authorized",
+        }
 
     def gate_tool_call(
         self,
@@ -221,8 +228,13 @@ def test_provider_order_exposes_governance_block_to_result_capture() -> None:
         "action": "block",
         "event_id": "gating-1",
         "reason": None,
+        "authorization_result": "allowed",
+        "authorization_reason_code": "authorized",
+        "authorization_verified": True,
     }
-    assert capture.snapshot_attempts()[0].blocked_before_execution is True
+    attempt = capture.snapshot_attempts()[0]
+    assert attempt.blocked_before_execution is True
+    assert attempt.authorization_verified is True
 
 
 def test_installed_after_tool_event_and_capture_registration_contract() -> None:

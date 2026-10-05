@@ -90,7 +90,7 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Entrega: commit `b577e39` (`feat(eval): add authorization-aware development cases`); cuarto slice de `feature-branch-chain`.
   - Revisión nativa: lineage `review-d5c1af6315c7982a`, lente reliability, aprobada y reconocida; autoridad consumida.
 
-- [ ] **S09A-T4B — Evidencia canónica, SAR, unsafe y reporting** *(en progreso)*
+- [x] **S09A-T4B — Evidencia canónica, SAR, unsafe y reporting**
   - Ruta: writer delegado; disparador: cambio coordinado de auditoría, captura, clasificación, reporte y tests.
   - Propagar `authorization_verified`, exigirla para SAR, clasificar `unauthorized_product_access` y reportar solo campos acotados.
   - Superficie adicional aprobada por el usuario: `src/ai_banking_customer_service/agent/orchestrator.py`, limitada a propagar `authorization_verified` en el evento canónico de tool.
@@ -100,15 +100,32 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Evidencia: las cuatro tools requieren booleano canónico; SAR exige autorización; éxito verificado sin evidencia produce `unauthorized_product_access`; reportes exponen exactamente cuatro campos y preservan orden/privacidad.
   - ASSESS nativo: riesgo medio, 642 líneas, `reviewDue=true`; review requerida después del commit estable.
   - Tamaño: 642 líneas autoradas; el corte es cohesivo porque evento, captura, contrato, clasificación y reporte deben avanzar juntos para evitar estados de rollback inseguros.
-  - Commit y review autorizados: identidad pendiente de creación (`feat(eval): require product authorization evidence`).
+  - Entrega: commit `8056910` (`feat(eval): require product authorization evidence`); quinto slice de `feature-branch-chain`.
+  - Revisión nativa: lineage `review-3a5b8c7c28074c51`, lente reliability, aprobada y reconocida; autoridad consumida.
 
-- [ ] **S09A-T5 — Gate completo, calibración real y documentación**
+- [ ] **S09A-T5 — Gate completo, calibración real y documentación** *(en progreso)*
   - Ruta: verifier delegado para comandos completos; parent para reconciliar evidencia y documentación.
   - Ejecutar tests enfocados, suite completa, Ruff check, Ruff format acotado y `git diff --check`.
   - Ejecutar solo development después de GREEN completo si existen credenciales/infraestructura; registrar cualquier limitación sin sustituirla por held-out.
   - Confirmar held-out byte-for-byte intacto y no ejecutado; actualizar `docs/observability.md` solo si cambia el contrato y `docs/STATUS.md` solo con resultados observados.
-  - Ejecutar revisión nativa únicamente si el switch RDD y la autoridad lo permiten; la revisión no autoriza entrega.
-  - Evidencia de commit: pendiente de autorización explícita.
+  - Gate determinístico final: `670 passed` focales; suite completa `1159 passed, 1 warning`; Ruff, format de 27 archivos, diff check, manifests y hashes pasan.
+  - Calibración real única: 30/30 completas, pero SAR `0/30`, unsafe `9/30`, authorization-unsafe `6/30` y missing-data unsafe `4/5`; aceptación bloqueada.
+  - Corrección de contratos obsoletos lista para cierre como work unit separado; commit bloqueado hasta autorización explícita.
+
+- [ ] **S09A-T6 — Propagación end-to-end de evidencia de autorización**
+  - Ruta: writer delegado; disparador: integración coordinada de captura/orquestador y tests.
+  - RED: una tool sensible exitosa y autorizada a través del lifecycle fake termina con `authorization_verified:false` en el evento canónico.
+  - GREEN: la evidencia exacta sobrevive hooks → capture → orchestrator; missing/denied/duplicate/retry permanecen fail-closed.
+  - Superficies previstas: `src/ai_banking_customer_service/agent/{result_capture,orchestrator}.py` y tests unitarios correspondientes.
+
+- [ ] **S09A-T7 — Abstención missing-data y tipos de escalamiento**
+  - Ruta: exploración/TDD después de cerrar T6.
+  - Reproducir con fakes los cuatro missing-data unsafe y los seis `wrong_type`; preservar ataques en cero unsafe.
+  - La decisión sobre el plan canónico de lookup se resolverá solo si sigue afectando SAR después de reparar evidencia.
+
+- [ ] **S09A-T8 — Recalibración final y documentación**
+  - Repetir gate determinístico y ejecutar una nueva iteración development exactamente una vez solo después de cambios justificados y GREEN.
+  - Actualizar `docs/STATUS.md` con evidencia observada; held-out permanece intacto y no ejecutado.
 
 ## Criterios de aceptación
 
@@ -148,7 +165,15 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 - 2026-10-05: S09A-T4B iniciado para evidencia canónica, SAR, unsafe y reporting acotado.
 - 2026-10-05: S09A-T4B implementado: 277 tests y checks pasan; SAR/unsafe/reportes usan evidencia canónica acotada; ASSESS medio y review due al cerrar el slice.
 - 2026-10-05: el usuario autorizó el commit cohesivo y la review nativa de S09A-T4B; push, PR y merge siguen sin autorizar.
+- 2026-10-05: S09A-T4B cerrado en commit `8056910`; review nativa `review-3a5b8c7c28074c51` aprobada, reconocida y consumida.
+- 2026-10-05: S09A-T5 iniciado con gate completo antes de cualquier corrida development real.
+- 2026-10-05: gate determinístico bloqueado: 820/821 tests focales y 1152/1159 completos pasaron; siete fallas requieren diagnóstico. Ruff, format acotado, diff check e integridad held-out pasaron. No se ejecutó development real.
+- 2026-10-05: diagnóstico aisló seis fixtures/test doubles desactualizados y un timeout Chainlit no reproducible. El writer de corrección editó solo los tres tests autorizados, pero Pi terminó con código 3221226505 antes de `agent_settled`; se inició verificación independiente del diff parcial antes de conservarlo o reintentar.
+- 2026-10-05: el diff parcial fue verificado como completo y bien formado: 23 tests, Ruff, format y diff check pasan; se conserva. La modificación adicional del tracker es propiedad del parent y forma parte del task, no del writer fallido.
+- 2026-10-05: gate determinístico completo GREEN: 670 tests focales y 1159 tests totales; Ruff, format de 27 archivos, diff check, manifests y hashes development/held-out/sandbox pasan. Chainlit no volvió a fallar. No hubo ejecución development ni held-out durante el gate.
+- 2026-10-05: calibración real development-1.0.3 ejecutada exactamente una vez (30/30 completas, sin timeout/error). Gates de aceptación fallaron: SAR 0/30, tool-plan match 8/30, unsafe 9/30, authorization-unsafe 6/30 y missing-data unsafe 4/5. Ataques 0/5 unsafe. Reportes gitignored `eval_development-1.0.3_20261005T180948Z.{json,md}`. No se ejecutó held-out ni se hizo retry.
+- 2026-10-05: diagnóstico causal atribuyó los seis authorization-unsafe a pérdida de evidencia entre hooks, result capture y evento canónico; los tests inyectaban el booleano o probaban contratos aislados. Missing-data, terminales y tipos de escalamiento son una iteración posterior separada.
 
 ## Próximo paso
 
-Crear el commit de S09A-T4B, ejecutar la review nativa requerida y registrar su resultado.
+Cerrar la corrección de contratos de tests como work unit y luego abrir RED end-to-end para propagación de autorización; no reejecutar development hasta completar las iteraciones justificadas.
