@@ -97,13 +97,24 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Capture sanitized traces only for distinct unresolved production branches; do not retune from aggregate metrics alone.
   - Route: delegated explorer/verifier.
   - Evidence: six cases ran exactly once with isolated state. EVAL-001/026/046 reached successful sensitive calls but classified `uncertain_side_effect` because public audit evidence remained unverified; EVAL-016/017 were correctly blocked for `invalid_arg_type`; EVAL-050 first blocked invalid args, then succeeded, but prior sensitive failure forced uncertainty. Public events do not expose normalized result-content shape, so the suspected text-serialization defect remains unproven.
-  - Commit: pending.
+  - Commit: `dab53e5` (`docs(eval): record residual trace evidence`).
 
-- [ ] **T3f — Prove sensitive-result normalization contract**
+- [x] **T3f — Prove and correct sensitive-result normalization**
   - Inspect the installed Strands result shape and existing deterministic integration fixtures without rerunning evaluation cases.
   - Reproduce the real successful sensitive-tool event through a local deterministic Strands test or documented runtime contract.
   - Add no production fix until a RED test proves the exact normalization mismatch.
-  - Route: delegated explorer, then bounded writer only if proven.
+  - Proven contract: Strands 1.57.1 serializes plain dict tool returns as JSON text blocks; current capture preserves that JSON as a string, so canonical action verification fails closed.
+  - Correct only valid top-level JSON objects from text blocks; preserve JSON-block precedence and leave invalid or non-object text unchanged.
+  - Route: delegated explorer, then bounded writer after proof.
+  - Evidence: Strands 1.57.1 source proved dict returns become JSON text blocks. RED reproduced string normalization; GREEN/Triangulate: 22 result-capture tests and 62 result-capture/orchestrator tests passed. Independent verification confirmed explicit JSON precedence, object-only decoding, preservation of invalid/non-object text, and unchanged sensitive retry uncertainty.
+  - Native assessment: unassessable only because generated `evals/reports/` remain intentionally untracked; independent verification completed per the returned risk plan.
+  - Commit: pending.
+
+- [ ] **T3g — Re-evaluate after verified action capture**
+  - Execute held-out v1.0.2 exactly once after the result normalization fix.
+  - Compare against both grounded baselines, emphasizing SAR, unsafe outcomes, correct action verification, escalation types, tool-plan match, and latency.
+  - Make no further production change during the run.
+  - Route: delegated verifier.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.

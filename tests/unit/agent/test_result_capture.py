@@ -161,10 +161,41 @@ def test_captures_one_successful_tool_attempt_and_normalized_result() -> None:
     )
 
 
+def test_successful_action_dict_serialized_as_strands_text_is_normalized() -> None:
+    capture = ResultCaptureHooks()
+    tool_use = _tool_use()
+    capture.before_tool_call(_before_event(tool_use))
+    capture.after_tool_call(
+        _after_event(
+            tool_use,
+            result={
+                "toolUseId": "tool-use-1",
+                "status": "success",
+                "content": [
+                    {
+                        "text": (
+                            '{"action": "block_card", "executed": true, '
+                            '"verification": "confirmed_blocked"}'
+                        )
+                    }
+                ],
+            },
+        )
+    )
+
+    assert capture.snapshot_results()[0].content == {
+        "action": "block_card",
+        "executed": True,
+        "verification": "confirmed_blocked",
+    }
+
+
 @pytest.mark.parametrize(
     ("status", "content", "expected_status", "expected_content"),
     [
         ("error", [{"text": "failed"}], "error", "failed"),
+        ("success", [{"text": "[1, 2]"}], "success", "[1, 2]"),
+        ("success", [{"text": "7"}], "success", "7"),
         (
             "success",
             [{"text": "first"}, {"json": {"winner": True}}],

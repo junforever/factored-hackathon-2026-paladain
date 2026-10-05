@@ -1,5 +1,6 @@
 """Per-turn capture of normalized Strands tool results."""
 
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from threading import Lock
@@ -171,7 +172,12 @@ def _content(result: object) -> object:
             return deepcopy(block["json"])
     for block in blocks:
         if isinstance(block, dict) and isinstance(block.get("text"), str):
-            return block["text"]
+            text = block["text"]
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                return text
+            return parsed if isinstance(parsed, dict) else text
     return None
 
 
