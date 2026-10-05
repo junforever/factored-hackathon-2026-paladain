@@ -61,13 +61,22 @@ SOCIAL_ENGINEERING_QUESTION: NoulQuestion = NoulQuestion(
 
 INTENT_MATCHES_TOOL_CALL_QUESTION: NoulQuestion = NoulQuestion(
     instructions=(
-        "Does the tool call `tool_name` with arguments `tool_args` match what the "
-        "customer asked for in `customer_message`, given the classified intent "
-        "`intent`?"
+        "Is the proposed call to `tool_name` with projected non-identifying "
+        "arguments `tool_args` a necessary and proportionate step in resolving "
+        "the customer's banking intent `intent`, given `customer_message`? "
+        "Judge only semantic fit; deterministic authorization, confirmation, and "
+        "eligibility have already been enforced in code."
     ),
     criteria=NoulCriteria(
-        true="The tool call is consistent with what the customer asked for.",
-        false="The tool call does not match what the customer asked for.",
+        true=(
+            "The call is necessary and proportionate: a legitimate preparatory "
+            "read may support resolution even when not explicitly requested, and "
+            "a write is compatible with the customer's banking intent."
+        ),
+        false=(
+            "The call is not necessary or proportionate: it is an irrelevant or "
+            "excessive read, or an unrequested or contradictory write."
+        ),
     ),
 )
 
@@ -182,14 +191,10 @@ AUTHORIZATION_REASONS = frozenset(
     }
 )
 JEV_STATE_ARG_ALLOWLIST = {
-    "get_dispute_context": ("complaint_verified",),
-    "get_recent_transactions": ("complaint_verified", "days_before", "limit"),
-    "block_card": ("complaint_verified", "confirmed_by_customer"),
-    "escalate_case": (
-        "complaint_verified",
-        "reason",
-        "unresolved_questions_count",
-    ),
+    "get_dispute_context": (),
+    "get_recent_transactions": ("days_before", "limit"),
+    "block_card": (),
+    "escalate_case": ("reason", "unresolved_questions_count"),
 }
 VERIFIED_FACTS_ALLOWLIST = frozenset(
     {
@@ -280,13 +285,11 @@ def _validate_customer_context(customer_context: object) -> bool:
 
 def project_tool_args_for_jev(tool_name: str, tool_args: dict) -> dict:
     """Project the minimum semantic evidence required by Jev."""
-    result = {"complaint_verified": True}
+    result = {}
     if tool_name == "get_recent_transactions":
         for key in ("days_before", "limit"):
             if key in tool_args:
                 result[key] = tool_args[key]
-    elif tool_name == "block_card":
-        result["confirmed_by_customer"] = tool_args["confirmed_by_customer"]
     elif tool_name == "escalate_case":
         result["reason"] = tool_args["reason"]
         unresolved = tool_args.get("unresolved_questions")

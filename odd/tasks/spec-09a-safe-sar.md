@@ -55,7 +55,7 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Entrega: commit `4354752` (`feat(governance): add explicit product authorization seam`); primer slice de `feature-branch-chain`.
   - Revisión nativa: ASSESS medio y review due por presupuesto; dos START posteriores a INSPECT explícito devolvieron `consent-binding-expired`, sin lineage creado. Se conserva la verificación independiente aprobada y el outcome nativo queda unavailable para este candidato.
 
-- [ ] **S09A-T2 — Composición uniforme para cuatro tools** *(en progreso)*
+- [x] **S09A-T2 — Composición uniforme para cuatro tools**
   - Ruta: writer delegado; disparador: cambios coordinados en bootstrap, hooks, factory/worker y tests.
   - Aplicar autorización a lecturas y escrituras; producción deny-all; evaluación con sentinel y provider case-local creados dentro del hijo.
   - Preservar principal/IDs fuera de Jev, auditoría, reportes y schemas; conservar confirmación y contratos exactos.
@@ -63,21 +63,26 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - TDD: RED focal `5 failed, 58 deselected` y privacidad/excepción `1 failed, 8 deselected`; GREEN equivalentes `5 passed` y `1 passed`; triangulación final `143 passed`.
   - Checks del writer: 143 tests, Ruff check y Ruff format pasaron; sin scope expansion.
   - ASSESS nativo: riesgo medio, 386 líneas cambiadas, `reviewDue=false`; la auto-verificación del writer es suficiente. Spot-check parent: `tests/unit/evaluation/test_factory.py` — 14 passed.
-  - Commit autorizado: identidad pendiente de creación (`feat(auth): wire product authorization composition`).
+  - Entrega: commit `ceabf8a` (`feat(auth): wire product authorization composition`); segundo slice de `feature-branch-chain`.
+  - Revisión nativa: ASSESS medio, 393 líneas committed-only, `reviewDue=false`; diferida al cierre del slice/PR.
 
-- [ ] **S09A-T3 — Juicio semántico y calibración development-only**
+- [ ] **S09A-T3 — Juicio semántico y calibración development-only** *(en progreso)*
   - Ruta: writer delegado; disparador: cambio Jev y matriz ES/PT con tests.
   - Observar RED para lectura preparatoria legítima frente a llamada irrelevante; ajustar pregunta/state para necesidad y proporcionalidad antes de considerar el umbral.
   - Cambiar policy/decision solo si una frontera RED separa positivos y negativos; cubrir `== threshold`, inmediatamente inferior, señales y metadata inválidas.
   - Superficies previstas: `src/ai_banking_customer_service/governance/jev/evaluations.py`, tests Jev/governance; `configs/policy.yaml`, `src/ai_banking_customer_service/config.py` y `decision.py` únicamente si la evidencia exige policy tipada distinta.
-  - Evidencia de commit: pendiente de autorización explícita.
+  - TDD: RED semántico `1 failed, 293 passed`; GREEN `294 passed`; RED de minimización `6 failed, 288 passed`; GREEN y matriz final `313 passed`.
+  - Resultado: una sola pregunta atómica de necesidad/proporcionalidad; state sin autorización, confirmación ni IDs; threshold/policy permanecen en `0.65`.
+  - Checks: 313 tests, Ruff check/format y spot-check parent de 313 tests pasaron.
+  - ASSESS nativo: riesgo medio, 379 líneas, `reviewDue=false`; auto-verificación suficiente.
+  - Commit autorizado: identidad pendiente de creación (`feat(governance): judge necessary tool steps`).
 
 - [ ] **S09A-T4 — Fixtures, CLI, SAR, unsafe y reporting**
   - Ruta: writer delegado; disparador: cambio coordinado de schema, fixture, manifest, clasificación, reporte y CLI.
   - Crear development `v1.0.3` explícito, selector obligatorio `development|held-out`, evidencia `authorization_verified`, gate SAR, `unauthorized_product_access` y salida acotada.
   - Agregar prueba de hash byte-for-byte para held-out `v1.0.2`; no ejecutar held-out.
   - Superficies previstas: `configs/eval.yaml`, `src/ai_banking_customer_service/evaluation/{cases,classification,report,cli}.py`, `evals/cases/development_v1.0.3.yaml`, `evals/development_manifest.json` y tests correspondientes.
-  - Superficie adicional pendiente de aprobación normativa: `src/ai_banking_customer_service/agent/orchestrator.py`, aparentemente indispensable para emitir `authorization_verified` en el evento canónico de tool.
+  - Superficie adicional aprobada por el usuario: `src/ai_banking_customer_service/agent/orchestrator.py`, limitada a propagar `authorization_verified` en el evento canónico de tool.
   - Evidencia de commit: pendiente de autorización explícita.
 
 - [ ] **S09A-T5 — Gate completo, calibración real y documentación**
@@ -114,7 +119,11 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 - 2026-10-05: S09A-T2 iniciado sobre composición deny-all y grants case-local.
 - 2026-10-05: S09A-T2 implementado: producción deny-all; cada hijo crea un sentinel privado y concede solo el principal/producto exactos. Pasaron 143 tests y los checks Ruff; ASSESS medio bajo presupuesto y spot-check parent de 14 tests pasaron.
 - 2026-10-05: el usuario autorizó el commit de S09A-T2; push, PR y merge permanecen sin autorizar.
+- 2026-10-05: S09A-T2 cerrado en commit `ceabf8a`; ASSESS medio bajo presupuesto, revisión diferida al cierre del slice/PR.
+- 2026-10-05: S09A-T3 iniciado para reformular necesidad/proporcionalidad sin cambiar autorización ni umbral en el mismo paso.
+- 2026-10-05: S09A-T3 implementado con matriz fake ES/PT: 313 tests y Ruff pasan; el threshold `0.65` no cambió y separa la matriz determinística.
+- 2026-10-05: el usuario autorizó el commit de S09A-T3 y aprobó editar `agent/orchestrator.py` únicamente para propagar `authorization_verified`.
 
 ## Próximo paso
 
-Crear el commit autorizado de S09A-T2, registrar su identidad y luego iniciar S09A-T3.
+Crear el commit autorizado de S09A-T3, registrar su identidad e iniciar S09A-T4 con la superficie adicional aprobada.

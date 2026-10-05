@@ -701,9 +701,10 @@ def test_decide_tool_gating_blocks_deterministic_failure() -> None:
     assert decision.governance_thresholds is thresholds
 
 
-def test_decide_tool_gating_blocks_invalid_model() -> None:
+@pytest.mark.parametrize("model", [None, "", "   ", 123])
+def test_decide_tool_gating_blocks_invalid_or_missing_model(model: object) -> None:
     decision = decide_tool_gating(
-        _tool_gating_result(model=""),
+        _tool_gating_result(model=model),
         ToolGatingThresholds(min_intent_matches_tool=0.7),
     )
 
@@ -712,9 +713,10 @@ def test_decide_tool_gating_blocks_invalid_model() -> None:
     assert decision.reasons == ("INVALID_METADATA: model is invalid",)
 
 
-def test_decide_tool_gating_blocks_invalid_usage() -> None:
+@pytest.mark.parametrize("usage", [None, object()])
+def test_decide_tool_gating_blocks_invalid_or_missing_usage(usage: object) -> None:
     decision = decide_tool_gating(
-        _tool_gating_result(usage=object()),
+        _tool_gating_result(usage=usage),
         ToolGatingThresholds(min_intent_matches_tool=0.7),
     )
 
@@ -781,7 +783,10 @@ def test_decide_tool_gating_blocks_low_intent_match_with_float_repr() -> None:
 
 @pytest.mark.parametrize(
     ("probability", "expected_action"),
-    [(0.65, GovernanceAction.ALLOW), (0.649, GovernanceAction.BLOCK)],
+    [
+        (0.65, GovernanceAction.ALLOW),
+        (math.nextafter(0.65, 0.0), GovernanceAction.BLOCK),
+    ],
     ids=["at-calibrated-boundary", "below-calibrated-boundary"],
 )
 def test_project_policy_applies_calibrated_tool_gating_boundary(
