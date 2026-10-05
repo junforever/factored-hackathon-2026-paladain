@@ -15,6 +15,10 @@ from strands.hooks import (
 
 from ai_banking_customer_service.governance.jev.sanitization import sanitize_message
 
+MISSING_MERCHANT_CANCEL_REASON = "missing_merchant:clarification"
+MISSING_MERCHANT_STATE_KEY = "missing_merchant_verified"
+_ACTION_TOOLS = frozenset({"block_card", "escalate_case"})
+
 
 @dataclass(frozen=True)
 class NormalizedToolResult:
@@ -40,6 +44,7 @@ class _ToolAttempt:
     tool_args: dict
     blocked_before_execution: bool
     authorization_verified: bool
+    missing_merchant_blocked: bool
 
 
 class ResultCaptureHooks(HookProvider):
@@ -50,6 +55,7 @@ class ResultCaptureHooks(HookProvider):
         self._attempt_object_ids: list[int] = []
         self._results: list[NormalizedToolResult] = []
         self._matched_attempts: set[int] = set()
+        self._missing_merchant_ids: set[str] = set()
         self._lock = Lock()
 
     def register_hooks(self, registry: HookRegistry) -> None:
@@ -64,10 +70,23 @@ class ResultCaptureHooks(HookProvider):
         tool_use_id, tool_name, tool_args = _normalize_tool_use(event.tool_use)
         blocked = _is_governance_block(event, tool_use_id)
         authorized = _is_authorization_verified(event, tool_use_id)
-        attempt = _ToolAttempt(tool_use_id, tool_name, tool_args, blocked, authorized)
+        missing_merchant_blocked = _is_missing_merchant_block(
+            event, tool_use_id, tool_name
+        )
+        attempt = _ToolAttempt(
+            tool_use_id,
+            tool_name,
+            tool_args,
+            blocked,
+            authorized,
+            missing_merchant_blocked,
+        )
         with self._lock:
+            if any(item.tool_use_id == tool_use_id for item in self._attempts):
+                self._missing_merchant_ids.discard(tool_use_id)
             self._attempts.append(attempt)
             self._attempt_object_ids.append(id(event.tool_use))
+            self._sync_missing_merchant_state(event.invocation_state)
 
     def after_tool_call(self, event: AfterToolCallEvent) -> None:
         tool_use_id, tool_name, tool_args = _normalize_tool_use(event.tool_use)
@@ -75,31 +94,43 @@ class ResultCaptureHooks(HookProvider):
             attempt = self._match_attempt(
                 id(event.tool_use), tool_use_id, tool_name, tool_args
             )
-            self._results.append(
-                NormalizedToolResult(
-                    tool_use_id=tool_use_id,
-                    tool_name=tool_name,
-                    tool_args=tool_args,
-                    status=_status(event.result),
-                    content=_content(event.result),
-                    exception=_exception(event.exception),
-                    cancel_message=(
-                        event.cancel_message
-                        if isinstance(event.cancel_message, str)
-                        else None
-                    ),
-                    duration_ms=_duration_ms(event.duration),
-                    blocked_before_execution=(
-                        attempt.blocked_before_execution
-                        if attempt is not None
-                        else False
-                    ),
-                    retry_requested=event.retry is True,
-                    authorization_verified=(
-                        attempt.authorization_verified if attempt is not None else False
-                    ),
-                )
+            result = NormalizedToolResult(
+                tool_use_id=tool_use_id,
+                tool_name=tool_name,
+                tool_args=tool_args,
+                status=_status(event.result),
+                content=_content(event.result),
+                exception=_exception(event.exception),
+                cancel_message=(
+                    event.cancel_message
+                    if isinstance(event.cancel_message, str)
+                    else None
+                ),
+                duration_ms=_duration_ms(event.duration),
+                blocked_before_execution=(
+                    attempt.blocked_before_execution if attempt is not None else False
+                ),
+                retry_requested=event.retry is True,
+                authorization_verified=(
+                    attempt.authorization_verified if attempt is not None else False
+                ),
             )
+            self._results.append(result)
+            matching_attempts = [
+                item for item in self._attempts if item.tool_use_id == tool_use_id
+            ]
+            matching_results = [
+                item for item in self._results if item.tool_use_id == tool_use_id
+            ]
+            if (
+                len(matching_attempts) == 1
+                and len(matching_results) == 1
+                and _is_verified_missing_merchant(matching_attempts[0], result)
+            ):
+                self._missing_merchant_ids.add(tool_use_id)
+            else:
+                self._missing_merchant_ids.discard(tool_use_id)
+            self._sync_missing_merchant_state(event.invocation_state)
 
     def snapshot_attempts(self) -> tuple[_ToolAttempt, ...]:
         """Return an isolated point-in-time copy of captured attempts."""
@@ -110,6 +141,12 @@ class ResultCaptureHooks(HookProvider):
         """Return an isolated point-in-time copy of normalized results."""
         with self._lock:
             return deepcopy(tuple(self._results))
+
+    def _sync_missing_merchant_state(self, state: dict) -> None:
+        if self._missing_merchant_ids:
+            state[MISSING_MERCHANT_STATE_KEY] = True
+        else:
+            state.pop(MISSING_MERCHANT_STATE_KEY, None)
 
     def _match_attempt(
         self,
@@ -170,6 +207,49 @@ def _is_governance_block(event: BeforeToolCallEvent, tool_use_id: str) -> bool:
         return False
     evidence = governance.get(tool_use_id)
     return isinstance(evidence, dict) and evidence.get("action") == "block"
+
+
+def _is_missing_merchant_block(
+    event: BeforeToolCallEvent,
+    tool_use_id: str,
+    tool_name: str,
+) -> bool:
+    if (
+        tool_name not in _ACTION_TOOLS
+        or event.cancel_tool != MISSING_MERCHANT_CANCEL_REASON
+        or event.invocation_state.get(MISSING_MERCHANT_STATE_KEY) is not True
+    ):
+        return False
+    governance = event.invocation_state.get("tool_governance")
+    evidence = governance.get(tool_use_id) if isinstance(governance, dict) else None
+    return (
+        isinstance(evidence, dict)
+        and evidence.get("action") == "allow"
+        and evidence.get("authorization_verified") is True
+    )
+
+
+def _is_verified_missing_merchant(
+    attempt: _ToolAttempt,
+    result: NormalizedToolResult,
+) -> bool:
+    return (
+        attempt.tool_use_id != ""
+        and attempt.tool_name == "get_dispute_context"
+        and attempt.tool_name == result.tool_name
+        and attempt.tool_args == result.tool_args
+        and attempt.blocked_before_execution is False
+        and attempt.authorization_verified is True
+        and result.status == "success"
+        and result.exception is None
+        and result.cancel_message is None
+        and result.retry_requested is False
+        and result.authorization_verified is True
+        and isinstance(result.content, dict)
+        and "error" not in result.content
+        and "merchant_name" in result.content
+        and result.content["merchant_name"] is None
+    )
 
 
 def _is_authorization_verified(

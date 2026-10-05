@@ -10,6 +10,10 @@ from strands.hooks import (
     HookRegistry,
 )
 
+from ai_banking_customer_service.agent.result_capture import (
+    MISSING_MERCHANT_CANCEL_REASON,
+    MISSING_MERCHANT_STATE_KEY,
+)
 from ai_banking_customer_service.governance.adapter import GovernanceAdapter
 from ai_banking_customer_service.governance.jev.decision import GovernanceAction
 from ai_banking_customer_service.observability.contract import (
@@ -56,6 +60,7 @@ class GovernanceHooks(HookProvider):
             "routing_event_id",
             "governance_decision",
             "governance_action",
+            MISSING_MERCHANT_STATE_KEY,
         ):
             state.pop(key, None)
         state["tool_governance"] = {}
@@ -188,6 +193,11 @@ class GovernanceHooks(HookProvider):
         }
         if result.decision.action is GovernanceAction.BLOCK:
             event.cancel_tool = "governance:block"
+        elif (
+            tool_name in {"block_card", "escalate_case"}
+            and state.get(MISSING_MERCHANT_STATE_KEY) is True
+        ):
+            event.cancel_tool = MISSING_MERCHANT_CANCEL_REASON
 
 
 def _authorization_observability(

@@ -118,11 +118,22 @@ class _ToolRecord:
         )
 
     @property
-    def blocked_before_execution(self) -> bool:
+    def governance_blocked_before_execution(self) -> bool:
         return any(
             bool(getattr(attempt, "blocked_before_execution", False))
             for attempt in self.attempts
         ) or any(result.blocked_before_execution for result in self.results)
+
+    @property
+    def missing_merchant_blocked(self) -> bool:
+        return any(
+            getattr(attempt, "missing_merchant_blocked", False) is True
+            for attempt in self.attempts
+        )
+
+    @property
+    def blocked_before_execution(self) -> bool:
+        return self.governance_blocked_before_execution or self.missing_merchant_blocked
 
     @property
     def result(self) -> NormalizedToolResult | None:
@@ -135,6 +146,8 @@ class _ToolAnalysis:
     dispute_context: dict | None
     grounding_sources: list[str]
     uncertain_side_effect: bool = False
+    security_denial: bool = False
+    missing_merchant: bool = False
     failed_action: bool = False
     incomplete_invocation: bool = False
     successful_escalation: NormalizedToolResult | None = None
@@ -164,6 +177,10 @@ SAFE_TEMPLATES = {
             "No pude completar la respuesta de forma segura. "
             "Un especialista revisará el caso."
         ),
+        "missing_merchant": (
+            "Falta el nombre del comercio. ¿Puedes indicar el nombre que aparece "
+            "en tu comprobante o estado de cuenta?"
+        ),
     },
     "pt": {
         "block": "Não posso processar esta solicitação com segurança.",
@@ -187,6 +204,10 @@ SAFE_TEMPLATES = {
         "incomplete_invocation": (
             "Não consegui concluir a resposta com segurança. "
             "Um especialista revisará o caso."
+        ),
+        "missing_merchant": (
+            "Falta o nome do estabelecimento. Você pode informar o nome que aparece "
+            "no comprovante ou extrato?"
         ),
     },
 }
@@ -447,6 +468,22 @@ class BankingOrchestrator:
                 language,
                 "uncertain_side_effect",
                 EscalationType.UNCERTAIN_SIDE_EFFECT,
+                durable_parent,
+            )
+        if analysis.security_denial:
+            return _fixed_classification(
+                TurnAction.ESCALATE,
+                language,
+                "review_failure",
+                EscalationType.FAILED_ACTION,
+                durable_parent,
+            )
+        if analysis.missing_merchant:
+            return _fixed_classification(
+                TurnAction.RESPOND,
+                language,
+                "missing_merchant",
+                None,
                 durable_parent,
             )
         if analysis.failed_action:
@@ -771,7 +808,14 @@ def _tool_records(attempts: tuple, results: tuple) -> list[_ToolRecord]:
 
 
 def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
-    analysis = _ToolAnalysis([], None, [])
+    analysis = _ToolAnalysis(
+        [],
+        None,
+        [],
+        missing_merchant=any(
+            _is_verified_missing_merchant(record) for record in records
+        ),
+    )
     for record in records:
         result = record.result
         if _record_is_sensitive(record):
@@ -783,8 +827,10 @@ def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
             ):
                 analysis.uncertain_side_effect = True
                 continue
-            if record.blocked_before_execution:
-                analysis.failed_action = True
+            if record.governance_blocked_before_execution:
+                analysis.security_denial = True
+                continue
+            if record.missing_merchant_blocked:
                 continue
             if result is None:
                 analysis.uncertain_side_effect = True
@@ -843,6 +889,26 @@ def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
             if record.tool_name == "get_dispute_context":
                 analysis.dispute_context = result.content
     return analysis
+
+
+def _is_verified_missing_merchant(record: _ToolRecord) -> bool:
+    result = record.result
+    return (
+        record.tool_name == "get_dispute_context"
+        and not record.duplicate_or_retry
+        and bool(record.tool_use_id)
+        and len(record.attempts) == 1
+        and result is not None
+        and _identity_matches(record)
+        and _authorization_verified(record)
+        and result.status == "success"
+        and result.exception is None
+        and result.cancel_message is None
+        and isinstance(result.content, dict)
+        and "error" not in result.content
+        and "merchant_name" in result.content
+        and result.content["merchant_name"] is None
+    )
 
 
 def _record_is_sensitive(record: _ToolRecord) -> bool:
@@ -1178,7 +1244,7 @@ def _response_payload(
     analysis: _ToolAnalysis,
 ) -> dict:
     sources = list(analysis.grounding_sources)
-    if classification.action is TurnAction.RESPOND:
+    if classification.action is TurnAction.RESPOND and not analysis.missing_merchant:
         sources.append("model:screened")
     else:
         sources.append("orchestrator:template")

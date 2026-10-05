@@ -299,6 +299,7 @@ def test_before_invocation_clears_stale_derived_state_before_failing_closed() ->
         "routing_event_id": "stale-routing-event",
         "governance_decision": object(),
         "governance_action": "allow",
+        "missing_merchant_verified": True,
         "tool_governance": {"stale": object()},
     }
     event = _invocation_event(messages=[], state=state)
@@ -587,6 +588,88 @@ def test_before_tool_call_uses_one_explicit_principal_gate_for_all_sensitive_too
         customer_message,
         customer_context,
     )
+    assert event.cancel_tool is False
+
+
+@pytest.mark.parametrize("tool_name", ["block_card", "escalate_case"])
+def test_missing_merchant_blocks_authorized_writes_after_normal_governance(
+    tool_name: str,
+) -> None:
+    adapter = _adapter()
+    customer_context = {
+        "authenticated": True,
+        "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
+    }
+    adapter.build_customer_context.return_value = customer_context
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.ALLOW), "tool-governance-event-1"
+    )
+    state = _tool_state()
+    state["missing_merchant_verified"] = True
+    event = _tool_event(
+        tool_use={
+            "toolUseId": "tool-use-1",
+            "name": tool_name,
+            "input": {"complaint_id": "CMP-1"},
+        },
+        state=state,
+    )
+
+    GovernanceHooks(adapter).before_tool_call(event)
+
+    adapter.build_customer_context.assert_called_once()
+    adapter.gate_tool_call.assert_called_once()
+    assert state["tool_governance"]["tool-use-1"]["action"] == "allow"
+    assert event.cancel_tool == "missing_merchant:clarification"
+
+
+def test_missing_merchant_preserves_governance_denial_reason() -> None:
+    adapter = _adapter()
+    adapter.build_customer_context.return_value = {
+        "authenticated": True,
+        "authorized_product_ids": (),
+        "authorization_reason": "product_not_authorized",
+    }
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.BLOCK), "tool-governance-event-1"
+    )
+    state = _tool_state()
+    state["missing_merchant_verified"] = True
+    event = _tool_event(state=state)
+
+    GovernanceHooks(adapter).before_tool_call(event)
+
+    assert event.cancel_tool == "governance:block"
+    assert state["tool_governance"]["tool-use-1"]["action"] == "block"
+    assert state["tool_governance"]["tool-use-1"]["authorization_reason_code"] == (
+        "product_not_authorized"
+    )
+
+
+def test_missing_merchant_does_not_block_reads() -> None:
+    adapter = _adapter()
+    adapter.build_customer_context.return_value = {
+        "authenticated": True,
+        "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
+    }
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.ALLOW), "tool-governance-event-1"
+    )
+    state = _tool_state()
+    state["missing_merchant_verified"] = True
+    event = _tool_event(
+        tool_use={
+            "toolUseId": "tool-use-1",
+            "name": "get_recent_transactions",
+            "input": {"complaint_id": "CMP-1"},
+        },
+        state=state,
+    )
+
+    GovernanceHooks(adapter).before_tool_call(event)
+
     assert event.cancel_tool is False
 
 

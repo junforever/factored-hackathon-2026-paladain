@@ -455,6 +455,142 @@ def test_interleaved_duplicate_ids_keep_exact_attempt_evidence() -> None:
     assert evidence == [(True, False), (False, True)]
 
 
+def _authorized_state() -> dict:
+    return {
+        "tool_governance": {
+            "tool-use-1": {
+                "action": "allow",
+                "authorization_result": "allowed",
+                "authorization_reason_code": "authorized",
+                "authorization_verified": True,
+            }
+        }
+    }
+
+
+def test_verified_missing_merchant_result_marks_invocation_local_state() -> None:
+    capture = ResultCaptureHooks()
+    state = _authorized_state()
+    tool_use = _tool_use(name="get_dispute_context")
+
+    capture.before_tool_call(_before_event(tool_use, state=state))
+    capture.after_tool_call(
+        _after_event(
+            tool_use,
+            state=state,
+            result={
+                "status": "success",
+                "content": [{"json": {"merchant_name": None}}],
+            },
+        )
+    )
+
+    assert state["missing_merchant_verified"] is True
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "status", "authorized", "retry"),
+    [
+        ("get_dispute_context", {"merchant_name": "Comercio"}, "success", True, False),
+        (
+            "get_dispute_context",
+            {"merchant_name": None, "error": "bad"},
+            "success",
+            True,
+            False,
+        ),
+        ("get_dispute_context", {"merchant_name": None}, "error", True, False),
+        ("get_dispute_context", {"merchant_name": None}, "success", False, False),
+        ("get_dispute_context", {"merchant_name": None}, "success", True, True),
+        ("get_recent_transactions", {"merchant_name": None}, "success", True, False),
+        ("get_dispute_context", "not-a-dict", "success", True, False),
+    ],
+)
+def test_context_variants_do_not_mark_missing_merchant(
+    name: str,
+    content: object,
+    status: str,
+    authorized: bool,
+    retry: bool,
+) -> None:
+    capture = ResultCaptureHooks()
+    state = _authorized_state() if authorized else {}
+    tool_use = _tool_use(name=name)
+
+    capture.before_tool_call(_before_event(tool_use, state=state))
+    capture.after_tool_call(
+        _after_event(
+            tool_use,
+            state=state,
+            result={"status": status, "content": [{"json": content}]},
+            retry=retry,
+        )
+    )
+
+    assert state.get("missing_merchant_verified") is not True
+
+
+@pytest.mark.parametrize(
+    "terminal_evidence",
+    [
+        {"exception": RuntimeError("provider failed")},
+        {"cancel_message": "cancelled"},
+    ],
+)
+def test_exception_or_cancellation_cannot_mark_missing_merchant(
+    terminal_evidence: dict,
+) -> None:
+    capture = ResultCaptureHooks()
+    state = _authorized_state()
+    tool_use = _tool_use(name="get_dispute_context")
+    capture.before_tool_call(_before_event(tool_use, state=state))
+
+    capture.after_tool_call(
+        _after_event(
+            tool_use,
+            state=state,
+            result={
+                "status": "success",
+                "content": [{"json": {"merchant_name": None}}],
+            },
+            **terminal_evidence,
+        )
+    )
+
+    assert state.get("missing_merchant_verified") is not True
+
+
+def test_incomplete_context_attempt_never_marks_missing_merchant() -> None:
+    capture = ResultCaptureHooks()
+    state = _authorized_state()
+
+    capture.before_tool_call(
+        _before_event(_tool_use(name="get_dispute_context"), state=state)
+    )
+
+    assert state.get("missing_merchant_verified") is not True
+
+
+def test_duplicate_context_attempt_clears_prior_missing_merchant_state() -> None:
+    capture = ResultCaptureHooks()
+    state = _authorized_state()
+    first = _tool_use(name="get_dispute_context")
+    result = {
+        "status": "success",
+        "content": [{"json": {"merchant_name": None}}],
+    }
+    capture.before_tool_call(_before_event(first, state=state))
+    capture.after_tool_call(_after_event(first, state=state, result=result))
+    assert state["missing_merchant_verified"] is True
+
+    duplicate = _tool_use(name="get_dispute_context")
+    capture.before_tool_call(_before_event(duplicate, state=state))
+
+    assert state.get("missing_merchant_verified") is not True
+    capture.after_tool_call(_after_event(duplicate, state=state, result=result))
+    assert state.get("missing_merchant_verified") is not True
+
+
 def test_snapshots_and_callback_inputs_are_deeply_isolated() -> None:
     capture = ResultCaptureHooks()
     tool_use = _tool_use(tool_input={"complaint_id": "CMP-1", "nested": {"value": 1}})
