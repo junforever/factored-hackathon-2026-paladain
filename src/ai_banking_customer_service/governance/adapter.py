@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from typing import Protocol
 from uuid import uuid4
 
 from ai_banking_customer_service.governance.jev.client import JevClient
@@ -42,6 +43,33 @@ from ai_banking_customer_service.observability.sink import AuditSink
 
 
 @dataclass(frozen=True)
+class ProductAuthorization:
+    """Canonical authentication and product-authorization result."""
+
+    authenticated: bool
+    product_authorized: bool
+    reason_code: str
+
+
+class ProductAuthorizationProvider(Protocol):
+    """Authorize a trusted principal for one internally resolved product."""
+
+    def authorize_product(
+        self,
+        *,
+        principal: object,
+        product_id: str,
+    ) -> ProductAuthorization: ...
+
+
+_PROVIDER_AUTHORIZATION_TUPLES = {
+    (True, True, "authorized"),
+    (False, False, "not_authenticated"),
+    (True, False, "product_not_authorized"),
+}
+
+
+@dataclass(frozen=True)
 class ScreeningRoutingResult:
     """Result of input screening followed by intent routing."""
 
@@ -70,6 +98,7 @@ class GovernanceAdapter:
         output_screening_thresholds: OutputScreeningThresholds,
         audit_sink: AuditSink,
         dispute_context_loader: Callable[[str], dict],
+        product_authorization_provider: ProductAuthorizationProvider | None = None,
     ) -> None:
         self._client = client
         self._thresholds = thresholds
@@ -77,6 +106,7 @@ class GovernanceAdapter:
         self._output_screening_thresholds = output_screening_thresholds
         self._audit_sink = audit_sink
         self._dispute_context_loader = dispute_context_loader
+        self._product_authorization_provider = product_authorization_provider
 
     def screen_and_route(
         self,
@@ -213,39 +243,66 @@ class GovernanceAdapter:
             event_id,
         )
 
-    def build_customer_context(self, complaint_id: str) -> dict:
-        """Build authorization context from verified dispute data."""
-        empty = {
-            "authenticated": True,
-            "verified_complaint_ids": (),
-            "authorized_product_ids": (),
-        }
+    def build_customer_context(
+        self,
+        complaint_id: str,
+        *,
+        principal: object | None = None,
+    ) -> dict:
+        """Resolve the exact complaint before authorizing its product."""
         if not isinstance(complaint_id, str) or not complaint_id.strip():
-            return empty
+            return _customer_context()
         try:
             context = self._dispute_context_loader(complaint_id)
         except Exception:
-            return empty
+            return _customer_context()
         if not isinstance(context, dict) or "error" in context:
-            return empty
+            return _customer_context()
         loaded_complaint_id = context.get("complaint_id")
         if (
             not isinstance(loaded_complaint_id, str)
             or not loaded_complaint_id.strip()
             or loaded_complaint_id != complaint_id
         ):
-            return empty
+            return _customer_context()
+
+        verified_complaint_ids = (complaint_id,)
         product_id = context.get("product_id")
-        authorized_product_ids = (
-            (product_id,)
-            if isinstance(product_id, str) and bool(product_id.strip())
-            else ()
+        if not isinstance(product_id, str) or not product_id.strip():
+            return _customer_context(verified_complaint_ids=verified_complaint_ids)
+        if principal is None or (isinstance(principal, str) and not principal.strip()):
+            return _customer_context(
+                verified_complaint_ids=verified_complaint_ids,
+                authorization=ProductAuthorization(False, False, "not_authenticated"),
+            )
+        if self._product_authorization_provider is None:
+            return _customer_context(
+                verified_complaint_ids=verified_complaint_ids,
+                authorization=ProductAuthorization(
+                    False, False, "authorization_unavailable"
+                ),
+            )
+
+        try:
+            authorization = self._product_authorization_provider.authorize_product(
+                principal=principal,
+                product_id=product_id,
+            )
+        except Exception:
+            authorization = None
+        if authorization is None:
+            authorization = ProductAuthorization(
+                False, False, "authorization_unavailable"
+            )
+        elif not _is_valid_provider_authorization(authorization):
+            authorization = ProductAuthorization(
+                False, False, "invalid_authorization_result"
+            )
+        return _customer_context(
+            verified_complaint_ids=verified_complaint_ids,
+            product_id=product_id,
+            authorization=authorization,
         )
-        return {
-            "authenticated": True,
-            "verified_complaint_ids": (complaint_id,),
-            "authorized_product_ids": authorized_product_ids,
-        }
 
     def build_verified_facts(self, dispute_context: dict) -> dict:
         """Keep only facts approved for output screening."""
@@ -548,6 +605,47 @@ class GovernanceAdapter:
         }
         self._audit_sink.emit(event)
         return event_id
+
+
+def _customer_context(
+    *,
+    verified_complaint_ids: tuple[str, ...] = (),
+    product_id: str | None = None,
+    authorization: ProductAuthorization | None = None,
+) -> dict:
+    authorized_product_ids = (
+        (product_id,)
+        if authorization is not None
+        and authorization.product_authorized is True
+        and product_id is not None
+        else ()
+    )
+    return {
+        "authenticated": (
+            authorization.authenticated if authorization is not None else False
+        ),
+        "verified_complaint_ids": verified_complaint_ids,
+        "authorized_product_ids": authorized_product_ids,
+        "authorization_reason": (
+            authorization.reason_code if authorization is not None else None
+        ),
+    }
+
+
+def _is_valid_provider_authorization(authorization: object) -> bool:
+    if not isinstance(authorization, ProductAuthorization):
+        return False
+    if type(authorization.authenticated) is not bool:
+        return False
+    if type(authorization.product_authorized) is not bool:
+        return False
+    if not isinstance(authorization.reason_code, str):
+        return False
+    return (
+        authorization.authenticated,
+        authorization.product_authorized,
+        authorization.reason_code,
+    ) in _PROVIDER_AUTHORIZATION_TUPLES
 
 
 def _validate_orphaned(orphaned: bool) -> None:

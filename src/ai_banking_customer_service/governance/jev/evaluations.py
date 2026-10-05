@@ -166,8 +166,21 @@ TOOL_ARG_CONTRACTS = {
 }
 ALLOWED_TOOLS = frozenset(TOOL_ARG_CONTRACTS)
 ACTION_TOOLS_REQUIRING_CONFIRMATION = frozenset({"block_card"})
-CUSTOMER_CONTEXT_REQUIRED_FIELDS = ("authenticated", "verified_complaint_ids")
-CUSTOMER_CONTEXT_OPTIONAL_FIELDS = ("authorized_product_ids",)
+CUSTOMER_CONTEXT_REQUIRED_FIELDS = (
+    "authenticated",
+    "verified_complaint_ids",
+    "authorized_product_ids",
+    "authorization_reason",
+)
+AUTHORIZATION_REASONS = frozenset(
+    {
+        "authorized",
+        "not_authenticated",
+        "product_not_authorized",
+        "authorization_unavailable",
+        "invalid_authorization_result",
+    }
+)
 JEV_STATE_ARG_ALLOWLIST = {
     "get_dispute_context": ("complaint_verified",),
     "get_recent_transactions": ("complaint_verified", "days_before", "limit"),
@@ -240,20 +253,29 @@ def _validate_customer_context(customer_context: object) -> bool:
         return False
     if any(key not in customer_context for key in CUSTOMER_CONTEXT_REQUIRED_FIELDS):
         return False
-    if not isinstance(customer_context["authenticated"], bool):
+    authenticated = customer_context["authenticated"]
+    if not isinstance(authenticated, bool):
         return False
     verified_ids = customer_context["verified_complaint_ids"]
     if not isinstance(verified_ids, tuple) or not all(
         _validate_non_empty_str(value) for value in verified_ids
     ):
         return False
-    if "authorized_product_ids" in customer_context:
-        authorized_ids = customer_context["authorized_product_ids"]
-        if not isinstance(authorized_ids, tuple) or not all(
-            _validate_non_empty_str(value) for value in authorized_ids
-        ):
-            return False
-    return True
+    authorized_ids = customer_context["authorized_product_ids"]
+    if not isinstance(authorized_ids, tuple) or not all(
+        _validate_non_empty_str(value) for value in authorized_ids
+    ):
+        return False
+    reason = customer_context["authorization_reason"]
+    if reason is not None and (
+        not isinstance(reason, str) or reason not in AUTHORIZATION_REASONS
+    ):
+        return False
+    if reason == "authorized":
+        return authenticated is True and bool(authorized_ids)
+    if reason == "product_not_authorized":
+        return authenticated is True and not authorized_ids
+    return authenticated is False and not authorized_ids
 
 
 def project_tool_args_for_jev(tool_name: str, tool_args: dict) -> dict:
@@ -288,10 +310,6 @@ def validate_tool_call_deterministic(
         return False, "invalid_intent"
     if not isinstance(tool_args, dict):
         return False, "invalid_tool_args"
-    if not _validate_customer_context(customer_context):
-        return False, "invalid_customer_context"
-    if customer_context["authenticated"] is not True:
-        return False, "not_authenticated"
 
     contract = TOOL_ARG_CONTRACTS[tool_name]
     required = contract["required"]
@@ -303,11 +321,23 @@ def validate_tool_call_deterministic(
     for key, validator_name in contract["validators"].items():
         if key in tool_args and not ARG_VALIDATORS[validator_name](tool_args[key]):
             return False, "invalid_arg_type"
+    if not _validate_customer_context(customer_context):
+        return False, "invalid_customer_context"
     if (
         "complaint_id" in required
         and tool_args["complaint_id"] not in customer_context["verified_complaint_ids"]
     ):
         return False, "complaint_not_verified"
+
+    authorization_reason = customer_context["authorization_reason"]
+    if authorization_reason is None:
+        return False, "product_not_verified"
+    if authorization_reason != "authorized":
+        return False, authorization_reason
+    if customer_context["authenticated"] is not True:
+        return False, "not_authenticated"
+    if not customer_context["authorized_product_ids"]:
+        return False, "product_not_authorized"
     if (
         tool_name in ACTION_TOOLS_REQUIRING_CONFIRMATION
         and tool_args.get("confirmed_by_customer") is not True

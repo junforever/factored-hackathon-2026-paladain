@@ -94,6 +94,15 @@ def _mock_client(response: JevResponse) -> Mock:
     return client
 
 
+def _authorized_context() -> dict[str, object]:
+    return {
+        "authenticated": True,
+        "verified_complaint_ids": ("CMP-1",),
+        "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
+    }
+
+
 def _response_for(entry_point: EntryPoint) -> JevResponse:
     return _screening_response() if entry_point is screen_input else _routing_response()
 
@@ -147,9 +156,7 @@ def test_gate_tool_call_sends_one_minimized_noul_and_preserves_metadata() -> Non
         "dispute_charge",
         "Cargo 4111 1111 1111 1111",
         {
-            "authenticated": True,
-            "verified_complaint_ids": ("CMP-1",),
-            "authorized_product_ids": ("PRD-1",),
+            **_authorized_context(),
             "unused_verified_field": "never project",
         },
     )
@@ -185,10 +192,7 @@ def test_gate_tool_call_allows_empty_customer_message_for_eligible_call() -> Non
         {"complaint_id": "CMP-1"},
         "dispute_charge",
         "",
-        {
-            "authenticated": True,
-            "verified_complaint_ids": ("CMP-1",),
-        },
+        _authorized_context(),
     )
 
     assert result.deterministic_block is False
@@ -207,10 +211,7 @@ def test_gate_tool_call_deterministic_block_skips_projection_and_jev() -> None:
             {"complaint_id": "CMP-1"},
             "block_card",
             "Bloqueá mi tarjeta",
-            {
-                "authenticated": True,
-                "verified_complaint_ids": ("CMP-1",),
-            },
+            _authorized_context(),
         )
 
     assert result.deterministic_block is True
@@ -262,10 +263,7 @@ def test_gate_tool_call_converts_sanitization_errors() -> None:
                 {"complaint_id": "CMP-1"},
                 "dispute_charge",
                 "No reconozco el cargo",
-                {
-                    "authenticated": True,
-                    "verified_complaint_ids": ("CMP-1",),
-                },
+                _authorized_context(),
             )
 
     assert isinstance(raised.value.__cause__, ValueError)
@@ -286,10 +284,7 @@ def test_gate_tool_call_rejects_non_serializable_projected_state() -> None:
                 {"complaint_id": "CMP-1"},
                 "dispute_charge",
                 "No reconozco el cargo",
-                {
-                    "authenticated": True,
-                    "verified_complaint_ids": ("CMP-1",),
-                },
+                _authorized_context(),
             )
 
     client.evaluate.assert_not_called()
@@ -313,10 +308,7 @@ def test_gate_tool_call_propagates_jev_errors(
             {"complaint_id": "CMP-1"},
             "dispute_charge",
             "No reconozco el cargo",
-            {
-                "authenticated": True,
-                "verified_complaint_ids": ("CMP-1",),
-            },
+            _authorized_context(),
         )
 
     assert raised.value is error
@@ -347,10 +339,7 @@ def test_gate_tool_call_rejects_non_noul_answer() -> None:
             {"complaint_id": "CMP-1"},
             "dispute_charge",
             "No reconozco el cargo",
-            {
-                "authenticated": True,
-                "verified_complaint_ids": ("CMP-1",),
-            },
+            _authorized_context(),
         )
 
 
@@ -372,7 +361,7 @@ def test_tool_gating_result_is_frozen() -> None:
             {},
             "intent",
             [],
-            "invalid_customer_context",
+            "missing_required_arg",
         ),
     ],
 )
@@ -452,15 +441,96 @@ def test_deterministic_validation_rejects_invalid_customer_context(
     assert (valid, reason) == (False, "invalid_customer_context")
 
 
-def test_deterministic_validation_requires_authentication() -> None:
-    valid, reason = validate_tool_call_deterministic(
+@pytest.mark.parametrize(
+    ("customer_context", "expected_reason"),
+    [
+        (
+            {
+                "authenticated": False,
+                "verified_complaint_ids": ("CMP-1",),
+                "authorized_product_ids": (),
+                "authorization_reason": "not_authenticated",
+            },
+            "not_authenticated",
+        ),
+        (
+            {
+                "authenticated": True,
+                "verified_complaint_ids": ("CMP-1",),
+                "authorized_product_ids": (),
+                "authorization_reason": "product_not_authorized",
+            },
+            "product_not_authorized",
+        ),
+        (
+            {
+                "authenticated": False,
+                "verified_complaint_ids": ("CMP-1",),
+                "authorized_product_ids": (),
+                "authorization_reason": "authorization_unavailable",
+            },
+            "authorization_unavailable",
+        ),
+        (
+            {
+                "authenticated": False,
+                "verified_complaint_ids": ("CMP-1",),
+                "authorized_product_ids": (),
+                "authorization_reason": "invalid_authorization_result",
+            },
+            "invalid_authorization_result",
+        ),
+        (
+            {
+                "authenticated": False,
+                "verified_complaint_ids": ("CMP-1",),
+                "authorized_product_ids": (),
+                "authorization_reason": None,
+            },
+            "product_not_verified",
+        ),
+        (
+            {
+                "authenticated": False,
+                "verified_complaint_ids": (),
+                "authorized_product_ids": (),
+                "authorization_reason": None,
+            },
+            "complaint_not_verified",
+        ),
+    ],
+    ids=[
+        "not-authenticated",
+        "product-denied",
+        "provider-unavailable",
+        "provider-invalid",
+        "product-missing",
+        "complaint-mismatch",
+    ],
+)
+def test_gate_tool_call_returns_authorization_failures_before_jev(
+    customer_context: dict[str, object],
+    expected_reason: str,
+) -> None:
+    client = Mock(spec=JevClient)
+
+    result = gate_tool_call(
+        client,
         "get_dispute_context",
         {"complaint_id": "CMP-1"},
         "dispute_charge",
-        {"authenticated": False, "verified_complaint_ids": ("CMP-1",)},
+        "No reconozco el cargo",
+        customer_context,
     )
 
-    assert (valid, reason) == (False, "not_authenticated")
+    assert result == ToolGatingResult(
+        deterministic_block=True,
+        deterministic_reason=expected_reason,
+        intent_matches_tool=None,
+        model=None,
+        usage=None,
+    )
+    client.evaluate.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -531,7 +601,7 @@ def test_deterministic_validation_enforces_tool_argument_contracts(
         tool_name,
         tool_args,
         "dispute_charge",
-        {"authenticated": True, "verified_complaint_ids": ("CMP-1",)},
+        _authorized_context(),
     )
 
     assert (valid, reason) == (False, expected_reason)
@@ -571,7 +641,7 @@ def test_deterministic_validation_verifies_complaint_before_confirmation(
         tool_name,
         tool_args,
         "dispute_charge",
-        {"authenticated": True, "verified_complaint_ids": ("CMP-1",)},
+        _authorized_context(),
     )
 
     assert (valid, reason) == (False, expected_reason)
@@ -609,9 +679,7 @@ def test_deterministic_validation_accepts_valid_calls_and_extra_context(
         tool_args,
         "dispute_charge",
         {
-            "authenticated": True,
-            "verified_complaint_ids": ("CMP-1",),
-            "authorized_product_ids": ("PRD-1",),
+            **_authorized_context(),
             "unused_verified_field": "kept outside Jev",
         },
     ) == (True, "")

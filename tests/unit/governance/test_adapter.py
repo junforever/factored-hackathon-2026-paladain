@@ -1,8 +1,13 @@
+from dataclasses import FrozenInstanceError
 from unittest.mock import Mock, patch
 
 import pytest
 
-from ai_banking_customer_service.governance.adapter import GovernanceAdapter
+from ai_banking_customer_service.governance.adapter import (
+    GovernanceAdapter,
+    ProductAuthorization,
+    ProductAuthorizationProvider,
+)
 from ai_banking_customer_service.governance.jev.decision import (
     GovernanceAction,
     GovernanceStage,
@@ -46,6 +51,7 @@ def _adapter(
     *,
     sink: Mock | None = None,
     loader: Mock | None = None,
+    authorization_provider: ProductAuthorizationProvider | None = None,
 ) -> GovernanceAdapter:
     return GovernanceAdapter(
         client=Mock(),
@@ -54,6 +60,7 @@ def _adapter(
         output_screening_thresholds=OutputScreeningThresholds(1.5, 0.5),
         audit_sink=sink or Mock(),
         dispute_context_loader=loader or Mock(),
+        product_authorization_provider=authorization_provider,
     )
 
 
@@ -808,18 +815,37 @@ def test_adapter_entry_points_require_boolean_orphaned(
     sink.emit.assert_not_called()
 
 
-def test_build_customer_context_uses_matching_complaint_and_product() -> None:
-    loader = Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"})
-    adapter = _adapter(loader=loader)
+def test_product_authorization_is_frozen_and_provider_contract_exists() -> None:
+    authorization = ProductAuthorization(True, True, "authorized")
 
-    context = adapter.build_customer_context("CMP-1")
+    with pytest.raises(FrozenInstanceError):
+        authorization.authenticated = False  # type: ignore[misc]
+
+    assert ProductAuthorizationProvider is not None
+
+
+def test_build_customer_context_authorizes_exact_complaint_and_product() -> None:
+    principal = object()
+    loader = Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"})
+    provider = Mock(spec=ProductAuthorizationProvider)
+    provider.authorize_product.return_value = ProductAuthorization(
+        True, True, "authorized"
+    )
+    adapter = _adapter(loader=loader, authorization_provider=provider)
+
+    context = adapter.build_customer_context("CMP-1", principal=principal)
 
     assert context == {
         "authenticated": True,
         "verified_complaint_ids": ("CMP-1",),
         "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
     }
     loader.assert_called_once_with("CMP-1")
+    provider.authorize_product.assert_called_once_with(
+        principal=principal,
+        product_id="PRD-1",
+    )
 
 
 @pytest.mark.parametrize(
@@ -833,37 +859,174 @@ def test_build_customer_context_uses_matching_complaint_and_product() -> None:
         {"complaint_id": "CMP-2", "product_id": "PRD-1"},
     ],
 )
-def test_build_customer_context_fails_closed_for_unverified_loader_data(
+def test_build_customer_context_rejects_complaint_mismatch_before_provider(
     loaded: object,
 ) -> None:
-    adapter = _adapter(loader=Mock(return_value=loaded))
+    provider = Mock(spec=ProductAuthorizationProvider)
+    adapter = _adapter(
+        loader=Mock(return_value=loaded),
+        authorization_provider=provider,
+    )
 
-    assert adapter.build_customer_context("CMP-1") == {
-        "authenticated": True,
+    assert adapter.build_customer_context("CMP-1", principal=object()) == {
+        "authenticated": False,
         "verified_complaint_ids": (),
         "authorized_product_ids": (),
+        "authorization_reason": None,
     }
+    provider.authorize_product.assert_not_called()
 
 
 @pytest.mark.parametrize("product_id", [None, "", "   ", 1])
-def test_build_customer_context_keeps_verified_complaint_without_valid_product(
+def test_build_customer_context_rejects_missing_product_before_provider(
     product_id: object,
 ) -> None:
+    provider = Mock(spec=ProductAuthorizationProvider)
     adapter = _adapter(
-        loader=Mock(return_value={"complaint_id": "CMP-1", "product_id": product_id})
+        loader=Mock(return_value={"complaint_id": "CMP-1", "product_id": product_id}),
+        authorization_provider=provider,
     )
 
-    assert adapter.build_customer_context("CMP-1") == {
-        "authenticated": True,
+    assert adapter.build_customer_context("CMP-1", principal=object()) == {
+        "authenticated": False,
         "verified_complaint_ids": ("CMP-1",),
         "authorized_product_ids": (),
+        "authorization_reason": None,
+    }
+    provider.authorize_product.assert_not_called()
+
+
+@pytest.mark.parametrize("principal", [None, "", "   "])
+def test_build_customer_context_rejects_missing_principal_before_provider(
+    principal: object,
+) -> None:
+    provider = Mock(spec=ProductAuthorizationProvider)
+    loader = Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"})
+    adapter = _adapter(loader=loader, authorization_provider=provider)
+
+    context = adapter.build_customer_context("CMP-1", principal=principal)
+
+    assert context["authorization_reason"] == "not_authenticated"
+    assert context["authenticated"] is False
+    assert context["authorized_product_ids"] == ()
+    loader.assert_called_once_with("CMP-1")
+    provider.authorize_product.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("provider", "expected_reason"),
+    [
+        (None, "authorization_unavailable"),
+        (Mock(authorize_product=Mock(return_value=None)), "authorization_unavailable"),
+        (
+            Mock(authorize_product=Mock(side_effect=TimeoutError("slow backend"))),
+            "authorization_unavailable",
+        ),
+        (
+            Mock(authorize_product=Mock(side_effect=RuntimeError("backend down"))),
+            "authorization_unavailable",
+        ),
+    ],
+    ids=["missing", "no-response", "timeout", "exception"],
+)
+def test_build_customer_context_synthesizes_unavailable_authorization(
+    provider: ProductAuthorizationProvider | None,
+    expected_reason: str,
+) -> None:
+    adapter = _adapter(
+        loader=Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"}),
+        authorization_provider=provider,
+    )
+
+    context = adapter.build_customer_context("CMP-1", principal=object())
+
+    assert context == {
+        "authenticated": False,
+        "verified_complaint_ids": ("CMP-1",),
+        "authorized_product_ids": (),
+        "authorization_reason": expected_reason,
     }
 
 
-def test_build_customer_context_handles_loader_exception() -> None:
-    adapter = _adapter(loader=Mock(side_effect=RuntimeError("sandbox failed")))
+@pytest.mark.parametrize(
+    "result",
+    [
+        object(),
+        ProductAuthorization(1, True, "authorized"),
+        ProductAuthorization(True, 1, "authorized"),
+        ProductAuthorization(False, True, "authorized"),
+        ProductAuthorization(True, True, "product_not_authorized"),
+        ProductAuthorization(False, False, "authorization_unavailable"),
+        ProductAuthorization(False, False, "invalid_authorization_result"),
+        ProductAuthorization(False, False, "unknown"),
+    ],
+)
+def test_build_customer_context_rejects_malformed_provider_results(
+    result: object,
+) -> None:
+    provider = Mock(spec=ProductAuthorizationProvider)
+    provider.authorize_product.return_value = result
+    adapter = _adapter(
+        loader=Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"}),
+        authorization_provider=provider,
+    )
 
-    assert adapter.build_customer_context("CMP-1")["verified_complaint_ids"] == ()
+    context = adapter.build_customer_context("CMP-1", principal=object())
+
+    assert context["authorization_reason"] == "invalid_authorization_result"
+    assert context["authenticated"] is False
+    assert context["authorized_product_ids"] == ()
+
+
+@pytest.mark.parametrize(
+    ("result", "expected_authenticated", "expected_reason"),
+    [
+        (
+            ProductAuthorization(False, False, "not_authenticated"),
+            False,
+            "not_authenticated",
+        ),
+        (
+            ProductAuthorization(True, False, "product_not_authorized"),
+            True,
+            "product_not_authorized",
+        ),
+    ],
+)
+def test_build_customer_context_preserves_canonical_provider_denials(
+    result: ProductAuthorization,
+    expected_authenticated: bool,
+    expected_reason: str,
+) -> None:
+    provider = Mock(spec=ProductAuthorizationProvider)
+    provider.authorize_product.return_value = result
+    adapter = _adapter(
+        loader=Mock(return_value={"complaint_id": "CMP-1", "product_id": "PRD-1"}),
+        authorization_provider=provider,
+    )
+
+    context = adapter.build_customer_context("CMP-1", principal=object())
+
+    assert context == {
+        "authenticated": expected_authenticated,
+        "verified_complaint_ids": ("CMP-1",),
+        "authorized_product_ids": (),
+        "authorization_reason": expected_reason,
+    }
+
+
+def test_build_customer_context_handles_loader_exception_without_authorizing() -> None:
+    provider = Mock(spec=ProductAuthorizationProvider)
+    adapter = _adapter(
+        loader=Mock(side_effect=RuntimeError("sandbox failed")),
+        authorization_provider=provider,
+    )
+
+    context = adapter.build_customer_context("CMP-1", principal=object())
+
+    assert context["verified_complaint_ids"] == ()
+    assert context["authenticated"] is False
+    provider.authorize_product.assert_not_called()
 
 
 def test_build_verified_facts_keeps_only_allowlisted_fields() -> None:
