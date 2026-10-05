@@ -29,10 +29,11 @@ Definir tres extensiones listas para implementar de la Especificación #9 que re
 
 ## Tareas
 
-- [ ] **T1 — Especificar la recuperación de SAR con conocimiento de autorización**
+- [x] **T1 — Especificar la recuperación de SAR con conocimiento de autorización**
   - Escribir `docs/specs/spec_09a.md` a partir de la evidencia actual de desarrollo y las restricciones de seguridad.
   - Definir matrices de calibración positivas/negativas, precondiciones de autorización, secuencia TDD y política de held-out congelado.
-  - Crear un commit como una unidad de trabajo de documentación revisable.
+  - Evidencia: Spec 09A define autorización fail-closed, vocabulario cerrado, principal sintético case-local, matriz development-only, TDD y ejecución held-out única. La verificación independiente y la revisión nativa aprobaron el candidato documental.
+  - Commit: `6b43f6c` (`docs(eval): specify safe SAR recovery`).
 
 - [ ] **T2 — Especificar la corrección determinística de terminales**
   - Escribir `docs/specs/spec_09b.md` para tipos de escalamiento, ramas ambiguas y un análogo de desarrollo de `EVAL-009`.
