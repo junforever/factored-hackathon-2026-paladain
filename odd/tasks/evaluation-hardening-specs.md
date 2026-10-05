@@ -51,6 +51,7 @@ Definir tres extensiones listas para implementar de la Especificación #9 que re
   - Comprobar terminología, dependencias, rutas, comandos, criterios de aceptación y política held-out entre las tres especificaciones.
   - Ejecutar comprobaciones estructurales solo de documentación y registrar todas las identidades de commit.
   - Evidencia: la verificación independiente final confirmó que 09A–09C son implementables, cubren toda la deuda medida, comparten línea base/dependencias/política held-out, no contienen IDs explícitos de casos held-out y pasan `git diff --check`. Revisión nativa final: `review-f207f5ee21508575` (`approved/acknowledged`).
+  - Commit: `e7fd00f` (`docs(eval): reconcile hardening spec chain`).
   - Ninguna evaluación en tiempo de ejecución o de modelo resulta aplicable a esta tarea de documentación.
 
 ## Criterios de aceptación
