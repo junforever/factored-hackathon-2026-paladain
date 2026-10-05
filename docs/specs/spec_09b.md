@@ -51,10 +51,9 @@ determinístico admite o rechaza la propuesta usando contexto verificado.
   `authorization_verified` de 09A **MUST** permanecer intactos.
 - 09B precede 09C. 09C **MUST NOT** optimizar latencia sobre una semántica
   terminal todavía inestable.
-- La ausencia actual de `docs/specs/spec_09c.md` es esperada mientras T3 de
-  `odd/tasks/evaluation-hardening-specs.md` siga pendiente. Esta dependencia es
-  normativa y planificada; 09B **MUST NOT** afirmar que fue validada contra una
-  Spec #9C todavía inexistente.
+- `docs/specs/spec_09c.md` existe como especificación normativa lista. Su
+  implementación permanece pendiente y **MUST NOT** comenzar hasta que el código
+  de 09A y 09B —no solo sus documentos— esté implementado, revisado y congelado.
 - Spec #10 permanece reservada para documentación final, slides y pitch.
 
 En caso de conflicto, 09B tiene precedencia sobre Specs #9 y #9A **solo** para:
@@ -1074,12 +1073,12 @@ reintentarse una falla de infraestructura ocurrida **antes de que cualquier caso
 comience**, con evidencia de que ningún hijo, estado o resultado parcial fue
 creado. Si un caso comenzó, la corrida cuenta.
 
-09B no promete una cantidad arbitraria de aciertos held-out. La ausencia actual
-de `docs/specs/spec_09c.md` sigue siendo esperada mientras T3 del tracker continúe
-pendiente: el orden 09B → 09C es un requisito normativo futuro, no una dependencia
-ya validada contra source documental. Después del freeze de 09B y de la creación,
-revisión y aprobación independiente de 09C, esa spec puede medir y optimizar
-latencia sin alterar este contrato de corrección. Spec #10 continúa siendo pitch.
+09B no promete una cantidad arbitraria de aciertos held-out.
+`docs/specs/spec_09c.md` ya existe como especificación normativa lista, pero su
+implementación permanece pendiente y bloqueada hasta que el código de 09A y 09B
+—no solo sus documentos— esté implementado, revisado y congelado. Solo entonces
+09C puede medir y optimizar latencia sin alterar este contrato de corrección.
+Spec #10 continúa siendo pitch.
 
 ## 17. Evidencia requerida en STATUS y task
 

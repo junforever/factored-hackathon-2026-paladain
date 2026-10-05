@@ -35,10 +35,11 @@ Definir tres extensiones listas para implementar de la Especificación #9 que re
   - Evidencia: Spec 09A define autorización fail-closed, vocabulario cerrado, principal sintético case-local, matriz development-only, TDD y ejecución held-out única. La verificación independiente y la revisión nativa aprobaron el candidato documental.
   - Commit: `6b43f6c` (`docs(eval): specify safe SAR recovery`).
 
-- [ ] **T2 — Especificar la corrección determinística de terminales**
+- [x] **T2 — Especificar la corrección determinística de terminales**
   - Escribir `docs/specs/spec_09b.md` para tipos de escalamiento, ramas ambiguas y un análogo de desarrollo de `EVAL-009`.
   - Mantener la política binaria en Python y restringir los vocabularios expuestos al modelo sin ocultar fallos.
-  - Crear un commit como una unidad de trabajo de documentación revisable.
+  - Evidencia: Spec 09B separa terminal, tipo técnico y razón de negocio; define precedencia determinística, contratos de handoff acotados, matriz development-only y política canónica previa a congelar vocabularios. La verificación independiente no encontró ningún bloqueo de seguridad y fue parcial únicamente porque 09C aún no había sido redactada en ese momento. Linaje de revisión nativa: `review-4d91ffb1ced442d9` (`approved/acknowledged`).
+  - Commit: `dafa5fc` (`docs(eval): specify terminal decision correctness`).
 
 - [ ] **T3 — Especificar la atribución y optimización de latencia**
   - Escribir `docs/specs/spec_09c.md` con tiempos por etapa, restricciones de privacidad, protocolo de medición, presupuesto de rendimiento y criterios de no regresión.
