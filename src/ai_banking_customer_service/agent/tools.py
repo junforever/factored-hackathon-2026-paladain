@@ -33,12 +33,13 @@ from ai_banking_customer_service.tools.get_recent_transactions import (
 def get_dispute_context(complaint_id: str) -> dict:
     """Retrieve the full context of a transaction dispute case.
 
-    Use this tool FIRST when a customer reports an unrecognized charge. It returns
-    customer information, product details, transaction data, and the system's
-    recommended action. Do not skip this step.
+    Use this tool FIRST when a customer reports an unrecognized charge. Wait for its
+    result before calling another tool. It returns customer information, product
+    details, transaction data, and the system's recommended action.
 
     Args:
-        complaint_id: Unique complaint ID (for example, CMP-EXAMPLE).
+        complaint_id: The exact complaint ID from the current user message; copy it
+            unchanged.
 
     Returns:
         A dict with the full dispute context, including customer_id, product_id,
@@ -62,7 +63,8 @@ def get_recent_transactions(
     to data quality constraints.
 
     Args:
-        complaint_id: Unique complaint ID.
+        complaint_id: The exact complaint ID from the current user message; copy it
+            unchanged.
         days_before: How many days back to search (default 30, positive integer).
         limit: Maximum transactions to return (default 10, between 1 and 50).
 
@@ -87,7 +89,7 @@ def block_card(
     confirmed_by_customer=False. The tool rejects unconfirmed requests.
 
     Args:
-        complaint_id: Unique complaint ID.
+        complaint_id: The same exact complaint ID used for verified context.
         confirmed_by_customer: Must be True, only after explicit confirmation.
 
     Returns:
@@ -113,17 +115,17 @@ def escalate_case(
 ) -> dict:
     """Escalate a case to a human agent with a structured handoff.
 
-    Use this tool when the case cannot be resolved automatically, including old
-    charges, high-value disputes, investigations, or a customer request for a
-    human.
+    Use this tool when verified context requires escalation or the customer requests
+    a human. Use the same complaint ID used for verified context.
+    Omit optional fields when unnecessary.
 
     Args:
-        complaint_id: Unique complaint ID.
+        complaint_id: The same exact complaint ID used for verified context.
         reason: Escalation reason. Examples are cargo_antiguo, monto_alto, and
             cliente_solicita_humano; this is not a closed vocabulary.
-        unresolved_questions: Optional pending questions for the human team;
-            elements may be of any type.
-        agent_notes: Optional notes from the virtual agent.
+        unresolved_questions: Optional JSON list or null of pending questions for the
+            human team.
+        agent_notes: Optional string or null with notes from the virtual agent.
 
     Returns:
         A dict in one of these categories:

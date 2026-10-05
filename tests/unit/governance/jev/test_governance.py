@@ -5,9 +5,11 @@ from typing import get_args, get_type_hints
 import pytest
 
 from ai_banking_customer_service.config import (
+    PROJECT_ROOT,
     GovernancePolicy,
     OutputScreeningPolicy,
     ToolGatingPolicy,
+    load_policy,
 )
 from ai_banking_customer_service.governance.jev.decision import (
     GovernanceAction,
@@ -777,6 +779,24 @@ def test_decide_tool_gating_blocks_low_intent_match_with_float_repr() -> None:
     assert decision.action is not GovernanceAction.REVIEW
 
 
+@pytest.mark.parametrize(
+    ("probability", "expected_action"),
+    [(0.65, GovernanceAction.ALLOW), (0.649, GovernanceAction.BLOCK)],
+    ids=["at-calibrated-boundary", "below-calibrated-boundary"],
+)
+def test_project_policy_applies_calibrated_tool_gating_boundary(
+    probability: float,
+    expected_action: GovernanceAction,
+) -> None:
+    configured = load_policy(PROJECT_ROOT / "configs" / "policy.yaml")
+    thresholds = ToolGatingThresholds.from_policy(configured.tool_gating)
+
+    decision = decide_tool_gating(_tool_gating_result(probability), thresholds)
+
+    assert thresholds.min_intent_matches_tool == 0.65
+    assert decision.action is expected_action
+
+
 @pytest.mark.parametrize("boundary", [0.0, 1.0], ids=["lower", "upper"])
 def test_decide_tool_gating_accepts_noul_and_threshold_boundaries(
     boundary: float,
@@ -1067,6 +1087,24 @@ def _routing_result(
             else usage
         ),
     )
+
+
+@pytest.mark.parametrize(
+    ("confidence", "expected_action"),
+    [(0.35, GovernanceAction.ALLOW), (0.349, GovernanceAction.REVIEW)],
+    ids=["at-calibrated-boundary", "below-calibrated-boundary"],
+)
+def test_project_policy_applies_calibrated_routing_boundary(
+    confidence: float,
+    expected_action: GovernanceAction,
+) -> None:
+    configured = load_policy(PROJECT_ROOT / "configs" / "policy.yaml")
+    thresholds = GovernanceThresholds.from_policy(configured.governance)
+
+    decision = decide_routing(_routing_result(confidence=confidence), thresholds)
+
+    assert thresholds.min_intent_confidence == 0.35
+    assert decision.action is expected_action
 
 
 @pytest.mark.parametrize("confidence", [0.5, 0.9], ids=["at-threshold", "above"])

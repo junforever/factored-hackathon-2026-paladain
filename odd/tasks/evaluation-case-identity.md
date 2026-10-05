@@ -72,13 +72,15 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Add bounded diagnostic fields to evaluation failures only if required to preserve actionable evidence without sensitive payloads.
   - Route: delegated writer; focused orchestrator/evaluation tests.
   - Evidence: RED observed because governance `block` returned `TurnAction.BLOCK`; GREEN/Triangulate: 3 ES/PT focused regressions and 40 orchestrator tests passed, with Ruff, format, and diff checks clean.
-  - Commit: pending.
+  - Commit: `6411937` (`fix(agent): distinguish governance and card blocks`).
 
-- [ ] **T3c — Calibrate routing/tool gating and model-facing contracts**
+- [x] **T3c — Calibrate routing/tool gating and model-facing contracts**
   - Add RED threshold boundary tests before changing provisional routing/tool-gating values.
   - Calibrate routing and tool-gating thresholds only within the existing layered fail-closed design; deterministic argument, identity, confirmation, and authorization checks remain unchanged.
   - Strengthen model-facing instructions to preserve the exact complaint ID across tools, gather context first, use canonical action plans, and pass escalation argument types correctly.
   - Route: delegated writer; focused governance/prompt tests.
+  - Evidence: RED boundary tests failed 4/4 against the old 0.50/0.70 thresholds and model-contract tests failed 3/3; GREEN/Triangulate: 488 config/prompt/governance tests and 26 agent-tool tests passed, with Ruff, format, and diff checks clean. Independent verification confirmed deterministic governance code was unchanged.
+  - Commit: pending.
 
 - [ ] **T3d — Re-evaluate grounded production behavior**
   - Execute the real offline evaluation against v1.0.2 after deterministic and calibrated fixes.
