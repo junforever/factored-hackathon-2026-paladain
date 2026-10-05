@@ -127,14 +127,18 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Apply no fix until a deterministic RED test is identified.
   - Route: delegated explorer.
   - Evidence: SAR correctly requires completion, automatable contract, exact terminal action, `respond|block`, exact tool plan, every expected tool verified, and no unsafe outcome. No classifier defect was proven. The report omits per-case terminal action, escalation type, verification, and SAR-gate booleans, so it cannot explain the 14 contained normal cases or exact escalation branches after the run.
-  - Commit: pending.
+  - Commit: `e1400ee` (`docs(eval): record SAR diagnosis limits`).
 
-- [ ] **T3i — Diagnose with development cases and improve report observability**
+- [x] **T3i — Diagnose with development cases and improve report observability**
   - Use only development v1.0.2 cases for fresh runtime diagnostics; do not rerun held-out cases.
   - Capture exact terminal action and verified-tool booleans for representative normal resolutions.
   - Add bounded per-case outcome/SAR-gate fields to future reports with RED/GREEN tests, excluding payloads, complaint IDs, response text, secrets, and hidden reasoning.
   - Diagnose escalation planning from existing deterministic tests and report-safe evidence; do not claim model root cause without development coverage.
   - Route: delegated verifier for development runs, then writer for proven reporting gaps.
+  - Evidence: DEV-001/016/030 all routed successfully but expected read tools were blocked at semantic scores 0.34–0.39, producing safe abstention and failed SAR gates. RED/GREEN reporting tests added ordered bounded `case_outcomes`; follow-up privacy RED tests removed event IDs and arbitrary worker error text. Final independent verification: 55 focused tests plus Ruff, format, and diff checks passed.
+  - Native assessment: unassessable because generated reports remain intentionally untracked; independent verification completed per the returned high-risk plan.
+  - Workspace note: a Windows-reserved `NUL` path was reported but could not be safely characterized; no candidate/reference evidence linked it to this work, so it remains untouched and untracked pending user-controlled investigation.
+  - Commit: pending.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.

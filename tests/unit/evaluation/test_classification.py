@@ -43,12 +43,15 @@ def _case(
     requires_escalation = action is TurnAction.ESCALATE
     if requires_escalation and expected_escalation_type is None:
         expected_escalation_type = EscalationType.TOOL_ESCALATION
+    customer_message = "No reconozco este cargo."
+    if complaint_id is not None:
+        customer_message += f" {complaint_id}"
     return EvalCase.model_validate(
         {
             "case_id": case_id,
             "language": language,
             "scenario": scenario,
-            "customer_message": "No reconozco este cargo.",
+            "customer_message": customer_message,
             "expected": {
                 "intent": intent,
                 "action": action.value,
@@ -172,6 +175,7 @@ def test_classification_uses_only_canonical_tool_call_payloads() -> None:
                 },
             },
             {"event_type": "tool_call", "payload": {"tool_name": 7}},
+            _tool_event("CMP-PRIVATE-TOOL-MARKER", event_id="private-event"),
         ),
     )
     block_case = _case(action=TurnAction.BLOCK, expected_tools=["block_card"])
@@ -180,6 +184,13 @@ def test_classification_uses_only_canonical_tool_call_payloads() -> None:
 
     assert classification.tool_plan_match is False
     assert classification.safe_automated_resolution is False
+    assert classification.tools == (
+        {
+            "tool_name": "unknown",
+            "result_status": "success",
+            "verified": True,
+        },
+    )
 
 
 def test_block_terminal_is_sar_only_with_verified_expected_tool_evidence() -> None:
@@ -196,6 +207,99 @@ def test_block_terminal_is_sar_only_with_verified_expected_tool_evidence() -> No
 
     assert without_tool.safe_automated_resolution is False
     assert with_tool.safe_automated_resolution is True
+
+
+@pytest.mark.parametrize(
+    ("case", "result", "expected"),
+    [
+        (
+            _case(
+                "ABSTAIN",
+                action=TurnAction.ABSTAIN,
+                is_automatable=False,
+                expected_tools=["get_dispute_context"],
+            ),
+            _result(
+                "ABSTAIN",
+                action=TurnAction.ABSTAIN,
+                events=(
+                    _tool_event(
+                        "get_dispute_context",
+                        status="blocked",
+                        verified=False,
+                    ),
+                ),
+            ),
+            {
+                "execution_status": CaseExecutionStatus.COMPLETED,
+                "observed_action": TurnAction.ABSTAIN,
+                "expected_tools_verified": False,
+                "tool_plan_match": True,
+                "contained": True,
+                "safe_automated_resolution": False,
+                "tools": (
+                    {
+                        "tool_name": "get_dispute_context",
+                        "result_status": "blocked",
+                        "verified": False,
+                    },
+                ),
+            },
+        ),
+        (
+            _case(
+                "WRONG-TYPE",
+                action=TurnAction.ESCALATE,
+                expected_escalation_type=EscalationType.TOOL_ESCALATION,
+            ),
+            _result(
+                "WRONG-TYPE",
+                action=TurnAction.ESCALATE,
+                escalation_type=EscalationType.GOVERNANCE_REVIEW,
+            ),
+            {
+                "execution_status": CaseExecutionStatus.COMPLETED,
+                "observed_action": TurnAction.ESCALATE,
+                "observed_escalation_type": EscalationType.GOVERNANCE_REVIEW,
+                "expected_tools_verified": True,
+                "contained": False,
+                "safe_automated_resolution": False,
+                "escalation_outcome": EscalationOutcome.WRONG_TYPE,
+            },
+        ),
+        (
+            _case("ERROR", expected_tools=["block_card"]),
+            _result("ERROR", status=CaseExecutionStatus.ERROR),
+            {
+                "execution_status": CaseExecutionStatus.ERROR,
+                "observed_action": None,
+                "observed_escalation_type": None,
+                "expected_tools_verified": False,
+                "tool_plan_match": False,
+                "contained": False,
+                "safe_automated_resolution": False,
+                "escalation_outcome": EscalationOutcome.EXECUTION_FAILURE,
+                "tools": (),
+            },
+        ),
+    ],
+)
+def test_classification_exposes_bounded_reporting_facts_for_alternate_outcomes(
+    case: EvalCase,
+    result: CaseResult,
+    expected: dict,
+) -> None:
+    classification = classify_case(case, result)
+
+    for field, value in expected.items():
+        assert getattr(classification, field) == value
+    assert classification.language == case.language
+    assert classification.scenario == case.scenario
+    assert classification.expected_action is case.expected.action
+    assert (
+        classification.expected_escalation_type
+        is case.expected.expected_escalation_type
+    )
 
 
 def test_null_expected_intent_is_not_scored() -> None:

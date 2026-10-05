@@ -93,6 +93,7 @@ def generate_report(
                 "baseline": 0.0,
             },
         },
+        "case_outcomes": [_case_outcome(item) for item in classifications],
         "failures": _failures(run, classifications),
         "unsafe_evidence": _unsafe_evidence(classifications),
         "limitations": _limitations(language_metrics, scenario_metrics),
@@ -142,6 +143,7 @@ def render_markdown_report(report: dict) -> str:
             f"{_display(comparison['baseline'])} |"
         )
 
+    lines.extend(_case_outcomes_markdown(report["case_outcomes"]))
     lines.extend(
         [
             "",
@@ -206,6 +208,53 @@ def save_report(report: dict, output_dir: Path) -> ReportPaths:
     return paths
 
 
+def _case_outcome(classification: CaseClassification) -> dict:
+    escalation_outcome = classification.escalation_outcome
+    failure_category = (
+        escalation_outcome.value
+        if escalation_outcome in _DEFECTIVE_ESCALATIONS
+        else "unsafe_outcome"
+        if classification.unsafe_outcome
+        else None
+    )
+    return {
+        "case_id": classification.case_id,
+        "language": classification.language,
+        "scenario": classification.scenario,
+        "execution_status": classification.execution_status.value,
+        "expected_action": classification.expected_action.value,
+        "observed_action": (
+            classification.observed_action.value
+            if classification.observed_action is not None
+            else None
+        ),
+        "expected_escalation_type": (
+            classification.expected_escalation_type.value
+            if classification.expected_escalation_type is not None
+            else None
+        ),
+        "observed_escalation_type": (
+            classification.observed_escalation_type.value
+            if classification.observed_escalation_type is not None
+            else None
+        ),
+        "contained": classification.contained,
+        "safe_automated_resolution": classification.safe_automated_resolution,
+        "tool_plan_match": classification.tool_plan_match,
+        "expected_tools_verified": classification.expected_tools_verified,
+        "unsafe_outcome": classification.unsafe_outcome,
+        "failure_category": failure_category,
+        "tools": [
+            {
+                "tool_name": tool["tool_name"],
+                "result_status": tool["result_status"],
+                "verified": tool["verified"],
+            }
+            for tool in classification.tools
+        ],
+    }
+
+
 def _failures(
     run: EvalRun,
     classifications: list[CaseClassification],
@@ -228,7 +277,11 @@ def _failures(
                 "case_id": result.case_id,
                 "execution_status": result.execution_status.value,
                 "latency_ms": result.latency_ms,
-                "error": _sanitize_error(result.error),
+                "error": (
+                    None
+                    if result.execution_status is CaseExecutionStatus.COMPLETED
+                    else "execution_failed"
+                ),
                 "reason_codes": sorted(set(reason_codes)),
             }
         )
@@ -245,15 +298,13 @@ def _unsafe_evidence(
                 continue
             predicate = _safe_code(evidence.get("predicate"))
             rule_code = _safe_code(evidence.get("rule_code"))
-            item = {
-                "case_id": classification.case_id,
-                "predicate": predicate,
-                "rule_code": rule_code,
-            }
-            event_id = _safe_code(evidence.get("event_id"), optional=True)
-            if event_id is not None:
-                item["event_id"] = event_id
-            flattened.append(item)
+            flattened.append(
+                {
+                    "case_id": classification.case_id,
+                    "predicate": predicate,
+                    "rule_code": rule_code,
+                }
+            )
     return flattened
 
 
@@ -273,6 +324,58 @@ def _limitations(
                 statement += " Small sample; results are not statistically significant."
             limitations.append(statement)
     return limitations
+
+
+def _case_outcomes_markdown(outcomes: list[dict]) -> list[str]:
+    lines = [
+        "",
+        "## Case outcomes",
+        "",
+        (
+            "| Case | Language | Scenario | Status | Expected action | "
+            "Observed action | Expected escalation | Observed escalation | "
+            "Contained | SAR | Tool plan | Expected tools verified | Unsafe | "
+            "Failure | Tools |"
+        ),
+        (
+            "| --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | "
+            "---: | ---: | ---: | --- | --- |"
+        ),
+    ]
+    for outcome in outcomes:
+        tools = ", ".join(
+            f"{tool['tool_name']}:{tool['result_status']}:{str(tool['verified']).lower()}"
+            for tool in outcome["tools"]
+        )
+        lines.append(
+            "| "
+            + " | ".join(
+                _markdown_cell(value)
+                for value in (
+                    outcome["case_id"],
+                    outcome["language"],
+                    outcome["scenario"],
+                    outcome["execution_status"],
+                    outcome["expected_action"],
+                    outcome["observed_action"],
+                    outcome["expected_escalation_type"],
+                    outcome["observed_escalation_type"],
+                    outcome["contained"],
+                    outcome["safe_automated_resolution"],
+                    outcome["tool_plan_match"],
+                    outcome["expected_tools_verified"],
+                    outcome["unsafe_outcome"],
+                    outcome["failure_category"],
+                    tools,
+                )
+            )
+            + " |"
+        )
+    return lines
+
+
+def _markdown_cell(value: object) -> str:
+    return _display(value).replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 
 
 def _segment_markdown(title: str, segments: dict[str, dict]) -> list[str]:
@@ -307,18 +410,7 @@ def _json_fragment(value: object) -> str:
     )
 
 
-def _sanitize_error(value: str | None) -> str | None:
-    if value is None:
-        return None
-    sanitized = " ".join(sanitize_message(value).split())[:600]
-    if not sanitized or "/" in sanitized or "\\" in sanitized:
-        return "execution_error"
-    return sanitized
-
-
-def _safe_code(value: object, *, optional: bool = False) -> str | None:
-    if value is None and optional:
-        return None
+def _safe_code(value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         return "redacted"
     sanitized = sanitize_message(value.strip())[:128]

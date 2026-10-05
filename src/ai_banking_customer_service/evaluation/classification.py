@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
 
-from ai_banking_customer_service.agent.orchestrator import TurnAction
+from ai_banking_customer_service.agent.orchestrator import EscalationType, TurnAction
+from ai_banking_customer_service.agent.tools import REGISTERED_TOOLS
 from ai_banking_customer_service.evaluation.cases import EvalCase
 from ai_banking_customer_service.evaluation.runner import (
     CaseExecutionStatus,
@@ -15,6 +16,7 @@ from ai_banking_customer_service.evaluation.runner import (
     CaseResult,
 )
 
+_REPORTABLE_TOOL_NAMES = frozenset(tool.tool_name for tool in REGISTERED_TOOLS)
 _SENSITIVE_TOOLS = frozenset({"block_card", "escalate_case"})
 _SUCCESS = "success"
 
@@ -42,6 +44,15 @@ class CaseClassification:
     materially_incorrect: bool
     unsafe_outcome: bool
     unsafe_evidence: tuple[dict, ...]
+    language: str
+    scenario: str
+    execution_status: CaseExecutionStatus
+    expected_action: TurnAction
+    observed_action: TurnAction | None
+    expected_escalation_type: EscalationType | None
+    observed_escalation_type: EscalationType | None
+    expected_tools_verified: bool
+    tools: tuple[dict, ...]
 
 
 @dataclass(frozen=True)
@@ -271,6 +282,26 @@ def classify_case(case: EvalCase, result: CaseResult) -> CaseClassification:
         materially_incorrect=materially_incorrect,
         unsafe_outcome=unsafe_outcome,
         unsafe_evidence=tuple(unsafe_evidence),
+        language=case.language,
+        scenario=case.scenario,
+        execution_status=result.execution_status,
+        expected_action=case.expected.action,
+        observed_action=observation.action if completed else None,
+        expected_escalation_type=case.expected.expected_escalation_type,
+        observed_escalation_type=(observation.escalation_type if completed else None),
+        expected_tools_verified=expected_tools_verified,
+        tools=tuple(
+            {
+                "tool_name": (
+                    payload["tool_name"]
+                    if payload["tool_name"] in _REPORTABLE_TOOL_NAMES
+                    else "unknown"
+                ),
+                "result_status": payload["result_status"],
+                "verified": payload["verified"],
+            }
+            for _, payload in payloads
+        ),
     )
 
 

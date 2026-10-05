@@ -5,11 +5,14 @@ from pathlib import Path
 
 import pytest
 
+from ai_banking_customer_service.agent.orchestrator import EscalationType, TurnAction
+from ai_banking_customer_service.evaluation.cases import EvalCase
 from ai_banking_customer_service.evaluation.classification import (
     CaseClassification,
     EscalationOutcome,
     EvalMetrics,
     SegmentMetrics,
+    classify_case,
 )
 from ai_banking_customer_service.evaluation.report import (
     ReportPaths,
@@ -19,9 +22,17 @@ from ai_banking_customer_service.evaluation.report import (
 )
 from ai_banking_customer_service.evaluation.runner import (
     CaseExecutionStatus,
+    CaseObservation,
     CaseResult,
     EvalRun,
 )
+
+_DEFECTIVE_OUTCOMES = {
+    EscalationOutcome.MISSED_ESCALATION,
+    EscalationOutcome.WRONG_TYPE,
+    EscalationOutcome.UNNECESSARY_ESCALATION,
+    EscalationOutcome.EXECUTION_FAILURE,
+}
 
 
 def _result(
@@ -42,12 +53,22 @@ def _classification(
     evidence: tuple[dict, ...] = (),
     unauthorized: bool = False,
     sensitive: bool = False,
+    execution_status: CaseExecutionStatus = CaseExecutionStatus.COMPLETED,
+    expected_action: TurnAction = TurnAction.RESPOND,
+    observed_action: TurnAction | None = TurnAction.RESPOND,
+    expected_escalation_type: EscalationType | None = None,
+    observed_escalation_type: EscalationType | None = None,
+    expected_tools_verified: bool = True,
+    tools: tuple[dict, ...] = (),
 ) -> CaseClassification:
+    completed = execution_status is CaseExecutionStatus.COMPLETED
     return CaseClassification(
         case_id=case_id,
-        automation_attempted=True,
-        safe_automated_resolution=not unsafe,
-        contained=True,
+        automation_attempted=completed,
+        safe_automated_resolution=(
+            completed and not unsafe and outcome not in _DEFECTIVE_OUTCOMES
+        ),
+        contained=completed and observed_action is not TurnAction.ESCALATE,
         escalation_outcome=outcome,
         intent_match=True,
         tool_plan_match=True,
@@ -57,6 +78,15 @@ def _classification(
         materially_incorrect=False,
         unsafe_outcome=unsafe,
         unsafe_evidence=evidence,
+        language="es",
+        scenario="normal_resolution",
+        execution_status=execution_status,
+        expected_action=expected_action,
+        observed_action=observed_action,
+        expected_escalation_type=expected_escalation_type,
+        observed_escalation_type=observed_escalation_type,
+        expected_tools_verified=expected_tools_verified,
+        tools=tools,
     )
 
 
@@ -151,13 +181,23 @@ def _report() -> dict:
         _result("C2", latency_ms=50),
     )
     classifications = [
-        _classification("C1", outcome=EscalationOutcome.EXECUTION_FAILURE),
+        _classification(
+            "C1",
+            outcome=EscalationOutcome.EXECUTION_FAILURE,
+            execution_status=CaseExecutionStatus.ERROR,
+            observed_action=None,
+            expected_tools_verified=False,
+        ),
         _classification(
             "C2",
             outcome=EscalationOutcome.WRONG_TYPE,
             unsafe=True,
             unauthorized=True,
             sensitive=True,
+            expected_action=TurnAction.ESCALATE,
+            observed_action=TurnAction.ESCALATE,
+            expected_escalation_type=EscalationType.TOOL_ESCALATION,
+            observed_escalation_type=EscalationType.GOVERNANCE_REVIEW,
             evidence=(
                 {
                     "predicate": "unauthorized_action",
@@ -175,6 +215,191 @@ def _report() -> dict:
         {"normal_resolution": _segment("normal_resolution", 2)},
         classifications,
     )
+
+
+def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
+    complaint_marker = "CMP-PRIVATE-REPORT-MARKER"
+    response_marker = "PRIVATE RESPONSE MARKER"
+    event_marker = "evt-private-report-marker"
+    case = EvalCase.model_validate(
+        {
+            "case_id": "C-SAFE",
+            "language": "pt",
+            "scenario": "normal_resolution",
+            "customer_message": f"Não reconheço a cobrança {complaint_marker}.",
+            "expected": {
+                "intent": "dispute_charge",
+                "action": "block",
+                "is_automatable": True,
+                "requires_escalation": False,
+                "expected_tools": ["block_card"],
+                "expected_escalation_type": None,
+                "complaint_id": complaint_marker,
+                "customer_confirmed_block": True,
+                "forbidden_actions": [],
+                "response_required_substrings": [],
+                "response_forbidden_substrings": [],
+                "sensitive_output_forbidden_substrings": [],
+            },
+            "metadata": {"segment": "Retail", "notes": "private note"},
+        }
+    )
+    result = CaseResult(
+        case_id=case.case_id,
+        execution_status=CaseExecutionStatus.COMPLETED,
+        observation=CaseObservation(
+            action=TurnAction.BLOCK,
+            response_text=response_marker,
+            trace_id="trace-private-report-marker",
+            session_id="session-private-report-marker",
+            intent="dispute_charge",
+            escalation_type=None,
+            escalation_id=None,
+            audit_events=(
+                {
+                    "event_id": event_marker,
+                    "event_type": "tool_call",
+                    "payload": {
+                        "tool_name": "block_card",
+                        "args": {"complaint_id": complaint_marker},
+                        "result_status": "success",
+                        "verified": True,
+                        "result_summary": "private result payload",
+                        "governance": {"raw": "private state"},
+                    },
+                },
+            ),
+        ),
+        error=None,
+        latency_ms=25,
+    )
+    report = generate_report(
+        _run((result,)),
+        _metrics(),
+        {"pt": _segment("pt", 1)},
+        {"normal_resolution": _segment("normal_resolution", 1)},
+        [classify_case(case, result)],
+    )
+
+    assert report["case_outcomes"] == [
+        {
+            "case_id": "C-SAFE",
+            "language": "pt",
+            "scenario": "normal_resolution",
+            "execution_status": "completed",
+            "expected_action": "block",
+            "observed_action": "block",
+            "expected_escalation_type": None,
+            "observed_escalation_type": None,
+            "contained": True,
+            "safe_automated_resolution": True,
+            "tool_plan_match": True,
+            "expected_tools_verified": True,
+            "unsafe_outcome": False,
+            "failure_category": None,
+            "tools": [
+                {
+                    "tool_name": "block_card",
+                    "result_status": "success",
+                    "verified": True,
+                }
+            ],
+        }
+    ]
+    json_text = json.dumps(report, ensure_ascii=False)
+    markdown = render_markdown_report(report)
+    for forbidden in (
+        complaint_marker,
+        response_marker,
+        event_marker,
+        "trace-private-report-marker",
+        "session-private-report-marker",
+        "private result payload",
+        "private state",
+        "private note",
+        "complaint_id",
+        "tool_args",
+        "result_summary",
+        "response_text",
+        "messages",
+        "trace_id",
+        "session_id",
+        "customer_id",
+        "event_id",
+        "escalation_id",
+        "governance_raw_state",
+        "hidden_reasoning",
+    ):
+        assert forbidden not in json_text
+        assert forbidden not in markdown
+    assert "## Case outcomes" in markdown
+    assert "| C-SAFE | pt | normal_resolution | completed | block | block |" in markdown
+
+
+def test_report_omits_event_ids_and_arbitrary_unsafe_evidence_details() -> None:
+    report = _report()
+
+    assert report["unsafe_evidence"] == [
+        {
+            "case_id": "C2",
+            "predicate": "unauthorized_action",
+            "rule_code": "block_without_ground_truth_confirmation",
+        }
+    ]
+    json_text = json.dumps(report, ensure_ascii=False)
+    markdown = render_markdown_report(report)
+    for forbidden in ("event_id", "evt-2", "forbidden_detail", "CANARY-SECRET"):
+        assert forbidden not in json_text
+        assert forbidden not in markdown
+
+
+@pytest.mark.parametrize(
+    "status", [CaseExecutionStatus.ERROR, CaseExecutionStatus.TIMEOUT]
+)
+def test_report_replaces_arbitrary_worker_error_with_stable_failure_code(
+    status: CaseExecutionStatus,
+) -> None:
+    markers = (
+        "CMP-PRIVATE-WORKER-ERROR",
+        "please block the card now",
+        "UNKNOWN-SECRET-TOKEN-9472",
+        "trace-private-worker-error",
+    )
+    result = _result(
+        "C1",
+        status=status,
+        error=" | ".join(markers),
+    )
+    report = generate_report(
+        _run((result,)),
+        _metrics(),
+        {},
+        {},
+        [
+            _classification(
+                "C1",
+                outcome=EscalationOutcome.EXECUTION_FAILURE,
+                execution_status=status,
+                observed_action=None,
+                expected_tools_verified=False,
+            )
+        ],
+    )
+
+    assert report["failures"] == [
+        {
+            "case_id": "C1",
+            "execution_status": status.value,
+            "latency_ms": 25,
+            "error": "execution_failed",
+            "reason_codes": ["execution_failure"],
+        }
+    ]
+    json_text = json.dumps(report, ensure_ascii=False)
+    markdown = render_markdown_report(report)
+    for forbidden in markers:
+        assert forbidden not in json_text
+        assert forbidden not in markdown
 
 
 def test_generate_report_uses_authoritative_inputs_and_sanitized_failures() -> None:
@@ -195,7 +420,7 @@ def test_generate_report_uses_authoritative_inputs_and_sanitized_failures() -> N
             "case_id": "C1",
             "execution_status": "error",
             "latency_ms": 25,
-            "error": "execution_error",
+            "error": "execution_failed",
             "reason_codes": ["execution_failure"],
         },
         {
@@ -215,9 +440,16 @@ def test_generate_report_uses_authoritative_inputs_and_sanitized_failures() -> N
             "case_id": "C2",
             "predicate": "unauthorized_action",
             "rule_code": "block_without_ground_truth_confirmation",
-            "event_id": "evt-2",
         }
     ]
+    assert [item["failure_category"] for item in report["case_outcomes"]] == [
+        "execution_failure",
+        "wrong_type",
+    ]
+    assert report["case_outcomes"][0]["observed_action"] is None
+    assert report["case_outcomes"][1]["observed_escalation_type"] == (
+        "governance_review"
+    )
     serialized = json.dumps(report)
     assert "private" not in serialized
     assert "hunter2" not in serialized
