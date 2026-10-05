@@ -138,7 +138,7 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Evidence: DEV-001/016/030 all routed successfully but expected read tools were blocked at semantic scores 0.34–0.39, producing safe abstention and failed SAR gates. RED/GREEN reporting tests added ordered bounded `case_outcomes`; follow-up privacy RED tests removed event IDs and arbitrary worker error text. Final independent verification: 55 focused tests plus Ruff, format, and diff checks passed.
   - Native assessment: unassessable because generated reports remain intentionally untracked; independent verification completed per the returned high-risk plan.
   - Workspace note: a Windows-reserved `NUL` path was reported but could not be safely characterized; no candidate/reference evidence linked it to this work, so it remains untouched and untracked pending user-controlled investigation.
-  - Commit: pending.
+  - Commit: `e28febc` (`feat(eval): expose bounded case outcomes`).
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.

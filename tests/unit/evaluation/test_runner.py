@@ -25,7 +25,10 @@ from ai_banking_customer_service.evaluation.runner import (
 )
 
 
-def _case(case_id: str = "EVAL-RUNNER-001", message: str = "runtime") -> EvalCase:
+def _case(
+    case_id: str = "EVAL-RUNNER-001",
+    message: str = "Complaint CMP-RUNNER.",
+) -> EvalCase:
     return EvalCase.model_validate(
         {
             "case_id": case_id,

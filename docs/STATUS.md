@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-10-04
+> Última actualización: 2026-10-05
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -9,9 +9,9 @@
 ## Resumen
 
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
-El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline held-out de Spec #9 están **completados**. La demo local cuenta además con un catálogo reproducible de seis casos, reset SQLite acotado y una guía de ejecución para jueces.
+El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline held-out de Spec #9 están **completados**. La evaluación quedó reparada sobre casos reales del sandbox y fue ejecutada 50/50 sin fallos de ejecución; el resultado sigue siendo provisional porque SAR permanece en 0% y persisten fallos de tipo de escalamiento. La demo local cuenta además con un catálogo reproducible de seis casos, reset SQLite acotado y una guía de ejecución para jueces.
 
-**Siguiente paso:** completar la validación integral y manual del flujo de demo; después continuar con slides y video pitch de Spec #10.
+**Siguiente paso:** recuperar SAR y corregir los tipos de escalamiento usando evidencia positiva y negativa de desarrollo, reducir latencia y resolver el caso inseguro `EVAL-009`; en paralelo, completar la validación integral y manual del flujo de demo antes de slides y video pitch de Spec #10.
 
 ---
 
@@ -99,17 +99,48 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 - [x] Task retenido por turno, cancelación cooperativa, monitor de finalización y reconciliación de resultados tardíos sin ejecución duplicada.
 - [x] Cobertura unitaria, de contrato Chainlit 2.12 y smoke portable con aislamiento del app-root entre proceso padre e hijo.
 - [x] Contratos de side effects corregidos para comparar paths y bytes antes/después sin rechazar traducciones ni `chainlit.md` intencionales.
-- [x] Validación completada: 78 tests enfocados y 842 tests del repositorio; Ruff check, Ruff format y diff check pasaron.
+- [x] Validación histórica de Spec #8: 78 tests enfocados y 842 tests del repositorio; Ruff check, Ruff format y diff check pasaron dentro de ese alcance.
 
 ### Evaluación offline — held-out
 
 - [x] Configuración, casos y manifests tipados con hash SHA-256, cobertura mínima e independencia development/held-out fail-closed.
+- [x] Dataset activo `v1.0.2`: 50 casos held-out (12 en portugués) y 30 de desarrollo usan IDs reales y disjuntos de reclamaciones del sandbox. Ambos manifests quedan vinculados de forma fail-closed al path y al hash SHA-256 exactos del sandbox. Los fixtures `v1.0.0` y `v1.0.1` permanecen históricos e inmutables.
 - [x] Tools enlazadas a dos SQLite aislados por caso sin exponer paths en firmas, schemas, gobierno ni auditoría.
 - [x] Un proceso `spawn` no-daemon por caso con timeout, gracia, terminación, join y cleanup poseídos por el padre.
 - [x] Clasificación determinística de unsafe outcomes, SAR, containment, escalation quality, segmentos y percentiles inclusivos.
-- [x] Reportes JSON/Markdown determinísticos y atómicos, más CLI `python -m` con errores sanitizados.
-- [x] Validación completada: 150 tests de evaluación, 65 tests afectados del agente, 984 tests unitarios y 996 tests del repositorio; Ruff check, Ruff format y diff check pasaron.
-- [x] Manifests verificados: 50 casos held-out (12 en portugués) y 30 de desarrollo, sin leakage detectado.
+- [x] Semántica corregida: un `BLOCK` de gobierno ya no se presenta como bloqueo bancario de tarjeta; el flujo termina en escalamiento seguro sin tools.
+- [x] Umbrales provisionales de routing y tool gating calibrados sin relajar gates determinísticos; instrucciones al modelo reforzadas para conservar el ID exacto, leer contexto primero y usar planes y argumentos canónicos de tools.
+- [x] Resultados Strands normalizados: los bloques de texto que contienen objetos JSON válidos se capturan como resultados estructurados, preservando el comportamiento fail-closed para texto inválido o no-objeto.
+- [x] Reportes JSON/Markdown determinísticos y atómicos, más CLI `python -m` con errores sanitizados. Los reportes futuros incluyen `case_outcomes` acotados y privacy-safe; los reportes históricos ya generados no se modificaron y permanecen locales.
+- [x] Validación histórica de implementación de Spec #9: 150 tests de evaluación, 65 tests afectados del agente, 984 tests unitarios y 996 tests del repositorio; Ruff check, Ruff format y diff check pasaron dentro de ese alcance.
+
+#### Medición final held-out `v1.0.2`
+
+Reporte local: `evals/reports/eval_1.0.2_20261005T005146Z.md`.
+
+| Métrica | Resultado |
+| --- | ---: |
+| Casos completados | 50/50 |
+| Fallos de ejecución | 0 |
+| SAR | 0% |
+| Containment | 60% |
+| Escalamientos correctos | 5 |
+| Escalamientos innecesarios | 1 |
+| Unsafe outcomes | 1/50 (2%) |
+| Tool-plan match | 39/50 (78%) |
+| Latencia p50 | 10,414 ms |
+| Latencia p95 | 20,347.35 ms |
+
+SAR no se recuperó y la latencia p95 empeoró frente al run grounded anterior (~19.29 s); la mejora de containment y seguridad no compensa esas regresiones.
+
+Resumen por escenario:
+
+- Ataques: 5/5 terminaron correctamente en revisión/escalamiento seguro, sin tools.
+- Resolución normal: 14/15 casos contenidos; `EVAL-009` fue el único unsafe outcome y escalamiento innecesario.
+- Datos faltantes: 5/5 contenidos mediante abstención o solicitud de información, sin escrituras.
+- Escalamiento: los casos human-required siguen 10/10 con tipo incorrecto; los ambiguos conservan fallos de omisión o tipo de escalamiento.
+
+Evidencia de desarrollo: `DEV-001`, `DEV-016` y `DEV-030` rutearon con confianza, pero las lecturas esperadas fueron bloqueadas por tool gating semántico con scores de 0.34–0.39. El resultado fue abstención segura y SAR 0. La siguiente calibración necesita evidencia positiva y negativa de development; no debe ajustarse usando held-out por sí solo.
 
 ### Documentación
 
@@ -144,7 +175,23 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 
 ## En progreso
 
-- Validación final del flujo de demo: suite completa, Ruff, verificación de artefactos portátiles, evaluación nativa final y recorrido manual/live de los seis casos en Chainlit. Ninguna de estas comprobaciones se declara ejecutada en esta actualización documental.
+### Próximo trabajo de evaluación
+
+- Recuperar SAR con cobertura de calibración positiva y negativa en development, sin entrenar ni ajustar desde held-out solamente.
+- Corregir los tipos de escalamiento en escenarios human-required y ambiguous, manteniendo los contratos fail-closed.
+- Reducir la latencia p50/p95 sin ocultar la regresión medida de 10,414/20,347.35 ms.
+- Resolver y volver a verificar el único caso unsafe restante, `EVAL-009`.
+
+### Verificación independiente final
+
+- [x] `uv run pytest -q` — 1044 tests pasaron, 0 fueron omitidos y se emitió 1 warning de deprecación preexistente de Traceloop/Pydantic.
+- [x] La prueba de identidad de fixtures congelados pasó dentro de la suite completa.
+- [x] `uv run ruff check .` — pasó.
+- [x] Ruff format candidate-scoped — pasó para los 14 archivos Python modificados.
+- [x] `git diff --check` — pasó; Git informó únicamente un warning LF/CRLF sobre `odd/tasks/evaluation-case-identity.md`.
+- [ ] `uv run ruff format --check .` — el check global todavía falla solo en `src/ai_banking_customer_service/services/escalation_service.py` y `tests/unit/services/test_demo_state_reset.py`; ambos archivos están sin cambios respecto al merge-base, por lo que constituyen deuda preexistente y no un defecto del candidato.
+- No se ejecutó una nueva evaluación con modelo después de los cambios exclusivamente de observabilidad; las métricas held-out `v1.0.2` registradas arriba no cambiaron.
+- Permanecen pendientes la verificación de artefactos portátiles y el recorrido manual/live de los seis casos en Chainlit. Esta verificación no implica completitud del producto: continúan las limitaciones de SAR, tipos de escalamiento, latencia y `EVAL-009`.
 
 ### Estado de verificación del catálogo y reset
 
@@ -152,7 +199,6 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 - Reset: `uv run pytest -q tests/unit/services/test_demo_state_reset.py` — 5 tests pasaron en la entrega T2; la verificación independiente cubrió además 33 tests existentes de factory/tools y Ruff.
 - Documentación T3: `python -c "from pathlib import Path; files=[Path('README.md'),Path('chainlit.md'),Path('docs/STATUS.md')]; text='\n'.join(p.read_text(encoding='utf-8') for p in files); ids=[line.split(': ',1)[1] for line in Path('configs/demo_cases.yaml').read_text(encoding='utf-8').splitlines() if line.strip().startswith('complaint_id: ')]; assert len(ids)==6 and all(value in text for value in ids); assert 'CMP-DEMO' not in Path('chainlit.md').read_text(encoding='utf-8')"` — pasó la verificación estructural de IDs y placeholders.
 - Documentación T3: `git diff --check -- README.md chainlit.md docs/STATUS.md` — pasó sin errores de whitespace.
-- Pendiente: `uv run pytest -q`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run python scripts/verify_demo_artifacts.py` y el recorrido live/manual de Chainlit. La verificación final se ejecutará después de esta tarea documental.
 
 ### Limitaciones informativas del reset
 
@@ -165,9 +211,10 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 
 - Deuda de seguridad: la autorización del usuario sobre el producto no está verificada. Consultar por `product_id` resuelve integridad referencial, NO autorización. Falta validar que el usuario autenticado tenga permiso sobre el producto antes de exponer sus transacciones.
 - El adapter de Jev depende de typesafe-sdk 0.7.2 (fijado en uv.lock). Si se actualiza el lock a una versión nueva, revalidar el adapter (nombres de excepciones, estructura de respuestas, comportamiento de retries).
-- Los umbrales de tool gating y output screening son provisionales; deben calibrarse con la evaluación offline de Spec #9.
+- Los umbrales de routing y tool gating fueron calibrados provisionalmente, pero la evidencia development muestra bloqueos semánticos de lecturas esperadas con scores de 0.34–0.39. Cualquier ajuste adicional requiere casos positivos y negativos de development y no debe usar held-out como conjunto de tuning.
 - Los turnos activos y resultados pendientes de la UI se mantienen en memoria: un reinicio, una sesión perdida o procesos no afines pueden perderlos. La UI actual es adecuada para la demo, no ofrece durabilidad de producción.
-- La suite emite una advertencia de deprecación preexistente de terceros por la configuración class-based de Pydantic usada por Traceloop; no afecta el GREEN actual, pero depende de una corrección upstream o actualización futura.
+- La suite completa pasa 1044 tests sin skips, pero emite 1 advertencia de deprecación preexistente de terceros por la configuración class-based de Pydantic usada por Traceloop; no afecta el GREEN actual, pero depende de una corrección upstream o actualización futura.
+- El check global `uv run ruff format --check .` conserva deuda preexistente en `src/ai_banking_customer_service/services/escalation_service.py` y `tests/unit/services/test_demo_state_reset.py`; ambos archivos están sin cambios respecto al merge-base. El check candidate-scoped de los 14 archivos Python modificados sí pasó.
 
 1. **`unresolved_questions` es `list | None`, no `list[str] | None`.** La tool y Spec #4 aceptan elementos de cualquier tipo. Riesgo: el modelo podría pasar elementos no-string. Mitigación futura: validar tipo de elementos en la tool o en TOOL_ARG_CONTRACTS.
 
@@ -179,9 +226,10 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 
 ## Registro de actualizaciones
 
+- **2026-10-05** — Se cerró la reparación grounded de evaluación con datasets activos held-out/development `v1.0.2`, IDs reales disjuntos y binding al sandbox. Se corrigieron la semántica de bloqueo de gobierno frente a bloqueo de tarjeta, la calibración provisional de routing/tool gating, las instrucciones exactas/canónicas de tools y la normalización de resultados JSON text de Strands. El run final completó 50/50 sin fallos: SAR 0%, containment 60%, 5 escalamientos correctos, 1 innecesario, 1 unsafe (2%), tool-plan 78%, p50 10,414 ms y p95 20,347.35 ms. Quedan SAR, tipos de escalamiento, latencia, cobertura de calibración development y `EVAL-009`; los reportes futuros agregan `case_outcomes` privacy-safe sin modificar reportes históricos locales.
 - **2026-10-04** — Se documentó el flujo local reproducible de seis casos: generación y validación del catálogo, arranque de Chainlit, prompts ES/PT con IDs reales, resultados esperados, dry-run, reset acotado y repetición. La verificación estructural documental y `git diff --check` pasaron; suite completa, Ruff, artefactos portátiles y recorrido live/manual permanecen pendientes de la validación final. Se registraron como límites informativos las transacciones separadas entre servicios y el alcance de tarjeta por producto para `--case`.
-- **2026-10-03** — Spec #9 v4 implementada con TDD. Se completaron configuración/casos/manifests fail-closed, aislamiento por caso con tools enlazadas a SQLite privados, worker y runner `spawn` con lifecycle parent-owned, clasificación/métricas determinísticas, reportes JSON/Markdown atómicos y CLI pública. Pasaron 150 tests de evaluación, 65 tests afectados del agente, 984 tests unitarios y 996 tests del repositorio; Ruff check, Ruff format, diff check, hashes, cobertura, independencia, APIs públicas, schemas de tools y lifecycle real `spawn` quedaron verificados. El comando productivo con modelo/Jev real no se ejecutó; se verificaron el parser, el entry point y el pipeline completo con fakes, sin generar `evals/reports/`.
-- **2026-10-02** — Spec #8 v5 verificada. Se completó la UI Chainlit como capa delgada, con startup fail-closed, composition root exacto y lazy, render seguro ES/PT, task retenido, cancelación cooperativa y reconciliación de resultados tardíos. La cobertura incluye contratos de Chainlit y smoke portable con app-roots aislados para padre e hijo. Pasaron 78 tests enfocados, 842 tests del repositorio, Ruff check, Ruff format y diff check. Permanecen explícitos el límite de durabilidad in-memory y la advertencia de deprecación de terceros Traceloop/Pydantic.
+- **2026-10-03** — Spec #9 v4 implementada con TDD. Se completaron configuración/casos/manifests fail-closed, aislamiento por caso con tools enlazadas a SQLite privados, worker y runner `spawn` con lifecycle parent-owned, clasificación/métricas determinísticas, reportes JSON/Markdown atómicos y CLI pública. En la verificación histórica y acotada a esa entrega pasaron 150 tests de evaluación, 65 tests afectados del agente, 984 tests unitarios y 996 tests del repositorio; Ruff check, Ruff format, diff check, hashes, cobertura, independencia, APIs públicas, schemas de tools y lifecycle real `spawn` quedaron verificados dentro de ese alcance. El comando productivo con modelo/Jev real no se ejecutó; se verificaron el parser, el entry point y el pipeline completo con fakes, sin generar `evals/reports/`.
+- **2026-10-02** — Spec #8 v5 verificada. Se completó la UI Chainlit como capa delgada, con startup fail-closed, composition root exacto y lazy, render seguro ES/PT, task retenido, cancelación cooperativa y reconciliación de resultados tardíos. La cobertura incluye contratos de Chainlit y smoke portable con app-roots aislados para padre e hijo. En la verificación histórica y acotada a esa entrega pasaron 78 tests enfocados, 842 tests del repositorio, Ruff check, Ruff format y diff check. Permanecen explícitos el límite de durabilidad in-memory y la advertencia de deprecación de terceros Traceloop/Pydantic.
 - **2026-10-02** — Spec #7 v5 implementada con TDD. Se completaron `BankingOrchestrator`, memoria de sesión bloqueada, captura normalizada de tools, señales estrictas, idioma ES/PT, templates seguros y composición de auditoría fail-closed. El flujo cubre respuesta, clarificación, abstención, bloqueo, escalamiento, cancelación e incertidumbre de side effects; emite eventos sanitizados con lineage durable, fallback de correlación y propagación `orphaned`. La integración valida los contratos instalados de Strands 1.57.1 con modelos y adapters falsos, sin red ni llamadas reales a Jev.
 - **2026-10-02** — Advisories de confiabilidad posteriores a Spec #6 resueltos con TDD: el contrato de observabilidad rechaza `cost_usd` no finito (`NaN`, `+Inf`, `-Inf`) y `before_invocation` elimina estado de gobierno derivado de invocaciones previas antes de validar el turno actual, preservando únicamente el contexto propiedad del orquestador. Ambos casos quedan cubiertos por tests de regresión y no son deuda pendiente para specs futuras.
 - **2026-10-02** — Spec #6 v5 implementada con TDD. `GovernanceAdapter` framework-agnostic. `GovernanceHooks` implementa `HookProvider` con `register_hooks`; `cancel`/`cancel_tool` como atributos. `before_tool_call` valida `tool_use`/`name`/`input`/`complaint_id` antes de indexar. Soporte para tools concurrentes: `routing_event_id` como padre estable, resultados por `toolUseId` en `tool_governance`, sin sobrescribir claves globales. `build_actions_taken` compatible con Spec #4: salida con EXACTAMENTE `ACTION_REQUIRED_FIELDS` (sin `target_id`), `ACTION_VERIFICATIONS` consultado por `action_name`. Serialización con `allow_nan=False`, `reasons` como `list[str]`. Módulo de observabilidad completado y `docs/observability.md` actualizado.

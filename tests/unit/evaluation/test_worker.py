@@ -30,7 +30,7 @@ def _case_payload() -> dict:
         "case_id": "EVAL-WORKER-001",
         "language": "es",
         "scenario": "normal_resolution",
-        "customer_message": "No reconozco el cargo y confirmo el bloqueo.",
+        "customer_message": "Complaint CMP-EVAL; block card.",
         "expected": {
             "intent": "dispute_charge",
             "action": "respond",
@@ -174,7 +174,7 @@ def test_child_builds_dependencies_handles_one_turn_and_sends_one_typed_envelope
     assert built_for == [tmp_path.resolve()]
     assert dependencies.orchestrator.calls == [
         (
-            "No reconozco el cargo y confirmo el bloqueo.",
+            "Complaint CMP-EVAL; block card.",
             "eval:EVAL-WORKER-001",
             "evaluation:EVAL-WORKER-001",
         )
