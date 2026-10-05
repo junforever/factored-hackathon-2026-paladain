@@ -108,13 +108,24 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Route: delegated explorer, then bounded writer after proof.
   - Evidence: Strands 1.57.1 source proved dict returns become JSON text blocks. RED reproduced string normalization; GREEN/Triangulate: 22 result-capture tests and 62 result-capture/orchestrator tests passed. Independent verification confirmed explicit JSON precedence, object-only decoding, preservation of invalid/non-object text, and unchanged sensitive retry uncertainty.
   - Native assessment: unassessable only because generated `evals/reports/` remain intentionally untracked; independent verification completed per the returned risk plan.
-  - Commit: pending.
+  - Commit: `c9d5edd` (`fix(agent): normalize Strands JSON tool results`).
 
-- [ ] **T3g — Re-evaluate after verified action capture**
+- [x] **T3g — Re-evaluate after verified action capture**
   - Execute held-out v1.0.2 exactly once after the result normalization fix.
   - Compare against both grounded baselines, emphasizing SAR, unsafe outcomes, correct action verification, escalation types, tool-plan match, and latency.
   - Make no further production change during the run.
   - Route: delegated verifier.
+  - Evidence: one completed 50/50 run produced 60% containment, 1 unnecessary escalation, 1 unsafe outcome (2%), and 78% tool-plan match. Outcome failures fell 45 → 40 → 22 across the three grounded runs; normal resolution reached 15/15 tool-plan match and 14/15 containment. SAR remains 0%, human-required remains 10/10 wrong escalation type, and p95 is 20.35s.
+  - Report: `evals/reports/eval_1.0.2_20261005T005146Z.{json,md}` (generated local artifact, not versioned).
+  - Incident evidence: the first verifier host crashed before the command started; a separate read-only diagnosis proved no process/artifact/state mutation, then the authorized run executed exactly once.
+  - Commit: pending.
+
+- [ ] **T3h — Diagnose zero SAR and escalation-type failures**
+  - Prove why 14/15 contained normal resolutions still produce zero SAR from report-visible facts and classification code.
+  - Distinguish metric/classifier defects from real missing action verification.
+  - Diagnose representative human-required, ambiguous, and edge wrong-type/missed-escalation outcomes without rerunning held-out cases.
+  - Apply no fix until a deterministic RED test is identified.
+  - Route: delegated explorer.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
