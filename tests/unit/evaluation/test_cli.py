@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from ai_banking_customer_service.config import PROJECT_ROOT
-from ai_banking_customer_service.evaluation.cases import EvalCase, load_eval_config
+from ai_banking_customer_service.evaluation.cases import (
+    EvalCase,
+    LoadedCaseSet,
+    load_eval_config,
+)
 from ai_banking_customer_service.evaluation.cli import main
 from ai_banking_customer_service.evaluation.report import ReportPaths
 from ai_banking_customer_service.evaluation.runner import (
@@ -33,6 +37,10 @@ def _case(case_id: str, language: str, scenario: str) -> EvalCase:
                 "expected_escalation_type": None,
                 "complaint_id": None,
                 "customer_confirmed_block": False,
+                "authorization": {
+                    "authenticated": True,
+                    "product_authorized": True,
+                },
                 "forbidden_actions": [],
                 "response_required_substrings": [],
                 "response_forbidden_substrings": [],
@@ -43,10 +51,10 @@ def _case(case_id: str, language: str, scenario: str) -> EvalCase:
     )
 
 
-def _run(case_ids: list[str]) -> EvalRun:
+def _run(case_ids: list[str], dataset_version: str = "1.0.0") -> EvalRun:
     return EvalRun(
         pipeline_version="3.0.0",
-        dataset_version="1.0.0",
+        dataset_version=dataset_version,
         timestamp="2026-10-02T12:00:00+00:00",
         timestamp_fs="20261002T120000Z",
         configured_openai_model="fake-openai",
@@ -69,7 +77,6 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
         _case("ES-1", "es", "normal_resolution"),
         _case("PT-1", "pt", "attack"),
     ]
-    run = _run([case.case_id for case in cases])
     config = load_eval_config(PROJECT_ROOT / "configs" / "eval.yaml")
     classifications = {case.case_id: object() for case in cases}
 
@@ -77,14 +84,26 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
         calls.append(("load_config", path))
         return config
 
-    def fake_load_cases(held: Path, development: Path, received_config):
-        calls.append(("load_cases", held, development, received_config.output_dir))
-        return cases
+    def fake_load_cases(held: Path, development: Path, received_config, case_set: str):
+        calls.append(
+            (
+                "load_cases",
+                held,
+                development,
+                received_config.output_dir,
+                case_set,
+            )
+        )
+        return LoadedCaseSet(cases, "development-1.0.3")
 
     def fake_run(received_cases, received_config):
         calls.append(("run", [case.case_id for case in received_cases]))
         assert received_config.output_dir == PROJECT_ROOT / "evals/reports/override"
-        return run
+        assert received_config.dataset_version == "development-1.0.3"
+        return _run(
+            [case.case_id for case in received_cases],
+            received_config.dataset_version,
+        )
 
     def fake_classify(case, result):
         calls.append(("classify", case.case_id, result.case_id))
@@ -112,7 +131,7 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
         received_run, metrics, by_language, by_scenario, received_classifications
     ):
         calls.append("generate")
-        assert received_run is run
+        assert received_run.dataset_version == "development-1.0.3"
         assert metrics == "global-metrics"
         assert by_language == {
             "es": "segment:es:ES-1",
@@ -135,7 +154,8 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
         "ai_banking_customer_service.evaluation.cli.load_eval_config", fake_load_config
     )
     monkeypatch.setattr(
-        "ai_banking_customer_service.evaluation.cli.load_eval_cases", fake_load_cases
+        "ai_banking_customer_service.evaluation.cli.load_eval_case_set",
+        fake_load_cases,
     )
     monkeypatch.setattr(
         "ai_banking_customer_service.evaluation.cli.run_evaluation", fake_run
@@ -163,6 +183,8 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
             "configs/eval.yaml",
             "--output-dir",
             "evals/reports/override",
+            "--case-set",
+            "development",
         ]
     )
 
@@ -175,7 +197,7 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
     ]
     assert captured.err == ""
     assert calls[0] == ("load_config", PROJECT_ROOT / "configs/eval.yaml")
-    assert calls[1][0] == "load_cases"
+    assert calls[1][-1] == "development"
     assert calls[-1] == ("save", {"same": "report"}, output_dir)
 
 
@@ -190,7 +212,7 @@ def test_cli_error_exit_is_nonzero_and_does_not_expose_paths_or_secrets(
         "ai_banking_customer_service.evaluation.cli.load_eval_config", fail_config
     )
 
-    exit_code = main(["--config", "configs/eval.yaml"])
+    exit_code = main(["--config", "configs/eval.yaml", "--case-set", "development"])
 
     captured = capsys.readouterr()
     assert exit_code != 0
@@ -220,7 +242,16 @@ def test_cli_rejects_unsafe_output_override_before_run(
         "ai_banking_customer_service.evaluation.cli.run_evaluation", fail_if_run
     )
 
-    exit_code = main(["--config", "configs/eval.yaml", "--output-dir", "../escape"])
+    exit_code = main(
+        [
+            "--config",
+            "configs/eval.yaml",
+            "--output-dir",
+            "../escape",
+            "--case-set",
+            "development",
+        ]
+    )
 
     captured = capsys.readouterr()
     assert exit_code != 0
@@ -228,10 +259,23 @@ def test_cli_rejects_unsafe_output_override_before_run(
     assert "escape" not in captured.err
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        [],
+        ["--config", "configs/eval.yaml"],
+        [
+            "--config",
+            "configs/eval.yaml",
+            "--case-set",
+            "not-a-case-set",
+        ],
+    ],
+)
 def test_cli_usage_errors_return_nonzero_without_raising(
-    capsys: pytest.CaptureFixture[str],
+    argv: list[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert main([]) != 0
+    assert main(argv) != 0
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err
@@ -251,6 +295,8 @@ def test_module_entrypoint_delegates_canonical_argv_to_main(
             "ai_banking_customer_service.evaluation",
             "--config",
             "configs/eval.yaml",
+            "--case-set",
+            "development",
         ],
     )
 

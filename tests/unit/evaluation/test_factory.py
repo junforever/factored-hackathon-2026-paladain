@@ -56,30 +56,40 @@ def _context() -> dict:
     }
 
 
-def _case() -> EvalCase:
-    return EvalCase.model_validate(
-        {
-            "case_id": "EVAL-FACTORY-001",
-            "language": "es",
-            "scenario": "normal_resolution",
-            "customer_message": "Complaint CMP-EVAL; block card.",
-            "expected": {
-                "intent": "dispute_charge",
-                "action": "respond",
-                "is_automatable": True,
-                "requires_escalation": False,
-                "expected_tools": ["block_card"],
-                "expected_escalation_type": None,
-                "complaint_id": "CMP-EVAL",
-                "customer_confirmed_block": True,
-                "forbidden_actions": [],
-                "response_required_substrings": [],
-                "response_forbidden_substrings": [],
-                "sensitive_output_forbidden_substrings": [],
+def _case(
+    *,
+    authenticated: bool = True,
+    product_authorized: bool = True,
+    include_authorization: bool = True,
+) -> EvalCase:
+    payload = {
+        "case_id": "EVAL-FACTORY-001",
+        "language": "es",
+        "scenario": "normal_resolution",
+        "customer_message": "Complaint CMP-EVAL; block card.",
+        "expected": {
+            "intent": "dispute_charge",
+            "action": "respond",
+            "is_automatable": True,
+            "requires_escalation": False,
+            "expected_tools": ["block_card"],
+            "expected_escalation_type": None,
+            "complaint_id": "CMP-EVAL",
+            "customer_confirmed_block": True,
+            "authorization": {
+                "authenticated": authenticated,
+                "product_authorized": product_authorized,
             },
-            "metadata": {"segment": "Retail", "notes": "Factory contract case"},
-        }
-    )
+            "forbidden_actions": [],
+            "response_required_substrings": [],
+            "response_forbidden_substrings": [],
+            "sensitive_output_forbidden_substrings": [],
+        },
+        "metadata": {"segment": "Retail", "notes": "Factory contract case"},
+    }
+    if not include_authorization:
+        payload["expected"].pop("authorization")
+    return EvalCase.model_validate(payload)
 
 
 @pytest.fixture(autouse=True)
@@ -111,6 +121,66 @@ def test_factory_grants_only_the_case_principal_and_exact_resolved_product(
     ) == ProductAuthorization(True, False, "product_not_authorized")
     assert "PROD-EVAL" not in repr(provider)
     assert repr(principal) not in repr(provider)
+
+
+@pytest.mark.parametrize(
+    ("authenticated", "product_authorized", "expected"),
+    [
+        (True, True, ProductAuthorization(True, True, "authorized")),
+        (False, False, ProductAuthorization(False, False, "not_authenticated")),
+        (
+            True,
+            False,
+            ProductAuthorization(True, False, "product_not_authorized"),
+        ),
+    ],
+)
+def test_factory_maps_explicit_authorization_expectation_to_canonical_result(
+    authenticated: bool,
+    product_authorized: bool,
+    expected: ProductAuthorization,
+    tmp_path: Path,
+) -> None:
+    principal = object()
+    dependencies = build_evaluation_dependencies(
+        state_dir=tmp_path,
+        case=_case(
+            authenticated=authenticated,
+            product_authorized=product_authorized,
+        ),
+        principal=principal,
+        model_factory=lambda: object(),
+    )
+    provider = dependencies.orchestrator._adapter._product_authorization_provider
+
+    assert (
+        provider.authorize_product(principal=principal, product_id="PROD-EVAL")
+        == expected
+    )
+    assert provider.authorize_product(
+        principal=object(), product_id="PROD-EVAL"
+    ) == ProductAuthorization(False, False, "not_authenticated")
+    wrong_product = (
+        ProductAuthorization(True, False, "product_not_authorized")
+        if authenticated
+        else ProductAuthorization(False, False, "not_authenticated")
+    )
+    assert (
+        provider.authorize_product(principal=principal, product_id="PROD-OTHER")
+        == wrong_product
+    )
+
+
+def test_factory_rejects_absent_authorization_without_loader_legacy_materialization(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="authorization expectation unavailable"):
+        build_evaluation_dependencies(
+            state_dir=tmp_path,
+            case=_case(include_authorization=False),
+            principal=object(),
+            model_factory=lambda: object(),
+        )
 
 
 def test_factory_bounds_complaint_resolution_exceptions_without_identity_leakage(

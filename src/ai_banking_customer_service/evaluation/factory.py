@@ -33,11 +33,25 @@ class EvaluationDependencies:
 
 
 class _CaseProductAuthorizationProvider:
-    __slots__ = ("_principal", "_product_id")
+    __slots__ = (
+        "_authenticated",
+        "_principal",
+        "_product_authorized",
+        "_product_id",
+    )
 
-    def __init__(self, *, principal: object, product_id: str) -> None:
+    def __init__(
+        self,
+        *,
+        principal: object,
+        product_id: str,
+        authenticated: bool,
+        product_authorized: bool,
+    ) -> None:
         self._principal = principal
         self._product_id = product_id
+        self._authenticated = authenticated
+        self._product_authorized = product_authorized
 
     def authorize_product(
         self,
@@ -45,9 +59,9 @@ class _CaseProductAuthorizationProvider:
         principal: object,
         product_id: str,
     ) -> ProductAuthorization:
-        if principal is not self._principal:
+        if principal is not self._principal or not self._authenticated:
             return ProductAuthorization(False, False, "not_authenticated")
-        if product_id != self._product_id:
+        if product_id != self._product_id or not self._product_authorized:
             return ProductAuthorization(True, False, "product_not_authorized")
         return ProductAuthorization(True, True, "authorized")
 
@@ -95,6 +109,9 @@ def _build_case_authorization_provider(
     case: EvalCase,
     principal: object,
 ) -> _CaseProductAuthorizationProvider:
+    authorization = case.expected.authorization
+    if authorization is None:
+        raise ValueError("evaluation authorization expectation unavailable")
     complaint_id = case.expected.complaint_id
     if not isinstance(complaint_id, str) or not complaint_id.strip():
         raise ValueError("evaluation authorization context unavailable")
@@ -112,6 +129,8 @@ def _build_case_authorization_provider(
     return _CaseProductAuthorizationProvider(
         principal=principal,
         product_id=product_id,
+        authenticated=authorization.authenticated,
+        product_authorized=authorization.product_authorized,
     )
 
 

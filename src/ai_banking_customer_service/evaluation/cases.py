@@ -6,6 +6,7 @@ import math
 import re
 import unicodedata
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -61,6 +62,10 @@ Language = Literal["es", "pt"]
 _REGISTERED_TOOL_NAMES = frozenset(tool.tool_name for tool in REGISTERED_TOOLS)
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _RUNTIME_SANDBOX_PATH = settings.sandbox_full_path
+_FROZEN_HELD_OUT_V1_0_2_SHA256 = (
+    "739d6cb7c3238a56b7cefffe4c683c7b1bd49222819d99c5bf13c95636e0b7e3"
+)
+CaseSet = Literal["development", "held-out"]
 
 
 def _nonempty_string(value: object) -> object:
@@ -246,6 +251,17 @@ class _HeldOutManifest(EvalManifest):
         return _nonempty_string(value)
 
 
+class AuthorizationExpectation(_StrictModel):
+    authenticated: StrictBool
+    product_authorized: StrictBool
+
+    @model_validator(mode="after")
+    def _authorized_product_requires_authentication(self) -> "AuthorizationExpectation":
+        if self.product_authorized and not self.authenticated:
+            raise ValueError("product_authorized requires authenticated")
+        return self
+
+
 class _ExpectedOutcome(_StrictModel):
     intent: str | None
     action: TurnAction
@@ -255,6 +271,7 @@ class _ExpectedOutcome(_StrictModel):
     expected_escalation_type: EscalationType | None
     complaint_id: str | None
     customer_confirmed_block: StrictBool
+    authorization: AuthorizationExpectation | None = None
     forbidden_actions: list[TurnAction]
     response_required_substrings: list[str]
     response_forbidden_substrings: list[str]
@@ -344,6 +361,12 @@ class EvalCase(_StrictModel):
         return self
 
 
+@dataclass(frozen=True)
+class LoadedCaseSet:
+    cases: list[EvalCase]
+    dataset_version: str
+
+
 def load_eval_config(path: Path) -> EvalConfig:
     """Load and validate evaluation configuration from YAML."""
     with path.open(encoding="utf-8") as config_file:
@@ -357,6 +380,23 @@ def load_eval_cases(
     config: EvalConfig,
 ) -> list[EvalCase]:
     """Load held-out cases after identity, coverage, and leakage checks."""
+    return load_eval_case_set(
+        held_out_manifest_path,
+        development_manifest_path,
+        config,
+        "held-out",
+    ).cases
+
+
+def load_eval_case_set(
+    held_out_manifest_path: Path,
+    development_manifest_path: Path,
+    config: EvalConfig,
+    case_set: CaseSet,
+) -> LoadedCaseSet:
+    """Validate both datasets and return the explicitly selected case set."""
+    if case_set not in ("development", "held-out"):
+        raise ValueError("case_set must be development or held-out")
     held_path = _validated_manifest_argument(
         held_out_manifest_path, config.held_out_manifest, "held-out"
     )
@@ -384,10 +424,24 @@ def load_eval_cases(
     held_bytes = held_manifest.cases_file.read_bytes()
     development_bytes = development_manifest.cases_file.read_bytes()
     _verify_hash(held_bytes, held_manifest.sha256, "held-out")
+    if held_manifest.dataset_version == "1.0.2":
+        _verify_hash(
+            held_bytes,
+            _FROZEN_HELD_OUT_V1_0_2_SHA256,
+            "frozen held-out v1.0.2",
+        )
     _verify_hash(development_bytes, development_manifest.sha256, "development")
 
-    held_cases = _parse_cases(held_bytes, "held-out")
-    development_cases = _parse_cases(development_bytes, "development")
+    held_cases = _validate_authorization_expectations(
+        _parse_cases(held_bytes, "held-out"),
+        held_manifest.dataset_version,
+        "held-out",
+    )
+    development_cases = _validate_authorization_expectations(
+        _parse_cases(development_bytes, "development"),
+        development_manifest.dataset_version,
+        "development",
+    )
     _validate_unique_case_ids(held_cases, "held-out")
     _validate_unique_case_ids(development_cases, "development")
     _validate_manifest_counts(held_manifest, held_cases)
@@ -400,7 +454,9 @@ def load_eval_cases(
         held_bytes,
         development_bytes,
     )
-    return held_cases
+    if case_set == "development":
+        return LoadedCaseSet(development_cases, development_manifest.dataset_version)
+    return LoadedCaseSet(held_cases, held_manifest.dataset_version)
 
 
 def validate_coverage(cases: list[EvalCase], config: EvalConfig) -> None:
@@ -527,6 +583,33 @@ def _parse_cases(payload: bytes, role: str) -> list[EvalCase]:
     if not isinstance(raw_cases, list):
         raise ValueError(f"{role} cases file must contain a list")
     return [EvalCase.model_validate(raw_case) for raw_case in raw_cases]
+
+
+def _validate_authorization_expectations(
+    cases: list[EvalCase],
+    dataset_version: str,
+    role: str,
+) -> list[EvalCase]:
+    if role == "held-out" and dataset_version == "1.0.2":
+        authorized = AuthorizationExpectation(
+            authenticated=True,
+            product_authorized=True,
+        )
+        return [
+            case
+            if case.expected.authorization is not None
+            else case.model_copy(
+                update={
+                    "expected": case.expected.model_copy(
+                        update={"authorization": authorized}
+                    )
+                }
+            )
+            for case in cases
+        ]
+    if any(case.expected.authorization is None for case in cases):
+        raise ValueError(f"{role} authorization expectation is required")
+    return cases
 
 
 def _validate_unique_case_ids(cases: list[EvalCase], role: str) -> None:

@@ -14,6 +14,7 @@ from ai_banking_customer_service.evaluation.cases import (
     EvalCase,
     EvalConfig,
     EvalManifest,
+    load_eval_case_set,
     load_eval_cases,
     load_eval_config,
     validate_coverage,
@@ -188,6 +189,10 @@ def _case_payload(
             "expected_escalation_type": expected_escalation_type,
             "complaint_id": complaint_id,
             "customer_confirmed_block": False,
+            "authorization": {
+                "authenticated": True,
+                "product_authorized": True,
+            },
             "forbidden_actions": [],
             "response_required_substrings": [],
             "response_forbidden_substrings": [],
@@ -278,6 +283,29 @@ def test_eval_case_rejects_unknown_and_removed_fields() -> None:
     payload["expected"]["is_sensitive"] = True
 
     with pytest.raises(ValidationError):
+        EvalCase.model_validate(payload)
+
+
+@pytest.mark.parametrize("field", ["authenticated", "product_authorized"])
+@pytest.mark.parametrize("value", [0, 1, "true", None])
+def test_authorization_expectation_requires_strict_booleans(
+    field: str, value: object
+) -> None:
+    payload = _case_payload()
+    payload["expected"]["authorization"][field] = value
+
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate(payload)
+
+
+def test_authorization_rejects_authorized_product_without_principal() -> None:
+    payload = _case_payload()
+    payload["expected"]["authorization"] = {
+        "authenticated": False,
+        "product_authorized": True,
+    }
+
+    with pytest.raises(ValidationError, match="product_authorized"):
         EvalCase.model_validate(payload)
 
 
@@ -522,6 +550,47 @@ def test_loader_uses_declared_files_and_validates_both_hashes(
     cases = load_eval_cases(held_manifest, development_manifest, config)
 
     assert [case.case_id for case in cases] == [f"HELD-{index}" for index in range(6)]
+    assert all(case.expected.authorization.authenticated for case in cases)
+    assert all(case.expected.authorization.product_authorized for case in cases)
+
+
+def test_loader_selects_development_and_preserves_its_dataset_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+
+    selected = load_eval_case_set(
+        held_manifest,
+        development_manifest,
+        config,
+        "development",
+    )
+
+    assert [case.case_id for case in selected.cases] == ["DEV-001"]
+    assert selected.dataset_version == "development-1.0.0"
+
+
+def test_loader_rejects_missing_development_authorization_expectation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    manifest = json.loads(development_manifest.read_text(encoding="utf-8"))
+    fixture = tmp_path / manifest["cases_file"]
+    payload = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+    payload[0]["expected"].pop("authorization")
+    fixture.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    manifest["sha256"] = hashlib.sha256(fixture.read_bytes()).hexdigest()
+    development_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="development authorization"):
+        load_eval_case_set(
+            held_manifest,
+            development_manifest,
+            config,
+            "development",
+        )
 
 
 def test_loader_resolves_relative_manifest_arguments_from_project_root(
@@ -551,6 +620,20 @@ def test_loader_rejects_hash_mismatch(
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(ValueError, match="sha256"):
+        load_eval_cases(held_manifest, development_manifest, config)
+
+
+def test_frozen_held_out_hash_cannot_be_redefined_by_its_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cases_module, "PROJECT_ROOT", tmp_path)
+    config, held_manifest, development_manifest = _write_dataset(tmp_path, monkeypatch)
+    manifest = json.loads(held_manifest.read_text(encoding="utf-8"))
+    manifest["dataset_version"] = "1.0.2"
+    held_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+    config = config.model_copy(update={"dataset_version": "1.0.2"})
+
+    with pytest.raises(ValueError, match="frozen held-out v1.0.2"):
         load_eval_cases(held_manifest, development_manifest, config)
 
 
@@ -670,8 +753,8 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
     )
     assert held_manifest["dataset_version"] == "1.0.2"
     assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.2.yaml"
-    assert development_manifest["dataset_version"] == "development-1.0.2"
-    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.2.yaml"
+    assert development_manifest["dataset_version"] == "development-1.0.3"
+    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.3.yaml"
     assert held_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert development_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert (
@@ -686,6 +769,80 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
             Path(development_manifest["cases_file"]).resolve().read_bytes()
         ).hexdigest()
     )
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/held_out_v1.0.2.yaml").read_bytes()
+        ).hexdigest()
+        == "739d6cb7c3238a56b7cefffe4c683c7b1bd49222819d99c5bf13c95636e0b7e3"
+    )
+    assert all(case.expected.authorization is not None for case in cases)
+    assert all(case.expected.authorization.authenticated for case in cases)
+    assert all(case.expected.authorization.product_authorized for case in cases)
+
+    development = load_eval_case_set(
+        config.held_out_manifest,
+        config.development_manifest,
+        config,
+        "development",
+    )
+    assert development.dataset_version == "development-1.0.3"
+    assert len(development.cases) == 30
+    assert Counter(case.scenario for case in development.cases) == {
+        "normal_resolution": 5,
+        "ambiguous": 5,
+        "human_required": 5,
+        "attack": 5,
+        "missing_data": 5,
+        "edge_case": 5,
+    }
+    assert all(case.expected.authorization is not None for case in development.cases)
+
+    tools = {
+        "get_dispute_context",
+        "get_recent_transactions",
+        "block_card",
+        "escalate_case",
+    }
+    for language in ("es", "pt"):
+        language_cases = [
+            case for case in development.cases if case.language == language
+        ]
+        authorized_tools = {
+            tool
+            for case in language_cases
+            if case.expected.authorization.authenticated
+            and case.expected.authorization.product_authorized
+            for tool in case.expected.expected_tools
+        }
+        denied_tools = {
+            tool
+            for case in language_cases
+            if not (
+                case.expected.authorization.authenticated
+                and case.expected.authorization.product_authorized
+            )
+            for tool in case.expected.expected_tools
+        }
+        assert authorized_tools == tools
+        assert denied_tools == tools
+
+    for scenario in cases_module._SCENARIOS:
+        scenario_cases = [
+            case for case in development.cases if case.scenario == scenario
+        ]
+        assert any(
+            case.expected.authorization.authenticated
+            and case.expected.authorization.product_authorized
+            for case in scenario_cases
+        )
+        assert any(
+            not (
+                case.expected.authorization.authenticated
+                and case.expected.authorization.product_authorized
+            )
+            for case in scenario_cases
+        )
+
     assert (
         hashlib.sha256(
             (PROJECT_ROOT / "evals/cases/held_out_v1.0.0.yaml").read_bytes()

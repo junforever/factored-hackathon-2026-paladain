@@ -1,4 +1,4 @@
-"""Public command-line orchestration for offline held-out evaluation."""
+"""Public command-line orchestration for offline evaluation."""
 
 import argparse
 import sys
@@ -9,7 +9,7 @@ from ai_banking_customer_service.config import PROJECT_ROOT
 from ai_banking_customer_service.evaluation.cases import (
     EvalCase,
     EvalConfig,
-    load_eval_cases,
+    load_eval_case_set,
     load_eval_config,
 )
 from ai_banking_customer_service.evaluation.classification import (
@@ -53,11 +53,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.output_dir is not None:
             config = _override_output_dir(config, arguments.output_dir)
 
-        cases = load_eval_cases(
+        selected = load_eval_case_set(
             config.held_out_manifest,
             config.development_manifest,
             config,
+            arguments.case_set,
         )
+        config = config.model_copy(update={"dataset_version": selected.dataset_version})
+        cases = selected.cases
         run = run_evaluation(cases, config)
         results = list(run.results)
         classifications = [
@@ -100,8 +103,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = _ArgumentParser(description="Run offline held-out evaluation.")
+    parser = _ArgumentParser(description="Run offline evaluation.")
     parser.add_argument("--config", required=True, help="Evaluation YAML config.")
+    parser.add_argument(
+        "--case-set",
+        required=True,
+        choices=("development", "held-out"),
+        help="Explicit evaluation case set.",
+    )
     parser.add_argument(
         "--output-dir",
         help="Safe project-relative report directory override.",

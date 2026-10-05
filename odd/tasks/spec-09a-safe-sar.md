@@ -66,7 +66,7 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Entrega: commit `ceabf8a` (`feat(auth): wire product authorization composition`); segundo slice de `feature-branch-chain`.
   - Revisión nativa: ASSESS medio, 393 líneas committed-only, `reviewDue=false`; diferida al cierre del slice/PR.
 
-- [ ] **S09A-T3 — Juicio semántico y calibración development-only** *(en progreso)*
+- [x] **S09A-T3 — Juicio semántico y calibración development-only**
   - Ruta: writer delegado; disparador: cambio Jev y matriz ES/PT con tests.
   - Observar RED para lectura preparatoria legítima frente a llamada irrelevante; ajustar pregunta/state para necesidad y proporcionalidad antes de considerar el umbral.
   - Cambiar policy/decision solo si una frontera RED separa positivos y negativos; cubrir `== threshold`, inmediatamente inferior, señales y metadata inválidas.
@@ -75,14 +75,25 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Resultado: una sola pregunta atómica de necesidad/proporcionalidad; state sin autorización, confirmación ni IDs; threshold/policy permanecen en `0.65`.
   - Checks: 313 tests, Ruff check/format y spot-check parent de 313 tests pasaron.
   - ASSESS nativo: riesgo medio, 379 líneas, `reviewDue=false`; auto-verificación suficiente.
-  - Commit autorizado: identidad pendiente de creación (`feat(governance): judge necessary tool steps`).
+  - Entrega: commit `6928d2b` (`feat(governance): judge necessary tool steps`); tercer slice de `feature-branch-chain`.
+  - Revisión nativa: ASSESS medio, 389 líneas committed-only, `reviewDue=false`; diferida al cierre del slice/PR.
 
-- [ ] **S09A-T4 — Fixtures, CLI, SAR, unsafe y reporting**
-  - Ruta: writer delegado; disparador: cambio coordinado de schema, fixture, manifest, clasificación, reporte y CLI.
-  - Crear development `v1.0.3` explícito, selector obligatorio `development|held-out`, evidencia `authorization_verified`, gate SAR, `unauthorized_product_access` y salida acotada.
-  - Agregar prueba de hash byte-for-byte para held-out `v1.0.2`; no ejecutar held-out.
-  - Superficies previstas: `configs/eval.yaml`, `src/ai_banking_customer_service/evaluation/{cases,classification,report,cli}.py`, `evals/cases/development_v1.0.3.yaml`, `evals/development_manifest.json` y tests correspondientes.
+- [ ] **S09A-T4A — Schema, fixtures development y selector CLI** *(en progreso)*
+  - Ruta: writer delegado; disparador: cambio coordinado de schema, fixture, manifest, factory y CLI.
+  - Añadir expectativa explícita de autorización, crear development `v1.0.3`, actualizar solo manifest/config development y exigir selector `development|held-out` sin default.
+  - Agregar prueba de hash byte-for-byte para held-out `v1.0.2`; no modificarlo ni ejecutarlo.
+  - Superficies previstas: `configs/eval.yaml`, `src/ai_banking_customer_service/evaluation/{cases,factory,cli}.py`, `evals/cases/development_v1.0.3.yaml`, `evals/development_manifest.json` y tests correspondientes.
+  - TDD: RED de colección por imports ausentes; GREEN y triangulación final `95 passed`.
+  - Verificación independiente: 95 tests, Ruff, format y diff check pasan; held-out fixture/manifest sin cambios contra `6928d2b`; no se ejecutaron casos, modelo, Jev ni red.
+  - Evidencia: development 30 casos (18 ES, 12 PT), hash `c33c4494...cc221379`; held-out anclado en `739d6cb7...e0b7e3`; spot-check parent 11 tests pasan.
+  - Tamaño estimado: 1,124 líneas autoradas, de las cuales 630 corresponden al fixture development versionado. Es el menor work unit cohesivo porque schema/config/manifest/fixture y sus pruebas deben permanecer consistentes.
+  - Commit autorizado: identidad pendiente de creación (`feat(eval): add authorization-aware development cases`).
+
+- [ ] **S09A-T4B — Evidencia canónica, SAR, unsafe y reporting**
+  - Ruta: writer delegado; disparador: cambio coordinado de auditoría, captura, clasificación, reporte y tests.
+  - Propagar `authorization_verified`, exigirla para SAR, clasificar `unauthorized_product_access` y reportar solo campos acotados.
   - Superficie adicional aprobada por el usuario: `src/ai_banking_customer_service/agent/orchestrator.py`, limitada a propagar `authorization_verified` en el evento canónico de tool.
+  - Superficies previstas: `src/ai_banking_customer_service/agent/{orchestrator,result_capture}.py`, `src/ai_banking_customer_service/evaluation/{classification,report}.py`, `docs/observability.md` solo si cambia el contrato, y tests correspondientes.
   - Evidencia de commit: pendiente de autorización explícita.
 
 - [ ] **S09A-T5 — Gate completo, calibración real y documentación**
@@ -123,7 +134,11 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 - 2026-10-05: S09A-T3 iniciado para reformular necesidad/proporcionalidad sin cambiar autorización ni umbral en el mismo paso.
 - 2026-10-05: S09A-T3 implementado con matriz fake ES/PT: 313 tests y Ruff pasan; el threshold `0.65` no cambió y separa la matriz determinística.
 - 2026-10-05: el usuario autorizó el commit de S09A-T3 y aprobó editar `agent/orchestrator.py` únicamente para propagar `authorization_verified`.
+- 2026-10-05: S09A-T3 cerrado en commit `6928d2b`; ASSESS medio bajo presupuesto, revisión diferida al cierre del slice/PR.
+- 2026-10-05: S09A-T4 se dividió en T4A (schema/fixtures/CLI) y T4B (evidencia/SAR/unsafe/reporting) para mantener work units cohesivos y revisables; T4A iniciado.
+- 2026-10-05: S09A-T4A implementado y verificado independientemente: 95 tests y checks pasan; development v1.0.3 tiene 30 casos explícitos; held-out permanece byte-for-byte intacto y no ejecutado.
+- 2026-10-05: el usuario autorizó el commit cohesivo de S09A-T4A dentro de `feature-branch-chain`; push, PR y merge siguen sin autorizar.
 
 ## Próximo paso
 
-Crear el commit autorizado de S09A-T3, registrar su identidad e iniciar S09A-T4 con la superficie adicional aprobada.
+Crear el commit autorizado de S09A-T4A, registrar su identidad e iniciar S09A-T4B.
