@@ -6,6 +6,7 @@ import pytest
 from strands.hooks import (
     AfterToolCallEvent,
     BeforeToolCallEvent,
+    HookOrder,
     HookProvider,
     HookRegistry,
 )
@@ -101,7 +102,11 @@ def test_public_contract_and_exact_hook_registration() -> None:
     capture.register_hooks(registry)
 
     assert registry.add_callback.call_args_list == [
-        call(BeforeToolCallEvent, capture.before_tool_call),
+        call(
+            BeforeToolCallEvent,
+            capture.before_tool_call,
+            order=HookOrder.SDK_LAST,
+        ),
         call(AfterToolCallEvent, capture.after_tool_call),
     ]
 
@@ -407,15 +412,33 @@ def test_duplicate_ids_remain_distinct_uncertainty_evidence() -> None:
     assert complaint_ids == ["CMP-1", "CMP-2"]
 
 
-def test_attempt_identity_handles_duplicate_ids_with_equal_payloads() -> None:
+def test_interleaved_duplicate_ids_keep_exact_attempt_evidence() -> None:
     capture = ResultCaptureHooks()
     allowed = _tool_use()
     blocked = _tool_use()
-    capture.before_tool_call(_before_event(allowed))
+    allowed_state = {
+        "tool_governance": {
+            "tool-use-1": {
+                "authorization_result": "allowed",
+                "authorization_reason_code": "authorized",
+                "authorization_verified": True,
+            }
+        }
+    }
+    capture.before_tool_call(_before_event(allowed, state=allowed_state))
     capture.before_tool_call(
         _before_event(
             blocked,
-            state={"tool_governance": {"tool-use-1": {"action": "block"}}},
+            state={
+                "tool_governance": {
+                    "tool-use-1": {
+                        "action": "block",
+                        "authorization_result": "denied",
+                        "authorization_reason_code": "product_not_authorized",
+                        "authorization_verified": False,
+                    }
+                }
+            },
             cancel_tool="governance:block",
         )
     )
@@ -425,10 +448,11 @@ def test_attempt_identity_handles_duplicate_ids_with_equal_payloads() -> None:
     )
     capture.after_tool_call(_after_event(allowed))
 
-    blocked_evidence = [
-        result.blocked_before_execution for result in capture.snapshot_results()
+    evidence = [
+        (result.blocked_before_execution, result.authorization_verified)
+        for result in capture.snapshot_results()
     ]
-    assert blocked_evidence == [True, False]
+    assert evidence == [(True, False), (False, True)]
 
 
 def test_snapshots_and_callback_inputs_are_deeply_isolated() -> None:

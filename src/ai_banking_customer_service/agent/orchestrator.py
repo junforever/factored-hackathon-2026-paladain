@@ -46,6 +46,7 @@ ACTION_TOOLS = frozenset({"block_card", "escalate_case"})
 _REGISTERED_TOOL_NAMES = frozenset(tool.tool_name for tool in REGISTERED_TOOLS)
 _READ_TOOLS = _REGISTERED_TOOL_NAMES - ACTION_TOOLS
 _NORMAL_STOP_REASONS = frozenset({"end_turn", "stop_sequence"})
+_MAX_TOOL_ARGUMENT_DEPTH = 32
 
 
 class TurnAction(str, Enum):  # noqa: UP042 - exact public contract
@@ -857,11 +858,68 @@ def _record_is_sensitive(record: _ToolRecord) -> bool:
     )
 
 
+def _same_tool_arguments(
+    left: object,
+    right: object,
+    *,
+    _depth: int = 0,
+    _active_left: set[int] | None = None,
+    _active_right: set[int] | None = None,
+) -> bool:
+    if _depth > _MAX_TOOL_ARGUMENT_DEPTH or type(left) is not type(right):
+        return False
+    if left is None:
+        return True
+    if type(left) in (bool, int, float, str):
+        return left == right
+    if type(left) not in (list, dict):
+        return False
+
+    active_left = set() if _active_left is None else _active_left
+    active_right = set() if _active_right is None else _active_right
+    left_id = id(left)
+    right_id = id(right)
+    if left_id in active_left or right_id in active_right:
+        return False
+    active_left.add(left_id)
+    active_right.add(right_id)
+    try:
+        if type(left) is list:
+            return len(left) == len(right) and all(
+                _same_tool_arguments(
+                    left_item,
+                    right_item,
+                    _depth=_depth + 1,
+                    _active_left=active_left,
+                    _active_right=active_right,
+                )
+                for left_item, right_item in zip(left, right, strict=True)
+            )
+        if not all(type(key) is str for key in left) or not all(
+            type(key) is str for key in right
+        ):
+            return False
+        return left.keys() == right.keys() and all(
+            _same_tool_arguments(
+                left[key],
+                right[key],
+                _depth=_depth + 1,
+                _active_left=active_left,
+                _active_right=active_right,
+            )
+            for key in left
+        )
+    finally:
+        active_left.remove(left_id)
+        active_right.remove(right_id)
+
+
 def _identity_matches(record: _ToolRecord) -> bool:
     result = record.result
     return result is None or (
         result.tool_use_id == record.tool_use_id
         and result.tool_name == record.tool_name
+        and _same_tool_arguments(result.tool_args, record.tool_args)
     )
 
 
@@ -928,7 +986,11 @@ def _authorization_verified(record: _ToolRecord) -> bool:
     if getattr(record.attempts[0], "authorization_verified", None) is not True:
         return False
     result = record.result
-    return result is None or result.authorization_verified is True
+    return (
+        result is not None
+        and _identity_matches(record)
+        and result.authorization_verified is True
+    )
 
 
 def _audit_args(tool_name: str, args: dict) -> dict:

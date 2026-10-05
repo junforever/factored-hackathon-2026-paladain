@@ -5,6 +5,7 @@ from typing import Any
 from strands.hooks import (
     BeforeInvocationEvent,
     BeforeToolCallEvent,
+    HookOrder,
     HookProvider,
     HookRegistry,
 )
@@ -40,7 +41,11 @@ class GovernanceHooks(HookProvider):
     def register_hooks(self, registry: HookRegistry) -> None:
         """Register input and tool governance callbacks."""
         registry.add_callback(BeforeInvocationEvent, self.before_invocation)
-        registry.add_callback(BeforeToolCallEvent, self.before_tool_call)
+        registry.add_callback(
+            BeforeToolCallEvent,
+            self.before_tool_call,
+            order=HookOrder.SDK_FIRST,
+        )
 
     def before_invocation(self, event: BeforeInvocationEvent) -> None:
         """Screen and route the latest user message."""

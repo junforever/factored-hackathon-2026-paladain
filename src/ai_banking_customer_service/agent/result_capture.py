@@ -8,6 +8,7 @@ from threading import Lock
 from strands.hooks import (
     AfterToolCallEvent,
     BeforeToolCallEvent,
+    HookOrder,
     HookProvider,
     HookRegistry,
 )
@@ -52,7 +53,11 @@ class ResultCaptureHooks(HookProvider):
         self._lock = Lock()
 
     def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(BeforeToolCallEvent, self.before_tool_call)
+        registry.add_callback(
+            BeforeToolCallEvent,
+            self.before_tool_call,
+            order=HookOrder.SDK_LAST,
+        )
         registry.add_callback(AfterToolCallEvent, self.after_tool_call)
 
     def before_tool_call(self, event: BeforeToolCallEvent) -> None:

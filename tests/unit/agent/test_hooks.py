@@ -6,6 +6,7 @@ import pytest
 from strands.hooks import (
     BeforeInvocationEvent,
     BeforeToolCallEvent,
+    HookOrder,
     HookProvider,
     HookRegistry,
 )
@@ -119,7 +120,11 @@ def test_register_hooks_registers_exactly_the_two_typed_callbacks() -> None:
 
     assert registry.add_callback.call_args_list == [
         call(BeforeInvocationEvent, hooks.before_invocation),
-        call(BeforeToolCallEvent, hooks.before_tool_call),
+        call(
+            BeforeToolCallEvent,
+            hooks.before_tool_call,
+            order=HookOrder.SDK_FIRST,
+        ),
     ]
 
 

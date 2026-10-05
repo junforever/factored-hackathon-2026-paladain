@@ -1,12 +1,14 @@
 import inspect
-from dataclasses import FrozenInstanceError, fields
+from dataclasses import FrozenInstanceError, fields, replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent, HookRegistry
 
 from ai_banking_customer_service.agent import orchestrator as orchestrator_module
+from ai_banking_customer_service.agent.hooks import GovernanceHooks
 from ai_banking_customer_service.agent.orchestrator import (
     BankingOrchestrator,
     EscalationType,
@@ -15,7 +17,10 @@ from ai_banking_customer_service.agent.orchestrator import (
     TurnAction,
     TurnClassification,
 )
-from ai_banking_customer_service.agent.result_capture import NormalizedToolResult
+from ai_banking_customer_service.agent.result_capture import (
+    NormalizedToolResult,
+    ResultCaptureHooks,
+)
 from ai_banking_customer_service.agent.session_manager import SessionManager
 from ai_banking_customer_service.agent.tools import (
     REGISTERED_TOOLS,
@@ -63,7 +68,7 @@ def _attempt(
     return SimpleNamespace(
         tool_use_id=tool_use_id,
         tool_name=name,
-        tool_args={} if args is None else args,
+        tool_args={"complaint_id": "CMP-1"} if args is None else args,
         blocked_before_execution=blocked,
         authorization_verified=authorization_verified,
     )
@@ -674,9 +679,23 @@ def test_uncertain_sensitive_action_precedes_cancellation(monkeypatch, result) -
                 ),
             ),
         ),
+        (
+            (_attempt("block_card"),),
+            (
+                _result(
+                    "block_card",
+                    {
+                        "action": "block_card",
+                        "executed": True,
+                        "verification": "confirmed_blocked",
+                    },
+                    retry=True,
+                ),
+            ),
+        ),
     ],
 )
-def test_missing_or_duplicate_sensitive_capture_is_uncertain_and_emitted_once(
+def test_missing_duplicate_or_retry_sensitive_capture_is_fail_closed(
     monkeypatch,
     attempts,
     results,
@@ -690,7 +709,124 @@ def test_missing_or_duplicate_sensitive_capture_is_uncertain_and_emitted_once(
     result = orchestrator.handle_turn("Bloquear", "s", "c")
 
     assert result.escalation_type is EscalationType.UNCERTAIN_SIDE_EFFECT
-    assert sum(event["event_type"] == "tool_call" for event in sink.events) == 1
+    tool_events = [event for event in sink.events if event["event_type"] == "tool_call"]
+    assert len(tool_events) == 1
+    assert tool_events[0]["payload"]["authorization_verified"] is False
+
+
+def test_mismatched_sensitive_result_cannot_reuse_authorization(monkeypatch) -> None:
+    payload = {
+        "action": "block_card",
+        "executed": True,
+        "verification": "confirmed_blocked",
+    }
+    mismatched = replace(
+        _result("block_card", payload),
+        tool_args={"complaint_id": "CMP-OTHER"},
+    )
+    orchestrator, _, sink, _ = _install_turn(
+        monkeypatch,
+        attempts=(
+            _attempt(
+                "block_card",
+                args={"complaint_id": "CMP-1"},
+            ),
+        ),
+        results=(mismatched,),
+    )
+
+    result = orchestrator.handle_turn("Bloquear", "s", "c")
+
+    tool_event = next(
+        event for event in sink.events if event["event_type"] == "tool_call"
+    )
+    assert tool_event["payload"]["authorization_verified"] is False
+    assert result.escalation_type is EscalationType.UNCERTAIN_SIDE_EFFECT
+
+
+def _authorization_for_args(attempt_args: dict, result_args: dict) -> bool:
+    result = replace(
+        _result("block_card", {"action": "block_card", "executed": True}),
+        tool_args=result_args,
+    )
+    record = orchestrator_module._tool_records(
+        (_attempt("block_card", args=attempt_args),),
+        (result,),
+    )[0]
+    return orchestrator_module._authorization_verified(record)
+
+
+@pytest.mark.parametrize(
+    ("attempt_args", "result_args"),
+    [
+        ({"confirmed": True}, {"confirmed": 1}),
+        ({"amount": 1}, {"amount": 1.0}),
+        (
+            {"details": {"charges": [{"amount": 1}]}},
+            {"details": {"charges": [{"amount": 1.0}]}},
+        ),
+        ({"items": [1]}, {"items": (1,)}),
+        ({"items": {1}}, {"items": frozenset({1})}),
+    ],
+)
+def test_argument_correlation_rejects_type_differences(
+    attempt_args,
+    result_args,
+) -> None:
+    assert _authorization_for_args(attempt_args, result_args) is False
+
+
+def test_argument_correlation_accepts_json_equality_and_dict_reordering() -> None:
+    attempt_args = {
+        "complaint_id": "CMP-1",
+        "details": {
+            "active": True,
+            "amount": 1,
+            "ratio": 1.5,
+            "note": None,
+            "labels": ["fraud", 2],
+        },
+    }
+    reordered_result_args = {
+        "details": {
+            "labels": ["fraud", 2],
+            "note": None,
+            "ratio": 1.5,
+            "amount": 1,
+            "active": True,
+        },
+        "complaint_id": "CMP-1",
+    }
+
+    assert _authorization_for_args(attempt_args, attempt_args.copy()) is True
+    assert _authorization_for_args(attempt_args, reordered_result_args) is True
+
+
+def test_argument_correlation_rejects_matching_unsupported_values() -> None:
+    assert _authorization_for_args({"items": {1}}, {"items": {1}}) is False
+
+
+def test_argument_correlation_rejects_cycles_without_raising() -> None:
+    attempt_args = {}
+    attempt_args["self"] = attempt_args
+    result_args = {}
+    result_args["self"] = result_args
+
+    assert _authorization_for_args(attempt_args, result_args) is False
+
+
+def _nested_arguments(depth: int) -> dict:
+    value = {"leaf": "value"}
+    for _ in range(depth):
+        value = {"nested": value}
+    return value
+
+
+def test_argument_correlation_enforces_depth_bound() -> None:
+    assert _authorization_for_args(_nested_arguments(8), _nested_arguments(8)) is True
+    assert (
+        _authorization_for_args(_nested_arguments(33), _nested_arguments(33)) is False
+    )
 
 
 def test_pre_execution_governance_block_is_failed_action(monkeypatch) -> None:
@@ -921,6 +1057,74 @@ def test_tool_event_uses_routing_fallback_and_sanitizes_auditable_args(
         "authorization_reason_code",
     ):
         assert forbidden not in serialized
+
+
+def test_allowed_sensitive_lifecycle_emits_exact_authorization_evidence() -> None:
+    adapter = _adapter()
+    adapter.build_customer_context.return_value = {
+        "authenticated": True,
+        "verified_complaint_ids": ("CMP-1",),
+        "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
+    }
+    adapter.gate_tool_call.return_value = _governance_result(
+        GovernanceAction.ALLOW, "gating-1"
+    )
+    capture = ResultCaptureHooks()
+    registry = HookRegistry()
+    registry.add_hook(capture)
+    registry.add_hook(GovernanceHooks(adapter))
+    tool_use = {
+        "toolUseId": "tool-1",
+        "name": "block_card",
+        "input": {"complaint_id": "CMP-1", "confirmed_by_customer": True},
+    }
+    state = {
+        "trace_id": "trace-1",
+        "session_id": "session-1",
+        "customer_id": "customer-1",
+        "intent": "dispute_charge",
+        "customer_message": "Confirmo el bloqueo",
+        "routing_event_id": "routing-1",
+        "tool_governance": {},
+    }
+    before = BeforeToolCallEvent(
+        agent=SimpleNamespace(),
+        selected_tool=None,
+        tool_use=tool_use,
+        invocation_state=state,
+    )
+
+    registry.invoke_callbacks(before)
+    registry.invoke_callbacks(
+        AfterToolCallEvent(
+            agent=SimpleNamespace(),
+            selected_tool=None,
+            tool_use=tool_use,
+            invocation_state=state,
+            result={
+                "toolUseId": "tool-1",
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "block_card",
+                            "executed": True,
+                            "verification": "confirmed_blocked",
+                        }
+                    }
+                ],
+            },
+        )
+    )
+
+    records = orchestrator_module._tool_records(
+        capture.snapshot_attempts(), capture.snapshot_results()
+    )
+    payload = orchestrator_module._tool_event_payload(records[0], False)
+
+    assert payload["verified"] is True
+    assert payload["authorization_verified"] is True
 
 
 def test_denied_sensitive_attempt_emits_false_authorization_without_claiming_unsafe(
