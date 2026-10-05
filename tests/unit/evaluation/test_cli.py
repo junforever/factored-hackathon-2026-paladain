@@ -94,12 +94,12 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
                 case_set,
             )
         )
-        return LoadedCaseSet(cases, "development-1.0.4")
+        return LoadedCaseSet(cases, "development-1.0.5")
 
     def fake_run(received_cases, received_config):
         calls.append(("run", [case.case_id for case in received_cases]))
         assert received_config.output_dir == PROJECT_ROOT / "evals/reports/override"
-        assert received_config.dataset_version == "development-1.0.4"
+        assert received_config.dataset_version == "development-1.0.5"
         return _run(
             [case.case_id for case in received_cases],
             received_config.dataset_version,
@@ -131,7 +131,7 @@ def test_cli_orchestrates_canonical_pipeline_with_output_override_and_fakes(
         received_run, metrics, by_language, by_scenario, received_classifications
     ):
         calls.append("generate")
-        assert received_run.dataset_version == "development-1.0.4"
+        assert received_run.dataset_version == "development-1.0.5"
         assert metrics == "global-metrics"
         assert by_language == {
             "es": "segment:es:ES-1",

@@ -719,18 +719,76 @@ def test_manifest_rejects_invalid_identity_and_unknown_fields() -> None:
         EvalManifest.model_validate(payload)
 
 
-def test_development_manifest_targets_v104_successor() -> None:
+def test_development_manifest_targets_v105_successor() -> None:
     manifest_path = PROJECT_ROOT / "evals/development_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     cases_path = PROJECT_ROOT / manifest["cases_file"]
 
-    assert manifest["dataset_version"] == "development-1.0.4"
-    assert manifest["cases_file"] == "evals/cases/development_v1.0.4.yaml"
+    assert manifest["dataset_version"] == "development-1.0.5"
+    assert manifest["cases_file"] == "evals/cases/development_v1.0.5.yaml"
     assert manifest["sandbox_sha256"] == (
         "5b80c6e487a9333f9045632aa66d6636c1d7b896689b85a4f2180289e56a8dd1"
     )
     assert manifest["total_cases"] == 30
     assert manifest["sha256"] == hashlib.sha256(cases_path.read_bytes()).hexdigest()
+
+
+def test_development_v104_remains_immutable() -> None:
+    assert (
+        hashlib.sha256(
+            (PROJECT_ROOT / "evals/cases/development_v1.0.4.yaml").read_bytes()
+        ).hexdigest()
+        == "bbb2e95001cdf4d4044bfe85095557949da3eef366ef9a92cb4f182ae9aadefa"
+    )
+
+
+def test_development_v105_changes_only_dev013_escalation_type() -> None:
+    previous = yaml.safe_load(
+        (PROJECT_ROOT / "evals/cases/development_v1.0.4.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    successor = yaml.safe_load(
+        (PROJECT_ROOT / "evals/cases/development_v1.0.5.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    previous_by_id = {case["case_id"]: case for case in previous}
+    successor_by_id = {case["case_id"]: case for case in successor}
+
+    assert len(successor) == 30
+    assert successor_by_id.keys() == previous_by_id.keys()
+
+    previous_case = previous_by_id["DEV-013"]
+    assert successor_by_id["DEV-013"] == previous_case | {
+        "expected": previous_case["expected"]
+        | {"expected_escalation_type": "failed_action"}
+    }
+    for case_id in previous_by_id.keys() - {"DEV-013"}:
+        assert successor_by_id[case_id] == previous_by_id[case_id]
+
+
+def test_development_v105_preserves_escalation_taxonomy_invariants() -> None:
+    payload = yaml.safe_load(
+        (PROJECT_ROOT / "evals/cases/development_v1.0.5.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    cases = {case.case_id: case for case in map(EvalCase.model_validate, payload)}
+
+    for case_id in ("DEV-006", "DEV-007", "DEV-011", "DEV-012", "DEV-030"):
+        assert (
+            cases[case_id].expected.expected_escalation_type
+            is EscalationType.TOOL_ESCALATION
+        )
+
+    dev013 = cases["DEV-013"].expected
+    assert dev013.action is TurnAction.ESCALATE
+    assert dev013.requires_escalation is True
+    assert dev013.expected_tools == ["block_card"]
+    assert dev013.expected_escalation_type is EscalationType.FAILED_ACTION
+    assert dev013.authorization.authenticated is True
+    assert dev013.authorization.product_authorized is False
 
 
 def test_development_v104_changes_only_missing_merchant_decisions() -> None:
@@ -841,8 +899,8 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
     )
     assert held_manifest["dataset_version"] == "1.0.2"
     assert held_manifest["cases_file"] == "evals/cases/held_out_v1.0.2.yaml"
-    assert development_manifest["dataset_version"] == "development-1.0.4"
-    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.4.yaml"
+    assert development_manifest["dataset_version"] == "development-1.0.5"
+    assert development_manifest["cases_file"] == "evals/cases/development_v1.0.5.yaml"
     assert held_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert development_manifest["sandbox_sha256"] == config.sandbox_sha256
     assert (
@@ -873,7 +931,7 @@ def test_committed_fixtures_match_hash_identity_coverage_and_independence(
         config,
         "development",
     )
-    assert development.dataset_version == "development-1.0.4"
+    assert development.dataset_version == "development-1.0.5"
     assert len(development.cases) == 30
     assert Counter(case.scenario for case in development.cases) == {
         "normal_resolution": 5,
