@@ -1,0 +1,63 @@
+# Especificar el trabajo de robustecimiento de evaluación
+
+## Objetivo
+
+Definir tres extensiones listas para implementar de la Especificación #9 que recuperen la resolución automatizada segura, hagan determinísticas las decisiones terminales y de escalamiento, y reduzcan la latencia de extremo a extremo sin ajustar a partir de datos held-out ni debilitar los controles bancarios.
+
+## Alcance
+
+- Crear `docs/specs/spec_09a.md` para recuperar SAR con conocimiento de autorización y calibrar el control de herramientas solo con desarrollo.
+- Crear `docs/specs/spec_09b.md` para asegurar la corrección determinística de terminales/escalamientos y un análogo de desarrollo de `EVAL-009`.
+- Crear `docs/specs/spec_09c.md` para atribuir y optimizar latencia de forma segura para la privacidad después de estabilizar la corrección.
+- Definir una cadena de dependencias entre especificaciones y exactamente una ejecución held-out final después de congelar las tres candidatas.
+- Reservar la Especificación #10 para la documentación final, las diapositivas y el trabajo de presentación.
+
+## Restricciones
+
+- Tarea solo de documentación; no pueden cambiar código de producción, pruebas, umbrales, conjuntos de datos, manifiestos ni reportes generados.
+- Se deben especificar requisitos de TDD estricto para la implementación posterior, incluida evidencia de RED → GREEN → TRIANGULATE → REFACTOR.
+- Held-out v1.0.2 permanece congelado y no se debe usar para ajustes ni ejecutar repetidamente.
+- No se pueden debilitar los controles estrictos de identidad, autorización, argumentos, confirmación, verificación, privacidad y denegación ante fallos (`fail-closed`).
+- Cada especificación debe declarar alcance, no-objetivos, contratos normativos, plan de pruebas, criterios de aceptación, límites de revisión, reversión y actualizaciones requeridas de STATUS.
+
+## Entrega
+
+- Rama: `docs/evaluation-hardening-specs`
+- Estrategia: `feature-branch-chain`
+- Idioma de los artefactos: español, consistente con las especificaciones existentes.
+- Validación: relectura estructural, comprobación de referencias cruzadas, alcance de archivos modificados y `git diff --check`.
+
+## Tareas
+
+- [ ] **T1 — Especificar la recuperación de SAR con conocimiento de autorización**
+  - Escribir `docs/specs/spec_09a.md` a partir de la evidencia actual de desarrollo y las restricciones de seguridad.
+  - Definir matrices de calibración positivas/negativas, precondiciones de autorización, secuencia TDD y política de held-out congelado.
+  - Crear un commit como una unidad de trabajo de documentación revisable.
+
+- [ ] **T2 — Especificar la corrección determinística de terminales**
+  - Escribir `docs/specs/spec_09b.md` para tipos de escalamiento, ramas ambiguas y un análogo de desarrollo de `EVAL-009`.
+  - Mantener la política binaria en Python y restringir los vocabularios expuestos al modelo sin ocultar fallos.
+  - Crear un commit como una unidad de trabajo de documentación revisable.
+
+- [ ] **T3 — Especificar la atribución y optimización de latencia**
+  - Escribir `docs/specs/spec_09c.md` con tiempos por etapa, restricciones de privacidad, protocolo de medición, presupuesto de rendimiento y criterios de no regresión.
+  - Exigir que la corrección se congele antes de optimizar y una única ejecución held-out final después de las tres especificaciones.
+  - Crear un commit como una unidad de trabajo de documentación revisable.
+
+- [ ] **T4 — Validar la cadena de especificaciones**
+  - Comprobar terminología, dependencias, rutas, comandos, criterios de aceptación y política held-out entre las tres especificaciones.
+  - Ejecutar comprobaciones estructurales solo de documentación y registrar todas las identidades de commit.
+  - Ninguna evaluación en tiempo de ejecución o de modelo resulta aplicable a esta tarea de documentación.
+
+## Criterios de aceptación
+
+- Cada especificación se puede implementar de forma independiente sin reconstruir decisiones desde el historial del chat.
+- Las tres especificaciones cubren en conjunto SAR 0%, escalamientos incorrectos/omitidos, `EVAL-009` y regresión de latencia.
+- La deuda de formato de todo el repositorio sigue siendo trabajo de mantenimiento, no una especificación de comportamiento.
+- El orden de implementación es 09A → 09B → 09C → una ejecución held-out final de v1.0.2 → presentación de la Especificación #10.
+- Ninguna especificación autoriza ajustes con held-out, relajación de seguridad, campos sensibles en reportes ni eliminación de la verificación.
+
+## Progreso
+
+- Evidencia actual mapeada desde la Especificación #9, `docs/STATUS.md`, clasificación y generación de reportes de evaluación, criterios de gobierno, orquestación y límites de medición temporal.
+- La implementación no ha comenzado; estos documentos solo definen trabajo futuro.
