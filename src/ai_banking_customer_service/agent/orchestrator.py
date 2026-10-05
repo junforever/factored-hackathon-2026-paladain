@@ -432,11 +432,7 @@ class BankingOrchestrator:
         governance_parent = _last_durable_parent(
             invocation_state.get("routing_event_id"), durable_parent
         )
-        if governance_action == "block":
-            return _fixed_classification(
-                TurnAction.BLOCK, language, "block", None, governance_parent
-            )
-        if governance_action == "review":
+        if governance_action in {"block", "review"}:
             return _fixed_classification(
                 TurnAction.ESCALATE,
                 language,

@@ -66,11 +66,25 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Checks: focused builder/contract tests, sandbox referential/state validation, Ruff, and diff checks.
   - Route: delegated writer; multi-file/read-for-write trigger.
 
-- [ ] **T3b — Re-evaluate and resolve only residual production defects**
-  - Execute the real offline evaluation against v1.0.2.
-  - Compare SAR, containment, escalation, unsafe outcomes, tool-plan matches, latency, and failure evidence with v1.0.1.
-  - Add RED tests and apply only root-cause corrections proven after valid data binding; never weaken safety or classifier semantics.
-  - Route: delegated verifier for the real run; delegated writer only for proven residual defects.
+- [x] **T3b — Correct deterministic governance terminal semantics**
+  - Add RED regression coverage proving input `GovernanceAction.BLOCK` never reports a bank-card `TurnAction.BLOCK`.
+  - Map blocked malicious input to the approved safe governance escalation without invoking tools.
+  - Add bounded diagnostic fields to evaluation failures only if required to preserve actionable evidence without sensitive payloads.
+  - Route: delegated writer; focused orchestrator/evaluation tests.
+  - Evidence: RED observed because governance `block` returned `TurnAction.BLOCK`; GREEN/Triangulate: 3 ES/PT focused regressions and 40 orchestrator tests passed, with Ruff, format, and diff checks clean.
+  - Commit: pending.
+
+- [ ] **T3c — Calibrate routing/tool gating and model-facing contracts**
+  - Add RED threshold boundary tests before changing provisional routing/tool-gating values.
+  - Calibrate routing and tool-gating thresholds only within the existing layered fail-closed design; deterministic argument, identity, confirmation, and authorization checks remain unchanged.
+  - Strengthen model-facing instructions to preserve the exact complaint ID across tools, gather context first, use canonical action plans, and pass escalation argument types correctly.
+  - Route: delegated writer; focused governance/prompt tests.
+
+- [ ] **T3d — Re-evaluate grounded production behavior**
+  - Execute the real offline evaluation against v1.0.2 after deterministic and calibrated fixes.
+  - Compare SAR, containment, escalation, unsafe outcomes, tool-plan matches, latency, and failure evidence with the initial grounded run.
+  - Apply no further change without new deterministic trace evidence.
+  - Route: delegated verifier.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
@@ -116,6 +130,15 @@ The evaluation must exercise the real customer-facing contract rather than requi
 - T3 strict RED covered unavailable sandbox and missing sandbox identity fields; GREEN completed with 62 focused tests.
 - Writer verification: focused tests, Ruff check/format, diff check, deterministic `--check`, exact hashes, frozen predecessor hashes, coverage, independence, and all 80 scenario facts passed.
 - Parent spot check repeated `13_build_evaluation_cases.py --check` successfully with the same counts and hashes.
+- T3 work-unit commit: `ed99155` (`fix(evaluation): ground cases in validated sandbox data`).
+- Independent verification of `ed99155`: 62 tests, Ruff, format, deterministic generation, diff/frozen checks, exact hashes, 80 real IDs, scenario facts, contracts, and sandbox binding all passed; no metric gaming or safety weakening found.
+- Native assessment remained unavailable because pre-existing untracked reports require explicit review-scope declaration; the mandated high-risk fallback verifier completed successfully.
+- Slice 2 remains an oversized but cohesive generated-data unit: 2,851 changed lines; the builder, binding contract, tests, manifests, and generated fixtures cannot be reviewed or rolled back independently while remaining green.
+- Real grounded v1.0.2 evaluation completed 50/50 with zero execution failures, but SAR remained 0%, containment was 18%, correct escalations 2, unnecessary escalations 21, and unsafe outcomes increased to 24/50 (48%).
+- Scenario evidence: normal 15/15 unsafe/unnecessarily escalated; human-required 10/10 wrong-type; ambiguous 7 wrong-type and 3 missed; attack 2/5 correct with 3 unsafe; missing-data 3/5 contained with 2 unsafe; edge 4/5 unsafe.
+- All unsafe evidence remains `materially_incorrect` / `forbidden_terminal_action`; aggregate reports still lack the terminal/tool trace needed to prove the residual production branch.
+- Six sanitized traces proved one deterministic semantic defect: input governance `BLOCK` is reported as bank-card `TurnAction.BLOCK`; approved attack behavior requires safe governance escalation instead.
+- Traces also measured provisional-confidence misses (`request_human` 0.39, `check_status` 0.40, context-tool match 0.67), an invalid escalation argument type, and one mismatched complaint ID; deterministic hard gates behaved correctly by blocking them.
 - Read-only DuckDB verification proved the configured sandbox contains zero `CMP-EVAL-*` rows and zero of the 40 actionable held-out IDs; no actionable evaluation case can currently reach production context tools.
 - The evaluation factory uses production readers against the configured sandbox, so verified block and persisted tool escalation are impossible with the current synthetic IDs.
 - User selected real sandbox-backed successors with safe contracts: attack → governance review/safe escalation; missing data → abstention and request for information.
@@ -125,4 +148,4 @@ The evaluation must exercise the real customer-facing contract rather than requi
 
 ## Next step
 
-Commit the T3 slice, run independent verification, then execute the real v1.0.2 evaluation for T3b.
+Delegate T3b deterministic terminal correction with RED/GREEN evidence, then calibrate provisional gates and model-facing contracts in T3c.
