@@ -1070,6 +1070,38 @@ def test_pre_execution_governance_block_is_failed_action(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
+    "verification",
+    ["escalation_not_confirmed", "escalation_failed_db_error"],
+)
+def test_explicit_terminal_escalation_failure_is_failed_action(
+    monkeypatch,
+    verification: str,
+) -> None:
+    payload = {
+        "action": "escalate_case",
+        "executed": False,
+        "error": "private persistence failure",
+        "verification": verification,
+    }
+    orchestrator, adapter, _, _ = _install_turn(
+        monkeypatch,
+        attempts=(_attempt("escalate_case"),),
+        results=(_result("escalate_case", payload),),
+    )
+
+    result = orchestrator.handle_turn("Humano", "s", "c")
+
+    assert result.action is TurnAction.ESCALATE
+    assert result.escalation_type is EscalationType.FAILED_ACTION
+    assert result.response_text == (
+        "No puedo completar esta solicitud de forma segura. "
+        "La derivaré a un especialista."
+    )
+    assert "private persistence failure" not in result.response_text
+    adapter.screen_output.assert_not_called()
+
+
+@pytest.mark.parametrize(
     "change",
     [
         {"status": "error"},
@@ -1079,6 +1111,14 @@ def test_pre_execution_governance_block_is_failed_action(monkeypatch) -> None:
                 "executed": False,
                 "verification": "confirmed_persisted",
                 "escalation_id": "ESC-1",
+            }
+        },
+        {
+            "content": {
+                "action": "escalate_case",
+                "executed": False,
+                "error": "unknown failure",
+                "verification": "other",
             }
         },
         {

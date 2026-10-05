@@ -845,10 +845,17 @@ def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
             if content.get("action") != record.tool_name:
                 analysis.uncertain_side_effect = True
                 continue
-            if (
-                content.get("executed") is False
-                and isinstance(content.get("reason"), str)
-                and "verification" not in content
+            if content.get("executed") is False and (
+                (
+                    isinstance(content.get("reason"), str)
+                    and "verification" not in content
+                )
+                or (
+                    record.tool_name == "escalate_case"
+                    and _nonempty_string(content.get("error")) is not None
+                    and content.get("verification")
+                    in ("escalation_not_confirmed", "escalation_failed_db_error")
+                )
             ):
                 analysis.failed_action = True
                 continue
