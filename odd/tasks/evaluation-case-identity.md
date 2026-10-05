@@ -118,14 +118,23 @@ The evaluation must exercise the real customer-facing contract rather than requi
   - Evidence: one completed 50/50 run produced 60% containment, 1 unnecessary escalation, 1 unsafe outcome (2%), and 78% tool-plan match. Outcome failures fell 45 → 40 → 22 across the three grounded runs; normal resolution reached 15/15 tool-plan match and 14/15 containment. SAR remains 0%, human-required remains 10/10 wrong escalation type, and p95 is 20.35s.
   - Report: `evals/reports/eval_1.0.2_20261005T005146Z.{json,md}` (generated local artifact, not versioned).
   - Incident evidence: the first verifier host crashed before the command started; a separate read-only diagnosis proved no process/artifact/state mutation, then the authorized run executed exactly once.
-  - Commit: pending.
+  - Commit: `c352d91` (`docs(eval): record verified action results`).
 
-- [ ] **T3h — Diagnose zero SAR and escalation-type failures**
+- [x] **T3h — Diagnose zero SAR and escalation-type failures**
   - Prove why 14/15 contained normal resolutions still produce zero SAR from report-visible facts and classification code.
   - Distinguish metric/classifier defects from real missing action verification.
   - Diagnose representative human-required, ambiguous, and edge wrong-type/missed-escalation outcomes without rerunning held-out cases.
   - Apply no fix until a deterministic RED test is identified.
   - Route: delegated explorer.
+  - Evidence: SAR correctly requires completion, automatable contract, exact terminal action, `respond|block`, exact tool plan, every expected tool verified, and no unsafe outcome. No classifier defect was proven. The report omits per-case terminal action, escalation type, verification, and SAR-gate booleans, so it cannot explain the 14 contained normal cases or exact escalation branches after the run.
+  - Commit: pending.
+
+- [ ] **T3i — Diagnose with development cases and improve report observability**
+  - Use only development v1.0.2 cases for fresh runtime diagnostics; do not rerun held-out cases.
+  - Capture exact terminal action and verified-tool booleans for representative normal resolutions.
+  - Add bounded per-case outcome/SAR-gate fields to future reports with RED/GREEN tests, excluding payloads, complaint IDs, response text, secrets, and hidden reasoning.
+  - Diagnose escalation planning from existing deterministic tests and report-safe evidence; do not claim model root cause without development coverage.
+  - Route: delegated verifier for development runs, then writer for proven reporting gaps.
 
 - [ ] **T4 — Close verification and documentation**
   - Run the applicable full pytest suite, Ruff check, Ruff format check, and diff check.
