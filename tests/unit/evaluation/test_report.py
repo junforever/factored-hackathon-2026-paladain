@@ -52,6 +52,7 @@ def _classification(
     unsafe: bool = False,
     evidence: tuple[dict, ...] = (),
     unauthorized: bool = False,
+    unauthorized_product: bool = False,
     sensitive: bool = False,
     execution_status: CaseExecutionStatus = CaseExecutionStatus.COMPLETED,
     expected_action: TurnAction = TurnAction.RESPOND,
@@ -74,6 +75,7 @@ def _classification(
         tool_plan_match=True,
         wrong_complaint=False,
         unauthorized_action=unauthorized,
+        unauthorized_product_access=unauthorized_product,
         sensitive_data_exposed=sensitive,
         materially_incorrect=False,
         unsafe_outcome=unsafe,
@@ -193,6 +195,7 @@ def _report() -> dict:
             outcome=EscalationOutcome.WRONG_TYPE,
             unsafe=True,
             unauthorized=True,
+            unauthorized_product=True,
             sensitive=True,
             expected_action=TurnAction.ESCALATE,
             observed_action=TurnAction.ESCALATE,
@@ -264,7 +267,13 @@ def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
                         "args": {"complaint_id": complaint_marker},
                         "result_status": "success",
                         "verified": True,
+                        "authorization_verified": True,
                         "result_summary": "private result payload",
+                        "authorization_result": "allowed",
+                        "authorization_reason_code": "authorized",
+                        "principal": "principal-private-report-marker",
+                        "product_id": "PRD-PRIVATE-REPORT-MARKER",
+                        "provider_error": "D:/private/provider token=secret",
                         "governance": {"raw": "private state"},
                     },
                 },
@@ -302,6 +311,7 @@ def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
                     "tool_name": "block_card",
                     "result_status": "success",
                     "verified": True,
+                    "authorization_verified": True,
                 }
             ],
         }
@@ -317,6 +327,12 @@ def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
         "private result payload",
         "private state",
         "private note",
+        "principal-private-report-marker",
+        "PRD-PRIVATE-REPORT-MARKER",
+        "D:/private/provider token=secret",
+        "authorization_result",
+        "authorization_reason_code",
+        "provider_error",
         "complaint_id",
         "tool_args",
         "result_summary",
@@ -334,6 +350,55 @@ def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
         assert forbidden not in markdown
     assert "## Case outcomes" in markdown
     assert "| C-SAFE | pt | normal_resolution | completed | block | block |" in markdown
+    assert "block_card:success:true:true" in markdown
+
+
+def test_case_outcome_tools_keep_stable_order_and_exact_bounded_fields() -> None:
+    tools = (
+        {
+            "tool_name": "get_dispute_context",
+            "result_status": "success",
+            "verified": True,
+            "authorization_verified": True,
+            "private": "must-not-copy",
+        },
+        {
+            "tool_name": "block_card",
+            "result_status": "error",
+            "verified": False,
+            "authorization_verified": False,
+            "path": "D:/private/state.sqlite3",
+        },
+    )
+    report = generate_report(
+        _run((_result("C1"),)),
+        _metrics(),
+        {},
+        {},
+        [_classification("C1", tools=tools)],
+    )
+
+    assert report["case_outcomes"][0]["tools"] == [
+        {
+            "tool_name": "get_dispute_context",
+            "result_status": "success",
+            "verified": True,
+            "authorization_verified": True,
+        },
+        {
+            "tool_name": "block_card",
+            "result_status": "error",
+            "verified": False,
+            "authorization_verified": False,
+        },
+    ]
+    markdown = render_markdown_report(report)
+    assert (
+        "get_dispute_context:success:true:true, block_card:error:false:false"
+        in markdown
+    )
+    assert "must-not-copy" not in markdown
+    assert "D:/private/state.sqlite3" not in markdown
 
 
 def test_report_omits_event_ids_and_arbitrary_unsafe_evidence_details() -> None:
@@ -431,6 +496,7 @@ def test_generate_report_uses_authoritative_inputs_and_sanitized_failures() -> N
             "reason_codes": [
                 "sensitive_data_exposed",
                 "unauthorized_action",
+                "unauthorized_product_access",
                 "wrong_type",
             ],
         },
@@ -459,7 +525,7 @@ def test_generate_report_uses_authoritative_inputs_and_sanitized_failures() -> N
         "not statistically significant" in item for item in report["limitations"]
     )
     assert any("complete cost" in item for item in report["limitations"])
-    assert any("product_id" in item for item in report["limitations"])
+    assert any("canonical adapter evidence" in item for item in report["limitations"])
 
 
 @pytest.mark.parametrize(

@@ -58,12 +58,14 @@ def _attempt(
     tool_use_id: str = "tool-1",
     args: dict | None = None,
     blocked: bool = False,
+    authorization_verified: bool = True,
 ):
     return SimpleNamespace(
         tool_use_id=tool_use_id,
         tool_name=name,
         tool_args={} if args is None else args,
         blocked_before_execution=blocked,
+        authorization_verified=authorization_verified,
     )
 
 
@@ -77,6 +79,7 @@ def _result(
     cancel_message: str | None = None,
     blocked: bool = False,
     retry: bool = False,
+    authorization_verified: bool = True,
 ) -> NormalizedToolResult:
     return NormalizedToolResult(
         tool_use_id=tool_use_id,
@@ -89,6 +92,7 @@ def _result(
         duration_ms=7,
         blocked_before_execution=blocked,
         retry_requested=retry,
+        authorization_verified=authorization_verified,
     )
 
 
@@ -878,6 +882,7 @@ def test_tool_event_uses_routing_fallback_and_sanitizes_auditable_args(
         duration_ms=7,
         blocked_before_execution=False,
         retry_requested=False,
+        authorization_verified=True,
     )
     orchestrator, _, sink, _ = _install_turn(
         monkeypatch,
@@ -904,3 +909,44 @@ def test_tool_event_uses_routing_fallback_and_sanitizes_auditable_args(
         "limit": 10,
     }
     assert tool_event["payload"]["verified"] is True
+    assert tool_event["payload"]["authorization_verified"] is True
+    serialized = repr(tool_event["payload"])
+    for forbidden in (
+        "principal",
+        "product_id",
+        "customer_id",
+        "provider_error",
+        "raw_jev_state",
+        "authorization_result",
+        "authorization_reason_code",
+    ):
+        assert forbidden not in serialized
+
+
+def test_denied_sensitive_attempt_emits_false_authorization_without_claiming_unsafe(
+    monkeypatch,
+) -> None:
+    orchestrator, _, sink, _ = _install_turn(
+        monkeypatch,
+        attempts=(_attempt("block_card", blocked=True, authorization_verified=False),),
+        results=(
+            _result(
+                "block_card",
+                None,
+                status="error",
+                cancel_message="governance:block",
+                blocked=True,
+                authorization_verified=False,
+            ),
+        ),
+    )
+
+    result = orchestrator.handle_turn("Bloquear", "s", "c")
+
+    tool_event = next(
+        event for event in sink.events if event["event_type"] == "tool_call"
+    )
+    assert tool_event["payload"]["result_status"] == "blocked"
+    assert tool_event["payload"]["verified"] is False
+    assert tool_event["payload"]["authorization_verified"] is False
+    assert result.escalation_type is EscalationType.FAILED_ACTION

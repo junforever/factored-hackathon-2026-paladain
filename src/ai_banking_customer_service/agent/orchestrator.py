@@ -915,9 +915,20 @@ def _tool_event_payload(record: _ToolRecord, used_fallback: bool) -> dict:
         "result_summary": _result_summary(record)[:500],
         "verified": _verified(record),
     }
+    if record.tool_name in _REGISTERED_TOOL_NAMES:
+        payload["authorization_verified"] = _authorization_verified(record)
     if used_fallback:
         payload["correlation"] = "routing_fallback"
     return payload
+
+
+def _authorization_verified(record: _ToolRecord) -> bool:
+    if record.duplicate_or_retry or len(record.attempts) != 1:
+        return False
+    if getattr(record.attempts[0], "authorization_verified", None) is not True:
+        return False
+    result = record.result
+    return result is None or result.authorization_verified is True
 
 
 def _audit_args(tool_name: str, args: dict) -> dict:

@@ -11,6 +11,18 @@ from strands.hooks import (
 
 from ai_banking_customer_service.governance.adapter import GovernanceAdapter
 from ai_banking_customer_service.governance.jev.decision import GovernanceAction
+from ai_banking_customer_service.observability.contract import (
+    AUTHORIZATION_REASON_CODES,
+    AUTHORIZATION_RESULTS,
+)
+
+_AUTHORIZATION_RESULT_BY_REASON = {
+    "authorized": "allowed",
+    "not_authenticated": "denied",
+    "product_not_authorized": "denied",
+    "authorization_unavailable": "unavailable",
+    "invalid_authorization_result": "unavailable",
+}
 
 
 class GovernanceHooks(HookProvider):
@@ -99,6 +111,9 @@ class GovernanceHooks(HookProvider):
                 "action": "block",
                 "event_id": None,
                 "reason": reason,
+                "authorization_result": "not_evaluated",
+                "authorization_reason_code": None,
+                "authorization_verified": False,
             }
             event.cancel_tool = "governance:block"
 
@@ -154,14 +169,52 @@ class GovernanceHooks(HookProvider):
             parent_event_id=routing_event_id,
             orphaned=bool(state.get("audit_orphaned", False)),
         )
+        authorization_result, reason_code, authorization_verified = (
+            _authorization_observability(customer_context)
+        )
         tool_governance[tool_use_id] = {
             "decision": result.decision,
             "action": result.decision.action.value,
             "event_id": result.event_id,
             "reason": None,
+            "authorization_result": authorization_result,
+            "authorization_reason_code": reason_code,
+            "authorization_verified": authorization_verified,
         }
         if result.decision.action is GovernanceAction.BLOCK:
             event.cancel_tool = "governance:block"
+
+
+def _authorization_observability(
+    customer_context: object,
+) -> tuple[str, str | None, bool]:
+    if not isinstance(customer_context, dict):
+        return "not_evaluated", None, False
+    reason = customer_context.get("authorization_reason")
+    if reason not in AUTHORIZATION_REASON_CODES:
+        return "not_evaluated", None, False
+    result = _AUTHORIZATION_RESULT_BY_REASON[reason]
+    if result not in AUTHORIZATION_RESULTS:
+        return "not_evaluated", None, False
+
+    authenticated = customer_context.get("authenticated")
+    authorized_ids = customer_context.get("authorized_product_ids")
+    valid_authorized_ids = (
+        isinstance(authorized_ids, tuple)
+        and bool(authorized_ids)
+        and all(_is_nonempty_string(value) for value in authorized_ids)
+    )
+    if reason == "authorized":
+        if authenticated is True and valid_authorized_ids:
+            return result, reason, True
+        return "not_evaluated", None, False
+    if authorized_ids != ():
+        return "not_evaluated", None, False
+    if reason == "product_not_authorized" and authenticated is not True:
+        return "not_evaluated", None, False
+    if reason != "product_not_authorized" and authenticated is not False:
+        return "not_evaluated", None, False
+    return result, reason, False
 
 
 def create_hooks(adapter: GovernanceAdapter) -> list[HookProvider]:

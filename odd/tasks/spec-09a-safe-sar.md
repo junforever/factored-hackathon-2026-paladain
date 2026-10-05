@@ -78,7 +78,7 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Entrega: commit `6928d2b` (`feat(governance): judge necessary tool steps`); tercer slice de `feature-branch-chain`.
   - Revisión nativa: ASSESS medio, 389 líneas committed-only, `reviewDue=false`; diferida al cierre del slice/PR.
 
-- [ ] **S09A-T4A — Schema, fixtures development y selector CLI** *(en progreso)*
+- [x] **S09A-T4A — Schema, fixtures development y selector CLI**
   - Ruta: writer delegado; disparador: cambio coordinado de schema, fixture, manifest, factory y CLI.
   - Añadir expectativa explícita de autorización, crear development `v1.0.3`, actualizar solo manifest/config development y exigir selector `development|held-out` sin default.
   - Agregar prueba de hash byte-for-byte para held-out `v1.0.2`; no modificarlo ni ejecutarlo.
@@ -87,14 +87,20 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
   - Verificación independiente: 95 tests, Ruff, format y diff check pasan; held-out fixture/manifest sin cambios contra `6928d2b`; no se ejecutaron casos, modelo, Jev ni red.
   - Evidencia: development 30 casos (18 ES, 12 PT), hash `c33c4494...cc221379`; held-out anclado en `739d6cb7...e0b7e3`; spot-check parent 11 tests pasan.
   - Tamaño estimado: 1,124 líneas autoradas, de las cuales 630 corresponden al fixture development versionado. Es el menor work unit cohesivo porque schema/config/manifest/fixture y sus pruebas deben permanecer consistentes.
-  - Commit autorizado: identidad pendiente de creación (`feat(eval): add authorization-aware development cases`).
+  - Entrega: commit `b577e39` (`feat(eval): add authorization-aware development cases`); cuarto slice de `feature-branch-chain`.
+  - Revisión nativa: lineage `review-d5c1af6315c7982a`, lente reliability, aprobada y reconocida; autoridad consumida.
 
-- [ ] **S09A-T4B — Evidencia canónica, SAR, unsafe y reporting**
+- [ ] **S09A-T4B — Evidencia canónica, SAR, unsafe y reporting** *(en progreso)*
   - Ruta: writer delegado; disparador: cambio coordinado de auditoría, captura, clasificación, reporte y tests.
   - Propagar `authorization_verified`, exigirla para SAR, clasificar `unauthorized_product_access` y reportar solo campos acotados.
   - Superficie adicional aprobada por el usuario: `src/ai_banking_customer_service/agent/orchestrator.py`, limitada a propagar `authorization_verified` en el evento canónico de tool.
   - Superficies previstas: `src/ai_banking_customer_service/agent/{orchestrator,result_capture}.py`, `src/ai_banking_customer_service/evaluation/{classification,report}.py`, `docs/observability.md` solo si cambia el contrato, y tests correspondientes.
-  - Evidencia de commit: pendiente de autorización explícita.
+  - TDD: RED de colección por `authorization_verified`, constantes y unsafe ausentes; GREEN/triangulación final `277 passed`.
+  - Checks: Ruff, format y diff check pasan; spot-check parent de clasificación/reporting `76 passed`.
+  - Evidencia: las cuatro tools requieren booleano canónico; SAR exige autorización; éxito verificado sin evidencia produce `unauthorized_product_access`; reportes exponen exactamente cuatro campos y preservan orden/privacidad.
+  - ASSESS nativo: riesgo medio, 642 líneas, `reviewDue=true`; review requerida después del commit estable.
+  - Tamaño: 642 líneas autoradas; el corte es cohesivo porque evento, captura, contrato, clasificación y reporte deben avanzar juntos para evitar estados de rollback inseguros.
+  - Commit y review autorizados: identidad pendiente de creación (`feat(eval): require product authorization evidence`).
 
 - [ ] **S09A-T5 — Gate completo, calibración real y documentación**
   - Ruta: verifier delegado para comandos completos; parent para reconciliar evidencia y documentación.
@@ -138,7 +144,11 @@ El cambio normativo probablemente supera 400 líneas autoradas por incluir seam,
 - 2026-10-05: S09A-T4 se dividió en T4A (schema/fixtures/CLI) y T4B (evidencia/SAR/unsafe/reporting) para mantener work units cohesivos y revisables; T4A iniciado.
 - 2026-10-05: S09A-T4A implementado y verificado independientemente: 95 tests y checks pasan; development v1.0.3 tiene 30 casos explícitos; held-out permanece byte-for-byte intacto y no ejecutado.
 - 2026-10-05: el usuario autorizó el commit cohesivo de S09A-T4A dentro de `feature-branch-chain`; push, PR y merge siguen sin autorizar.
+- 2026-10-05: S09A-T4A cerrado en commit `b577e39`; review nativa `review-d5c1af6315c7982a` aprobada, reconocida y consumida.
+- 2026-10-05: S09A-T4B iniciado para evidencia canónica, SAR, unsafe y reporting acotado.
+- 2026-10-05: S09A-T4B implementado: 277 tests y checks pasan; SAR/unsafe/reportes usan evidencia canónica acotada; ASSESS medio y review due al cerrar el slice.
+- 2026-10-05: el usuario autorizó el commit cohesivo y la review nativa de S09A-T4B; push, PR y merge siguen sin autorizar.
 
 ## Próximo paso
 
-Crear el commit autorizado de S09A-T4A, registrar su identidad e iniciar S09A-T4B.
+Crear el commit de S09A-T4B, ejecutar la review nativa requerida y registrar su resultado.

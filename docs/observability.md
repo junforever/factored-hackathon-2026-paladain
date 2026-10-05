@@ -64,6 +64,7 @@ args           obj   proyección auditable y sanitizada
 result_status  str   success | error | blocked
 result_summary str   resumen sanitizado, máximo 500 code points
 verified       bool  evidencia terminal cumple el contrato de la tool
+authorization_verified bool  autorización explícita de producto acreditada por el adapter
 correlation    str   opcional; routing_fallback cuando falta correlación válida
 orphaned       bool  opcional; solo true para descendencia sin padre durable
 ```
@@ -85,7 +86,10 @@ de acción, error de lectura o `success`. Nunca contiene una excepción cruda.
 
 `verified=true` requiere que no haya retry, duplicado, excepción ni cancelación y,
 además, evidencia de lectura exitosa, verificación canónica de acción o el
-predicado completo de escalamiento persistido.
+predicado completo de escalamiento persistido. Para las cuatro tools sensibles,
+`authorization_verified` siempre está presente y solo es `true` cuando el
+contexto creado por el adapter contiene autorización explícita válida; no se
+infiere desde la reclamación, el producto ni el resultado de la ejecución.
 
 ### 3.3 `escalation`
 
@@ -135,6 +139,14 @@ Las entradas públicas `screen_and_route`, `gate_tool_call` y `screen_output`
 aceptan el keyword-only `orphaned: bool = False`. Un valor no booleano lanza
 `TypeError`. Los hooks pasan únicamente ese booleano desde `invocation_state`;
 el adapter no recibe ni consulta el estado completo.
+
+La correlación interna por tool conserva la observabilidad de autorización solo
+como `allowed | denied | unavailable | not_evaluated`, el reason code cerrado
+`authorized | not_authenticated | product_not_authorized | authorization_unavailable | invalid_authorization_result`
+(o `null` cuando no fue evaluada) y el booleano canónico. No conserva principal,
+IDs bancarios, respuesta o error del provider, paths, credenciales, texto libre,
+state de Jev ni representación/hash del sentinel. El evento `tool_call` proyecta
+únicamente el booleano.
 
 Si el evento `input` no persiste, el orquestador conserva
 `input_event_id=None`, activa `audit_orphaned=True` y todos los payloads

@@ -28,6 +28,24 @@ VALID_EVENT_TYPES = frozenset(
     }
 )
 VALID_OUTCOMES = frozenset({"success", "blocked", "escalated", "failure", "abstained"})
+AUTHORIZATION_RESULTS = frozenset({"allowed", "denied", "unavailable", "not_evaluated"})
+AUTHORIZATION_REASON_CODES = frozenset(
+    {
+        "authorized",
+        "not_authenticated",
+        "product_not_authorized",
+        "authorization_unavailable",
+        "invalid_authorization_result",
+    }
+)
+SENSITIVE_TOOL_NAMES = frozenset(
+    {
+        "get_dispute_context",
+        "get_recent_transactions",
+        "block_card",
+        "escalate_case",
+    }
+)
 
 _STRING_FIELDS = ("trace_id", "event_id", "timestamp", "customer_id", "session_id")
 _DOMAIN_FIELDS = {
@@ -74,3 +92,10 @@ def validate_event(event: dict) -> None:
     payload = event.get("payload")
     if payload is not None and not isinstance(payload, dict):
         raise ValueError("payload must be a dict or None")
+    if (
+        event["event_type"] == "tool_call"
+        and isinstance(payload, dict)
+        and payload.get("tool_name") in SENSITIVE_TOOL_NAMES
+        and type(payload.get("authorization_verified")) is not bool
+    ):
+        raise ValueError("authorization_verified must be a bool for sensitive tools")

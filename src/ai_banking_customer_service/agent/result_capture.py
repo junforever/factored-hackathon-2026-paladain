@@ -29,6 +29,7 @@ class NormalizedToolResult:
     duration_ms: int | None
     blocked_before_execution: bool
     retry_requested: bool
+    authorization_verified: bool
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class _ToolAttempt:
     tool_name: str
     tool_args: dict
     blocked_before_execution: bool
+    authorization_verified: bool
 
 
 class ResultCaptureHooks(HookProvider):
@@ -56,7 +58,8 @@ class ResultCaptureHooks(HookProvider):
     def before_tool_call(self, event: BeforeToolCallEvent) -> None:
         tool_use_id, tool_name, tool_args = _normalize_tool_use(event.tool_use)
         blocked = _is_governance_block(event, tool_use_id)
-        attempt = _ToolAttempt(tool_use_id, tool_name, tool_args, blocked)
+        authorized = _is_authorization_verified(event, tool_use_id)
+        attempt = _ToolAttempt(tool_use_id, tool_name, tool_args, blocked, authorized)
         with self._lock:
             self._attempts.append(attempt)
             self._attempt_object_ids.append(id(event.tool_use))
@@ -64,7 +67,7 @@ class ResultCaptureHooks(HookProvider):
     def after_tool_call(self, event: AfterToolCallEvent) -> None:
         tool_use_id, tool_name, tool_args = _normalize_tool_use(event.tool_use)
         with self._lock:
-            blocked = self._match_attempt(
+            attempt = self._match_attempt(
                 id(event.tool_use), tool_use_id, tool_name, tool_args
             )
             self._results.append(
@@ -81,8 +84,15 @@ class ResultCaptureHooks(HookProvider):
                         else None
                     ),
                     duration_ms=_duration_ms(event.duration),
-                    blocked_before_execution=blocked,
+                    blocked_before_execution=(
+                        attempt.blocked_before_execution
+                        if attempt is not None
+                        else False
+                    ),
                     retry_requested=event.retry is True,
+                    authorization_verified=(
+                        attempt.authorization_verified if attempt is not None else False
+                    ),
                 )
             )
 
@@ -102,7 +112,7 @@ class ResultCaptureHooks(HookProvider):
         tool_use_id: str,
         tool_name: str,
         tool_args: dict,
-    ) -> bool:
+    ) -> _ToolAttempt | None:
         unmatched = (
             index
             for index in range(len(self._attempts))
@@ -129,9 +139,9 @@ class ResultCaptureHooks(HookProvider):
                 None,
             )
         if index is None:
-            return False
+            return None
         self._matched_attempts.add(index)
-        return self._attempts[index].blocked_before_execution
+        return self._attempts[index]
 
 
 def _normalize_tool_use(tool_use: object) -> tuple[str, str, dict]:
@@ -155,6 +165,24 @@ def _is_governance_block(event: BeforeToolCallEvent, tool_use_id: str) -> bool:
         return False
     evidence = governance.get(tool_use_id)
     return isinstance(evidence, dict) and evidence.get("action") == "block"
+
+
+def _is_authorization_verified(
+    event: BeforeToolCallEvent,
+    tool_use_id: str,
+) -> bool:
+    if not tool_use_id:
+        return False
+    governance = event.invocation_state.get("tool_governance")
+    if not isinstance(governance, dict):
+        return False
+    evidence = governance.get(tool_use_id)
+    return (
+        isinstance(evidence, dict)
+        and evidence.get("authorization_result") == "allowed"
+        and evidence.get("authorization_reason_code") == "authorized"
+        and evidence.get("authorization_verified") is True
+    )
 
 
 def _status(result: object) -> str:

@@ -88,9 +88,10 @@ def test_public_contract_and_exact_hook_registration() -> None:
         "duration_ms",
         "blocked_before_execution",
         "retry_requested",
+        "authorization_verified",
     ]
     result = NormalizedToolResult(
-        "id", "name", {}, "error", None, None, None, None, False, False
+        "id", "name", {}, "error", None, None, None, None, False, False, False
     )
     with pytest.raises(FrozenInstanceError):
         result.status = "success"  # type: ignore[misc]
@@ -109,7 +110,15 @@ def test_captures_one_successful_tool_attempt_and_normalized_result() -> None:
     capture = ResultCaptureHooks()
     tool_use = _tool_use()
     state = {
-        "tool_governance": {"tool-use-1": {"action": "allow", "event_id": "gating-1"}}
+        "tool_governance": {
+            "tool-use-1": {
+                "action": "allow",
+                "event_id": "gating-1",
+                "authorization_result": "allowed",
+                "authorization_reason_code": "authorized",
+                "authorization_verified": True,
+            }
+        }
     }
     capture.before_tool_call(_before_event(tool_use, state=state))
     capture.after_tool_call(
@@ -140,7 +149,8 @@ def test_captures_one_successful_tool_attempt_and_normalized_result() -> None:
         attempts[0].tool_name,
         attempts[0].tool_args,
         attempts[0].blocked_before_execution,
-    ) == ("tool-use-1", "block_card", tool_use["input"], False)
+        attempts[0].authorization_verified,
+    ) == ("tool-use-1", "block_card", tool_use["input"], False, True)
     assert capture.snapshot_results() == (
         NormalizedToolResult(
             tool_use_id="tool-use-1",
@@ -157,6 +167,7 @@ def test_captures_one_successful_tool_attempt_and_normalized_result() -> None:
             duration_ms=12,
             blocked_before_execution=False,
             retry_requested=False,
+            authorization_verified=True,
         ),
     )
 
@@ -289,6 +300,38 @@ def test_blocked_before_execution_requires_both_prior_cancel_and_governance_evid
     assert capture.snapshot_results()[0].blocked_before_execution is expected
 
 
+@pytest.mark.parametrize(
+    "authorization",
+    [
+        {},
+        {"authorization_verified": True},
+        {
+            "authorization_result": "allowed",
+            "authorization_reason_code": "authorized",
+            "authorization_verified": 1,
+        },
+        {
+            "authorization_result": "denied",
+            "authorization_reason_code": "product_not_authorized",
+            "authorization_verified": True,
+        },
+    ],
+)
+def test_authorization_capture_requires_exact_bounded_allow_evidence(
+    authorization: dict,
+) -> None:
+    capture = ResultCaptureHooks()
+    tool_use = _tool_use(name="get_dispute_context")
+    state = {"tool_governance": {"tool-use-1": authorization}}
+
+    capture.before_tool_call(_before_event(tool_use, state=state))
+    state.clear()
+    capture.after_tool_call(_after_event(tool_use, state=state))
+
+    assert capture.snapshot_attempts()[0].authorization_verified is False
+    assert capture.snapshot_results()[0].authorization_verified is False
+
+
 def test_after_without_prior_attempt_cannot_claim_pre_execution_block() -> None:
     capture = ResultCaptureHooks()
     tool_use = _tool_use()
@@ -303,6 +346,7 @@ def test_after_without_prior_attempt_cannot_claim_pre_execution_block() -> None:
 
     assert capture.snapshot_attempts() == ()
     assert capture.snapshot_results()[0].blocked_before_execution is False
+    assert capture.snapshot_results()[0].authorization_verified is False
 
 
 def test_exception_cancel_retry_and_block_evidence_coexist() -> None:

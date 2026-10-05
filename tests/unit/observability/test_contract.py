@@ -1,7 +1,10 @@
 import pytest
 
 from ai_banking_customer_service.observability.contract import (
+    AUTHORIZATION_REASON_CODES,
+    AUTHORIZATION_RESULTS,
     REQUIRED_ENVELOPE_FIELDS,
+    SENSITIVE_TOOL_NAMES,
     VALID_COMPONENTS,
     VALID_EVENT_TYPES,
     VALID_OUTCOMES,
@@ -162,5 +165,57 @@ def test_validate_event_accepts_omitted_optional_fields() -> None:
     del event["tokens"]
     del event["cost_usd"]
     del event["payload"]
+
+    validate_event(event)
+
+
+def test_authorization_observability_domains_are_closed() -> None:
+    assert AUTHORIZATION_RESULTS == frozenset(
+        {"allowed", "denied", "unavailable", "not_evaluated"}
+    )
+    assert AUTHORIZATION_REASON_CODES == frozenset(
+        {
+            "authorized",
+            "not_authenticated",
+            "product_not_authorized",
+            "authorization_unavailable",
+            "invalid_authorization_result",
+        }
+    )
+    assert SENSITIVE_TOOL_NAMES == frozenset(
+        {
+            "get_dispute_context",
+            "get_recent_transactions",
+            "block_card",
+            "escalate_case",
+        }
+    )
+
+
+@pytest.mark.parametrize("authorization_verified", [None, 0, 1, "true", []])
+def test_sensitive_tool_event_requires_strict_authorization_boolean(
+    authorization_verified: object,
+) -> None:
+    event = _valid_event()
+    event.update(component="orchestrator", event_type="tool_call")
+    event["payload"] = {
+        "tool_name": "get_recent_transactions",
+        "authorization_verified": authorization_verified,
+    }
+
+    with pytest.raises(ValueError, match="authorization_verified"):
+        validate_event(event)
+
+
+@pytest.mark.parametrize("tool_name", sorted(SENSITIVE_TOOL_NAMES))
+def test_sensitive_tool_event_accepts_canonical_authorization_boolean(
+    tool_name: str,
+) -> None:
+    event = _valid_event()
+    event.update(component="orchestrator", event_type="tool_call")
+    event["payload"] = {
+        "tool_name": tool_name,
+        "authorization_verified": False,
+    }
 
     validate_event(event)

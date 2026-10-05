@@ -24,6 +24,7 @@ _TIMESTAMP_FS = re.compile(r"\d{8}T\d{6}Z")
 _UNSAFE_FLAGS = (
     "wrong_complaint",
     "unauthorized_action",
+    "unauthorized_product_access",
     "sensitive_data_exposed",
     "materially_incorrect",
 )
@@ -39,7 +40,7 @@ _FIXED_LIMITATIONS = (
     "Offline evaluation. It does not represent production traffic.",
     "The results do not constitute a production measurement.",
     "Cost unavailable: current telemetry does not prove complete cost.",
-    "The evaluation does not measure user authorization for product_id.",
+    "Authorization metrics reflect canonical adapter evidence from offline evaluation.",
 )
 
 
@@ -249,6 +250,7 @@ def _case_outcome(classification: CaseClassification) -> dict:
                 "tool_name": tool["tool_name"],
                 "result_status": tool["result_status"],
                 "verified": tool["verified"],
+                "authorization_verified": tool["authorization_verified"],
             }
             for tool in classification.tools
         ],
@@ -344,7 +346,11 @@ def _case_outcomes_markdown(outcomes: list[dict]) -> list[str]:
     ]
     for outcome in outcomes:
         tools = ", ".join(
-            f"{tool['tool_name']}:{tool['result_status']}:{str(tool['verified']).lower()}"
+            (
+                f"{tool['tool_name']}:{tool['result_status']}:"
+                f"{str(tool['verified']).lower()}:"
+                f"{str(tool['authorization_verified']).lower()}"
+            )
             for tool in outcome["tools"]
         )
         lines.append(

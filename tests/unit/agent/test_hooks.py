@@ -416,6 +416,9 @@ def test_before_tool_call_records_exact_per_tool_validation_reason(
         "action": "block",
         "event_id": None,
         "reason": expected_reason,
+        "authorization_result": "not_evaluated",
+        "authorization_reason_code": None,
+        "authorization_verified": False,
     }
     assert _global_state(state) == globals_before
     adapter.build_customer_context.assert_not_called()
@@ -451,6 +454,9 @@ def test_before_tool_call_invalid_required_state_records_per_tool_block(
         "action": "block",
         "event_id": None,
         "reason": "invalid_invocation_state",
+        "authorization_result": "not_evaluated",
+        "authorization_reason_code": None,
+        "authorization_verified": False,
     }
     assert _global_state(state) == globals_before
     adapter.build_customer_context.assert_not_called()
@@ -473,6 +479,7 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
         "authenticated": True,
         "verified_complaint_ids": ("CMP-1",),
         "authorized_product_ids": ("PRD-1",),
+        "authorization_reason": "authorized",
     }
     decision = _decision(action)
     adapter.build_customer_context.return_value = customer_context
@@ -506,6 +513,9 @@ def test_before_tool_call_builds_complaint_context_and_records_adapter_result(
         "action": action.value,
         "event_id": "tool-governance-event-1",
         "reason": None,
+        "authorization_result": "allowed",
+        "authorization_reason_code": "authorized",
+        "authorization_verified": True,
     }
     assert _global_state(state) == globals_before
     assert "customer_context" not in state
@@ -610,7 +620,12 @@ def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
             assert principal == "customer-1"
             with self.lock:
                 self.context_calls.append(complaint_id)
-            return {"verified_complaint_ids": (complaint_id,)}
+            return {
+                "authenticated": True,
+                "verified_complaint_ids": (complaint_id,),
+                "authorized_product_ids": ("PRD-SAME",),
+                "authorization_reason": "authorized",
+            }
 
         def gate_tool_call(self, *args, **kwargs) -> GovernanceResult:
             with self.lock:
@@ -647,6 +662,12 @@ def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
     assert all(
         entry["action"] == "allow" for entry in state["tool_governance"].values()
     )
+    assert all(
+        entry["authorization_verified"] is True
+        and entry["authorization_result"] == "allowed"
+        and entry["authorization_reason_code"] == "authorized"
+        for entry in state["tool_governance"].values()
+    )
     assert adapter.context_calls == ["CMP-SAME", "CMP-SAME"]
     assert len(adapter.gate_calls) == 2
     assert all(
@@ -655,3 +676,91 @@ def test_concurrent_duplicate_tool_calls_remain_independent_siblings() -> None:
     )
     assert _global_state(state) == globals_before
     assert all(event.cancel_tool is False for event in events)
+
+
+@pytest.mark.parametrize(
+    ("context", "result", "reason_code", "verified"),
+    [
+        (
+            {
+                "authenticated": True,
+                "authorized_product_ids": ("PRD-1",),
+                "authorization_reason": "authorized",
+            },
+            "allowed",
+            "authorized",
+            True,
+        ),
+        (
+            {
+                "authenticated": False,
+                "authorized_product_ids": (),
+                "authorization_reason": "not_authenticated",
+            },
+            "denied",
+            "not_authenticated",
+            False,
+        ),
+        (
+            {
+                "authenticated": True,
+                "authorized_product_ids": (),
+                "authorization_reason": "product_not_authorized",
+            },
+            "denied",
+            "product_not_authorized",
+            False,
+        ),
+        (
+            {
+                "authenticated": False,
+                "authorized_product_ids": (),
+                "authorization_reason": "authorization_unavailable",
+            },
+            "unavailable",
+            "authorization_unavailable",
+            False,
+        ),
+        (
+            {
+                "authenticated": False,
+                "authorized_product_ids": (),
+                "authorization_reason": "invalid_authorization_result",
+            },
+            "unavailable",
+            "invalid_authorization_result",
+            False,
+        ),
+        ({"authorization_reason": None}, "not_evaluated", None, False),
+    ],
+)
+def test_before_tool_call_records_only_bounded_authorization_observability(
+    context: dict,
+    result: str,
+    reason_code: str | None,
+    verified: bool,
+) -> None:
+    adapter = _adapter()
+    sentinel = object()
+    private_markers = {
+        "principal": sentinel,
+        "product_id": "PRD-PRIVATE",
+        "provider_error": "D:/private/provider token=secret",
+        "raw_jev_state": {"private": True},
+    }
+    adapter.build_customer_context.return_value = {**context, **private_markers}
+    adapter.gate_tool_call.return_value = GovernanceResult(
+        _decision(GovernanceAction.BLOCK), "tool-governance-event-1"
+    )
+    state = _tool_state()
+
+    GovernanceHooks(adapter).before_tool_call(_tool_event(state=state))
+
+    authorization = state["tool_governance"]["tool-use-1"]
+    assert authorization["authorization_result"] == result
+    assert authorization["authorization_reason_code"] == reason_code
+    assert authorization["authorization_verified"] is verified
+    serialized = repr(authorization)
+    for marker in private_markers.values():
+        assert repr(marker) not in serialized
+    assert str(hash(sentinel)) not in serialized
