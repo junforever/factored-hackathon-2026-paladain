@@ -3,12 +3,15 @@ import pytest
 from ai_banking_customer_service.observability.contract import (
     AUTHORIZATION_REASON_CODES,
     AUTHORIZATION_RESULTS,
+    EVIDENCE_OPTIONAL_KEYS,
+    EVIDENCE_REQUIRED_KEYS,
     REQUIRED_ENVELOPE_FIELDS,
     SENSITIVE_TOOL_NAMES,
     VALID_COMPONENTS,
     VALID_EVENT_TYPES,
     VALID_OUTCOMES,
     validate_event,
+    validate_evidence,
 )
 
 
@@ -219,3 +222,154 @@ def test_sensitive_tool_event_accepts_canonical_authorization_boolean(
     }
 
     validate_event(event)
+
+
+# fmt: off
+def _evidence(a="allowed", r="authorized", v=True, m="verified_present", d=False, g="allow", gr="TOOL_GATING_ALLOW", e="success", o="verified", ov=True):  # noqa: E501
+    return {
+        "ordinal": 0,
+        "authorization": {"state": a, "reason_code": r, "verified": v},
+        "missing_data": {"state": m, "detected": d},
+        "governance": {"stage": "tool_gating", "action": g, "reason_code": gr},
+        "execution": {"state": e},
+        "verification": {"outcome": o, "verified": ov},
+    }
+
+
+def _set(evidence, path, value):
+    *head, tail = path.split(".")
+    target = evidence
+    for key in head:
+        target = target[key]
+    target[tail] = value
+    return evidence
+# fmt: on
+
+
+@pytest.mark.parametrize(
+    ("evidence",),
+    [
+        (_evidence(),),
+        (_evidence(a="denied", r="not_authenticated", v=False),),
+        (_evidence(a="unavailable", r="authorization_unavailable", v=False),),
+        (_evidence(a="not_evaluated", r=None, v=False),),
+        (_evidence(m="verified_missing", d=True),),
+        (_evidence(m="unknown", d=False),),
+        (_evidence(g="block", gr="invalid_tool_name"),),
+        (_evidence(e="blocked"),),
+        (_evidence(o="unverified", ov=False),),
+        (_evidence(o="not_applicable", ov=False),),
+    ],
+)
+def test_validate_evidence_accepts_canonical_dimensions(evidence: dict) -> None:
+    validate_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        ("authorization.state", "bad"),
+        ("authorization.reason_code", "bad"),
+        ("governance.stage", "bad"),
+        ("governance.action", "bad"),
+        ("governance.reason_code", "bad"),
+        ("execution.state", "bad"),
+        ("verification.outcome", "bad"),
+        ("missing_data.state", "bad"),
+        ("authorization.verified", 0),
+        ("authorization.verified", 1),
+        ("authorization.verified", "true"),
+        ("authorization.verified", None),
+        ("missing_data.detected", 0),
+        ("missing_data.detected", 1),
+        ("missing_data.detected", "true"),
+        ("missing_data.detected", None),
+        ("verification.verified", 0),
+        ("verification.verified", 1),
+        ("verification.verified", "true"),
+        ("verification.verified", None),
+    ],
+)
+def test_validate_evidence_rejects_invalid_values(path: str, value: object) -> None:
+    with pytest.raises(ValueError, match=path):
+        validate_evidence(_set(_evidence(), path, value))
+
+
+@pytest.mark.parametrize("key", sorted(EVIDENCE_REQUIRED_KEYS))
+def test_validate_evidence_rejects_missing_key(key: str) -> None:
+    evidence = _evidence()
+    del evidence[key]
+    with pytest.raises(ValueError, match="missing_required_keys"):
+        validate_evidence(evidence)
+
+
+def test_validate_evidence_rejects_extra_key() -> None:
+    evidence = _evidence()
+    evidence["extra"] = 1
+    with pytest.raises(ValueError, match="extra_keys"):
+        validate_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    ("evidence", "match"),
+    [
+        # fmt: off
+        (_evidence(v=False), "allowed_inconsistent"),
+        (_evidence(a="allowed", r="not_authenticated", v=True), "allowed_inconsistent"),
+        (_evidence(a="denied", r="authorized", v=False), "denied_inconsistent"),
+        (
+            _evidence(a="unavailable", r="authorized", v=False),
+            "unavailable_inconsistent",
+        ),
+        (
+            _evidence(a="not_evaluated", r="authorized", v=False),
+            "not_evaluated_inconsistent",
+        ),
+        (_evidence(a="not_evaluated", r=None, v=True), "not_evaluated_inconsistent"),
+        (_evidence(m="verified_missing", d=False), "verified_missing_inconsistent"),
+        (_evidence(m="verified_present", d=True), "verified_present_inconsistent"),
+        (_evidence(m="unknown", d=True), "unknown_inconsistent"),
+        (_evidence(o="verified", ov=False), "verified_inconsistent"),
+        (_evidence(o="unverified", ov=True), "unverified_inconsistent"),
+        (_evidence(o="not_applicable", ov=True), "not_applicable_inconsistent"),
+        # fmt: on
+    ],
+)
+def test_validate_evidence_rejects_impossible_combinations(
+    evidence: dict, match: str
+) -> None:
+    with pytest.raises(ValueError, match=match):
+        validate_evidence(evidence)
+
+
+def test_validate_evidence_invalid_state_marker() -> None:
+    evidence = _evidence()
+    evidence["execution"] = {"state": "invalid"}
+    with pytest.raises(ValueError, match="invalid_marker_missing"):
+        validate_evidence(evidence)
+    evidence["invalid"] = True
+    validate_evidence(evidence)
+
+
+@pytest.mark.parametrize("marker", sorted(EVIDENCE_OPTIONAL_KEYS))
+def test_validate_evidence_optional_marker_only_true_allowed(marker: str) -> None:
+    with pytest.raises(ValueError, match=marker):
+        validate_evidence(_set(_evidence(), marker, False))
+    validate_evidence(_set(_evidence(), marker, True))
+
+
+def test_validate_evidence_rejects_code_longer_than_64_code_points() -> None:
+    with pytest.raises(ValueError, match="length"):
+        validate_evidence(_set(_evidence(), "governance.reason_code", "x" * 65))
+
+
+def test_validate_evidence_rejects_oversized_serialized_block() -> None:
+    evidence = _evidence()
+    evidence["authorization"] = {
+        "state": "invalid",
+        "reason_code": "x" * 8200,
+        "verified": False,
+    }
+    evidence["invalid"] = True
+    with pytest.raises(ValueError, match="oversized"):
+        validate_evidence(evidence)
