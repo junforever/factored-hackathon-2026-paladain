@@ -145,6 +145,7 @@ def render_markdown_report(report: dict) -> str:
         )
 
     lines.extend(_case_outcomes_markdown(report["case_outcomes"]))
+    lines.extend(_canonical_evidence_markdown(report["case_outcomes"]))
     lines.extend(
         [
             "",
@@ -218,7 +219,7 @@ def _case_outcome(classification: CaseClassification) -> dict:
         if classification.unsafe_outcome
         else None
     )
-    return {
+    outcome = {
         "case_id": classification.case_id,
         "language": classification.language,
         "scenario": classification.scenario,
@@ -255,6 +256,27 @@ def _case_outcome(classification: CaseClassification) -> dict:
             for tool in classification.tools
         ],
     }
+    if classification.canonical_evidence:
+        outcome["canonical_evidence"] = [
+            {
+                key: value
+                for key, value in evidence.items()
+                if key
+                in {
+                    "tool_name",
+                    "ordinal",
+                    "authorization",
+                    "missing_data",
+                    "governance",
+                    "execution",
+                    "verification",
+                    "truncated",
+                    "invalid",
+                }
+            }
+            for evidence in classification.canonical_evidence
+        ]
+    return outcome
 
 
 def _failures(
@@ -378,6 +400,25 @@ def _case_outcomes_markdown(outcomes: list[dict]) -> list[str]:
             + " |"
         )
     return lines
+
+
+def _canonical_evidence_markdown(outcomes: list[dict]) -> list[str]:
+    projection = [
+        {
+            "case_id": outcome["case_id"],
+            "canonical_evidence": outcome["canonical_evidence"],
+        }
+        for outcome in outcomes
+        if "canonical_evidence" in outcome
+    ]
+    return [
+        "",
+        "## Canonical evidence",
+        "",
+        "```json",
+        _json_fragment(projection),
+        "```",
+    ]
 
 
 def _markdown_cell(value: object) -> str:

@@ -97,6 +97,33 @@ def _tool_event(
     }
 
 
+def _evidence(
+    ordinal: int,
+    *,
+    authorization: dict | None = None,
+    invalid: bool = False,
+    truncated: bool = False,
+) -> dict:
+    evidence = {
+        "ordinal": ordinal,
+        "authorization": authorization
+        or {"state": "allowed", "reason_code": "authorized", "verified": True},
+        "missing_data": {"state": "verified_present", "detected": False},
+        "governance": {
+            "stage": "tool_gating",
+            "action": "allow",
+            "reason_code": "TOOL_GATING_ALLOW",
+        },
+        "execution": {"state": "success"},
+        "verification": {"outcome": "verified", "verified": True},
+    }
+    if invalid:
+        evidence["invalid"] = True
+    if truncated:
+        evidence["truncated"] = True
+    return evidence
+
+
 def _result(
     case_id: str = "EVAL-1",
     *,
@@ -194,6 +221,118 @@ def test_classification_uses_only_canonical_tool_call_payloads() -> None:
             "authorization_verified": True,
         },
     )
+
+
+def test_classification_projects_canonical_evidence_per_occurrence_in_event_order() -> (
+    None
+):
+    first = _tool_event("get_dispute_context", event_id="first")
+    second = _tool_event("get_dispute_context", event_id="second")
+    first["payload"]["evidence"] = _evidence(7)
+    second["payload"]["evidence"] = _evidence(
+        2,
+        authorization={
+            "state": "denied",
+            "reason_code": "product_not_authorized",
+            "verified": False,
+        },
+    )
+
+    classification = classify_case(
+        _case(expected_tools=["get_dispute_context", "get_dispute_context"]),
+        _result(events=(first, second)),
+    )
+
+    assert classification.canonical_evidence == (
+        {"tool_name": "get_dispute_context", **_evidence(7)},
+        {
+            "tool_name": "get_dispute_context",
+            **_evidence(
+                2,
+                authorization={
+                    "state": "denied",
+                    "reason_code": "product_not_authorized",
+                    "verified": False,
+                },
+            ),
+        },
+    )
+
+
+def test_canonical_evidence_rejects_untrusted_shapes_without_changing_outcome() -> None:
+    invalid = []
+    for mutation in ("missing", "bool", "code", "oversized", "private"):
+        evidence = _evidence(len(invalid))
+        if mutation == "missing":
+            evidence.pop("execution")
+        elif mutation == "bool":
+            evidence["authorization"]["verified"] = 1
+        elif mutation == "code":
+            evidence["execution"]["state"] = "invented"
+        elif mutation == "oversized":
+            evidence["authorization"] = {
+                "state": "invalid",
+                "reason_code": "x" * 8200,
+                "verified": False,
+            }
+            evidence["invalid"] = True
+        else:
+            evidence["complaint_id"] = "CMP-PRIVATE-EVIDENCE"
+        event = _tool_event("get_dispute_context", event_id=mutation)
+        event["payload"]["evidence"] = evidence
+        invalid.append(event)
+    versioned = _tool_event("get_dispute_context", event_id="versioned")
+    versioned["payload"]["evidence"] = _evidence(5)
+    versioned["payload"]["evidence_version"] = "unknown"
+    invalid.append(versioned)
+
+    classification = classify_case(
+        _case(expected_tools=["get_dispute_context"] * len(invalid)),
+        _result(events=tuple(invalid)),
+    )
+
+    assert classification.canonical_evidence == ()
+    assert classification.safe_automated_resolution is True
+    assert classification.unsafe_outcome is False
+
+
+def test_canonical_evidence_is_bounded_and_keeps_fail_closed_truncation() -> None:
+    events = []
+    for ordinal in range(17):
+        event = _tool_event("get_dispute_context", event_id=str(ordinal))
+        evidence = _evidence(ordinal)
+        if ordinal == 16:
+            evidence.update(
+                authorization={
+                    "state": "invalid",
+                    "reason_code": None,
+                    "verified": False,
+                },
+                missing_data={"state": "invalid", "detected": False},
+                governance={
+                    "stage": "tool_gating",
+                    "action": "block",
+                    "reason_code": None,
+                },
+                execution={"state": "invalid"},
+                verification={"outcome": "invalid", "verified": False},
+                invalid=True,
+                truncated=True,
+            )
+        event["payload"]["evidence"] = evidence
+        events.append(event)
+
+    classification = classify_case(
+        _case(expected_tools=["get_dispute_context"] * 17),
+        _result(events=tuple(events)),
+    )
+
+    assert [item["ordinal"] for item in classification.canonical_evidence] == [
+        *range(15),
+        16,
+    ]
+    assert classification.canonical_evidence[-1]["invalid"] is True
+    assert classification.canonical_evidence[-1]["truncated"] is True
 
 
 def test_block_terminal_is_sar_only_with_verified_expected_tool_evidence() -> None:

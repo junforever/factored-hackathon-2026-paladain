@@ -61,6 +61,7 @@ def _classification(
     observed_escalation_type: EscalationType | None = None,
     expected_tools_verified: bool = True,
     tools: tuple[dict, ...] = (),
+    canonical_evidence: tuple[dict, ...] = (),
 ) -> CaseClassification:
     completed = execution_status is CaseExecutionStatus.COMPLETED
     return CaseClassification(
@@ -89,6 +90,7 @@ def _classification(
         observed_escalation_type=observed_escalation_type,
         expected_tools_verified=expected_tools_verified,
         tools=tools,
+        canonical_evidence=canonical_evidence,
     )
 
 
@@ -351,6 +353,45 @@ def test_case_outcomes_report_only_bounded_safe_classification_facts() -> None:
     assert "## Case outcomes" in markdown
     assert "| C-SAFE | pt | normal_resolution | completed | block | block |" in markdown
     assert "block_card:success:true:true" in markdown
+
+
+def test_report_projects_canonical_evidence_with_json_markdown_parity() -> None:
+    evidence = (
+        {
+            "tool_name": "block_card",
+            "ordinal": 3,
+            "authorization": {
+                "state": "allowed",
+                "reason_code": "authorized",
+                "verified": True,
+            },
+            "missing_data": {"state": "unknown", "detected": False},
+            "governance": {
+                "stage": "tool_gating",
+                "action": "allow",
+                "reason_code": None,
+            },
+            "execution": {"state": "success"},
+            "verification": {"outcome": "verified", "verified": True},
+            "provider_error": "CANARY-PRIVATE-EVIDENCE",
+        },
+    )
+    report = generate_report(
+        _run((_result("C1"),)),
+        _metrics(),
+        {},
+        {},
+        [_classification("C1", canonical_evidence=evidence)],
+    )
+
+    expected = [dict(evidence[0])]
+    expected[0].pop("provider_error")
+    assert report["case_outcomes"][0]["canonical_evidence"] == expected
+    markdown = render_markdown_report(report)
+    assert _canonical_evidence_from_markdown(markdown) == [
+        {"case_id": "C1", "canonical_evidence": expected}
+    ]
+    assert "CANARY-PRIVATE-EVIDENCE" not in json.dumps(report) + markdown
 
 
 def test_case_outcome_tools_keep_stable_order_and_exact_bounded_fields() -> None:
@@ -651,6 +692,11 @@ def test_save_report_validates_safe_filename_fields(
 
     with pytest.raises(ValueError):
         save_report(report, tmp_path)
+
+
+def _canonical_evidence_from_markdown(markdown: str) -> list[dict]:
+    section = markdown.split("## Canonical evidence\n\n```json\n", 1)[1]
+    return json.loads(section.split("\n```", 1)[0])
 
 
 def test_markdown_is_a_pure_rendering_of_the_supplied_report() -> None:

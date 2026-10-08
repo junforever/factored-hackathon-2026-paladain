@@ -1,5 +1,6 @@
 """Deterministic classification and metrics for offline evaluation results."""
 
+import json
 import math
 import unicodedata
 from collections import Counter
@@ -15,11 +16,17 @@ from ai_banking_customer_service.evaluation.runner import (
     CaseObservation,
     CaseResult,
 )
+from ai_banking_customer_service.observability.contract import (
+    _MAX_SERIALIZED_BYTES,
+    SENSITIVE_TOOL_NAMES,
+    validate_evidence,
+)
 
 _REPORTABLE_TOOL_NAMES = frozenset(tool.tool_name for tool in REGISTERED_TOOLS)
 _SENSITIVE_TOOLS = _REPORTABLE_TOOL_NAMES
 _ACTION_TOOLS = frozenset({"block_card", "escalate_case"})
 _SUCCESS = "success"
+_MAX_PROJECTED_EVIDENCE = 16
 
 
 class EscalationOutcome(str, Enum):  # noqa: UP042 - exact public contract
@@ -55,6 +62,7 @@ class CaseClassification:
     observed_escalation_type: EscalationType | None
     expected_tools_verified: bool
     tools: tuple[dict, ...]
+    canonical_evidence: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -325,6 +333,7 @@ def classify_case(case: EvalCase, result: CaseResult) -> CaseClassification:
             }
             for _, payload in payloads
         ),
+        canonical_evidence=_canonical_evidence(payloads),
     )
 
 
@@ -438,6 +447,47 @@ def _canonical_tool_payloads(
             continue
         payloads.append((event, payload))
     return payloads
+
+
+def _canonical_evidence(payloads: list[tuple[dict, dict]]) -> tuple[dict, ...]:
+    projected = []
+    for _, payload in payloads:
+        evidence = payload.get("evidence")
+        if (
+            payload["tool_name"] not in SENSITIVE_TOOL_NAMES
+            or "evidence_version" in payload
+        ):
+            continue
+        try:
+            validate_evidence(evidence)
+        except ValueError:
+            continue
+        projected.append(
+            {
+                "tool_name": payload["tool_name"],
+                "ordinal": evidence["ordinal"],
+                "authorization": dict(evidence["authorization"]),
+                "missing_data": dict(evidence["missing_data"]),
+                "governance": dict(evidence["governance"]),
+                "execution": dict(evidence["execution"]),
+                "verification": dict(evidence["verification"]),
+                **({"truncated": True} if evidence.get("truncated") is True else {}),
+                **({"invalid": True} if evidence.get("invalid") is True else {}),
+            }
+        )
+    if len(projected) > _MAX_PROJECTED_EVIDENCE:
+        marker = next(
+            (item for item in projected[16:] if item.get("truncated") is True), None
+        )
+        if marker is None:
+            return ()
+        projected = [*projected[:15], marker]
+    serialized = json.dumps(projected, sort_keys=True, separators=(",", ":"))
+    return (
+        tuple(projected)
+        if len(serialized.encode("utf-8")) <= _MAX_SERIALIZED_BYTES
+        else ()
+    )
 
 
 def _is_verified(payload: dict) -> bool:
