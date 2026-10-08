@@ -58,7 +58,7 @@ Authorization evidence is security-sensitive. Relationship, admission, tool succ
 
 ## Tasks
 
-- [ ] **09A3-1 — Preserve exact authorization truth end to end** (`awaiting_commit_authorization`)
+- [x] **09A3-1 — Preserve exact authorization truth end to end** (`done`)
   - Route: delegated to `gentle-ai-worker`; implementation touched multiple non-trivial files, followed by independent `gentle-ai-verify` verification.
   - RED: exercise the fake provider → adapter → hook → capture → orchestrator lifecycle and observe an exact authorization occurrence become false or an invalid occurrence become positive without directly injecting the final event boolean.
   - Gate: after RED, report concrete edit surfaces and final authored-line/domain forecast; stop if over 300 lines or more than one runtime domain.
@@ -67,7 +67,8 @@ Authorization evidence is security-sensitive. Relationship, admission, tool succ
   - REFACTOR: avoid new provider abstractions or schema changes; keep focused checks green.
   - Acceptance: every occurrence carries only its causal authorization evidence; all negative/ambiguous states remain false; exact positive survives through event/report; frozen shapes, privacy, decisions, and terminals remain unchanged.
   - Verification: focused affected tests; frozen affected suites; Ruff check and format check for modified Python; `git diff --check`.
-  - Work-unit commit: pending separate user authorization; implementation and verification are complete.
+  - Work-unit commit: `c29443e9652e3211a9c073419b9733fedb7a076f` (`fix(agent): preserve per-occurrence authorization evidence`).
+  - Native assessment: medium risk, 377 authored commit lines including this tracker, `reviewDue=false` (`under_budget`); review deferred to the PR slice.
 
 ## Acceptance criteria
 
@@ -89,8 +90,10 @@ Authorization evidence is security-sensitive. Relationship, admission, tool succ
 - Writer verification: affected suites `252 passed`; frozen evaluation suites `80 passed`; full unit suite `1279 passed`; Ruff check/format and `git diff --check` passed.
 - Independent verification repeated every required command with the same passing counts and found no blocker or residual risk.
 - Final implementation diff: 271 authored additions plus deletions across six tracked files, excluding this parent-owned tracker; within the 300-line gate and one runtime domain.
-- Native ASSESS was unassessable only because this intended tracker remains untracked; the conservative independent-verifier plan was completed successfully.
-- No development/held-out evaluation, network, model, real Jev, commit, push, or PR occurred.
+- Pre-commit native ASSESS was unassessable only because this intended tracker was untracked; the conservative independent-verifier plan was completed successfully.
+- Work-unit commit `c29443e9652e3211a9c073419b9733fedb7a076f` contains the implementation, tests, status, and tracker.
+- Post-commit native ASSESS classified the committed range from `125649e` as medium risk with 377 authored lines, `reviewDue=false`, reason `under_budget`; native review is deferred to the PR slice.
+- No development/held-out evaluation, network, model, real Jev, push, PR, or merge occurred.
 
 ## Progress
 
@@ -100,7 +103,10 @@ Authorization evidence is security-sensitive. Relationship, admission, tool succ
 - 2026-10-07: ODD tracking initialized before source writes.
 - 2026-10-07: Strict TDD observed RED, implemented the occurrence-local authorization snapshot and contradiction rejection, then passed focused, frozen, and full unit verification.
 - 2026-10-07: Independent verification passed all six required checks; no blocker or residual risk was found.
+- 2026-10-07: User authorized and created work-unit commit `c29443e9652e3211a9c073419b9733fedb7a076f`.
+- 2026-10-07: Native assessment classified the commit as medium risk and deferred review to the under-budget PR slice.
+- 2026-10-07: Parent-owned closure evidence was committed after explicit user authorization.
 
 ## Next step
 
-Obtain explicit user authorization for the Conventional Commit work unit, then run the RDD-owned native review lifecycle for that committed candidate. Push, PR creation, and merge remain separate user decisions.
+Spec 09A3 is complete. Spec 09A4 may be reviewed separately. Push, PR creation, merge, and PR-slice native review remain separate user decisions.
