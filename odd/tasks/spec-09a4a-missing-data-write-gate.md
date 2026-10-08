@@ -26,14 +26,15 @@ Excluded:
 - Total forecast: 230–285 authored lines, including eventual non-generated closure deltas; hard maximum 300.
 - Historical cancellation behavior is not valid RED evidence for this successor.
 
-## Planned Task
+## Completed Task
 
-- [ ] **09A4A-1 — Cancel later writes from canonical missing data** (`in_progress`)
-  - RED: prove canonical missing data currently lets each later write reach the service seam.
-  - GREEN: add the minimum pre-service cancellation producer for both actions.
-  - TRIANGULATE: present/missing, allowed/denied, malformed/error, retry/duplicate, read, precedence, terminal/evidence, ES/PT, privacy, and concurrency.
+- [x] **09A4A-1 — Cancel later writes from canonical missing data** (`completed`)
+  - RED: canonical missing data initially let each later write reach the service seam (`2 failed`).
+  - GREEN: the minimum pre-service cancellation producer stopped both actions (`2 passed`).
+  - TRIANGULATE: present/missing, allowed/denied, malformed/error, retry/duplicate, read, precedence, terminal/evidence, ES/PT, privacy, and concurrency passed in the affected suites (`185 passed`) and full suite (`1293 passed`, one unrelated Pydantic warning).
   - REFACTOR: no new module, event, public schema, or parallel positive state.
-  - Work-unit commit and native review: pending after implementation.
+  - Work-unit commit: `acb091a64ab33d2ab1eba13407e16a631f24770b` (`fix(agent): gate writes on canonical missing data`).
+  - Native review `review-aed25f0ecbbab6ca` approved; exact acknowledgement completed and authority burned for target `sha256:734db8c27df208a44bd632fd61374fc7277fdaf8d0c779fe290fe6bb6a323b3f`.
 
 ## Acceptance
 
@@ -65,4 +66,8 @@ git diff --check
 - RED: the exact focused test failed for both writes because each reached the service seam (`2 failed`).
 - GREEN: the same focused test passed for both writes (`2 passed`).
 - TRIANGULATE: affected agent suites passed (`185 passed`); full suite passed (`1293 passed`, one unrelated Pydantic warning); Ruff check/format and `git diff --check` passed.
-- Canonical records gate writes in capture without shared positivity; 253 authored lines, one runtime domain; task, commit, and review remain pending.
+- Canonical records gate writes in capture without shared positivity; the candidate is 253 authored lines in one runtime domain.
+- Independent verifier: PASS; focused `2 passed`, affected `185 passed`, full `1293 passed` with one unrelated Pydantic warning, and Ruff check/format and diff check passed.
+- One non-blocking informational advisory exists: `R3-001`, reliability, `src/ai_banking_customer_service/agent/result_capture.py:232-242`; it is not a correction.
+- No real evaluation, network, model, or Jev execution occurred.
+- User review, acceptance, and freeze of 09A4A remain pending; 09A4 remains accepted and frozen. Later delivery decisions follow that user decision.

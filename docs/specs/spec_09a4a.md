@@ -1,16 +1,16 @@
 # SPEC #09A4A — Gate de escritura ante datos faltantes
 
-> **Estado:** `IN-PROGRESS`; RED/GREEN focal observados; cierre, commit y revisión pendientes.
+> **Estado:** `IMPLEMENTED`; verificación independiente y revisión nativa aprobadas; aceptación y congelación por el usuario pendientes.
 > **Depende de:** [09A4](spec_09a4.md) completada, GREEN, revisada, aceptada y congelada el 2026-10-08.
 > **Pregunta única:** ¿el runtime cancela antes del service cada `block_card` o
 > `escalate_case` posterior cuando 09A4 demuestra datos faltantes canónicos?
 
 ## 0. Resultado y valor funcional
 
-09A4A añadirá un único gate independiente antes de los services de escritura.
-Consumirá la verdad canónica por ocurrencia de 09A4 y cancelará llamadas
-posteriores a `block_card` y `escalate_case` cuando falte `merchant_name`, sin
-reinterpretar la lectura ni fabricar éxito, persistencia o escalamiento.
+09A4A añade un único gate independiente antes de los services de escritura.
+Consume la verdad canónica por ocurrencia de 09A4 y cancela llamadas posteriores
+a `block_card` y `escalate_case` cuando falta `merchant_name`, sin reinterpretar
+la lectura ni fabricar éxito, persistencia o escalamiento.
 
 La cancelación histórica basada en booleanos compartidos no constituye el RED
 ni prueba este contrato. El RED debe observar la ausencia actual del gate para
@@ -129,8 +129,13 @@ git diff --check
 
 - RED: el test focal dejó que ambos writes alcanzaran el seam (`2 failed`).
 - GREEN: el mismo test pasó para `block_card` y `escalate_case` (`2 passed`).
-- TRIANGULATE: suites agent `185 passed`; suite completa `1293 passed` con un warning Pydantic ajeno; Ruff check/format y `git diff --check` pasaron.
-- El candidate mide 253 líneas authored en un dominio runtime; el task permanece `in_progress`, con commit y revisión pendientes.
+- Verificador independiente: PASS; foco `2 passed`, afectadas `185 passed`, suite completa `1293 passed` con un warning Pydantic ajeno, y Ruff check/format y diff check pasaron.
+- El candidate mide 253 líneas authored en un dominio runtime.
+- Work-unit commit: `acb091a64ab33d2ab1eba13407e16a631f24770b` (`fix(agent): gate writes on canonical missing data`).
+- La revisión nativa `review-aed25f0ecbbab6ca` fue aprobada y su acknowledgement exacto fue completado; la autoridad quedó consumida para el target `sha256:734db8c27df208a44bd632fd61374fc7277fdaf8d0c779fe290fe6bb6a323b3f`.
+- Existe un advisory informativo no bloqueante: `R3-001`, reliability, `src/ai_banking_customer_service/agent/result_capture.py:232-242`; no es una corrección.
+- No se ejecutaron evaluación real, red, modelo ni Jev.
+- La aceptación y congelación de 09A4A por el usuario todavía no están registradas.
 
 ## 9. Stop, rollback y handoff
 
@@ -138,5 +143,7 @@ Detener si el gate necesita rederivar el positivo, tocar services, cambiar
 policy, abrir otro dominio o superar 300 líneas. El rollback elimina productor,
 transporte y tests del gate como una unidad, sin revertir 09A4.
 
-Con 09A4A GREEN, revisada y congelada, [09A5](spec_09a5.md) podrá consumir la
-cadena completa de canonicalización y cancelación pre-service.
+La implementación de 09A4A está GREEN, verificada y revisada. El siguiente paso
+es la revisión, aceptación y congelación por el usuario; solo después
+[09A5](spec_09a5.md) podrá consumir la cadena completa de canonicalización y
+cancelación pre-service y podrán decidirse entregas posteriores.
