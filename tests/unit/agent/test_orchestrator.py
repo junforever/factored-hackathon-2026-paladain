@@ -109,6 +109,20 @@ def _result(
     )
 
 
+def _tx(merchant_name: object) -> dict:
+    return {"transactions": [{"merchant_name": merchant_name}]}
+
+
+def _customer_context(authorized: bool) -> dict:
+    return {
+        "authenticated": True,
+        "authorized_product_ids": ("PRD-1",) if authorized else (),
+        "authorization_reason": (
+            "authorized" if authorized else "product_not_authorized"
+        ),
+    }
+
+
 def _governance_result(action: GovernanceAction, event_id: str = "output-1"):
     return GovernanceResult(SimpleNamespace(action=action), event_id)
 
@@ -202,6 +216,67 @@ def _install_turn(
         tools=tools,
     )
     return orchestrator, adapter, sink, constructed
+
+
+@pytest.mark.parametrize(
+    ("read_authorized", "missing"),
+    [(True, True), (False, False)],
+)
+def test_recent_transaction_missing_merchant_uses_exact_authorized_capture_record(
+    read_authorized: bool,
+    missing: bool,
+) -> None:
+    adapter = _adapter()
+    adapter.build_customer_context.return_value = _customer_context(read_authorized)
+    adapter.gate_tool_call.return_value = _governance_result(
+        GovernanceAction.ALLOW if read_authorized else GovernanceAction.BLOCK
+    )
+    state = {
+        "trace_id": "trace-1",
+        "session_id": "s",
+        "customer_id": "c",
+        "intent": "transaction_dispute",
+        "customer_message": "Cargo no reconocido",
+        "routing_event_id": "routing-1",
+        "tool_governance": {},
+    }
+    hooks = GovernanceHooks(adapter)
+    capture = ResultCaptureHooks()
+
+    def before(tool_use: dict) -> BeforeToolCallEvent:
+        event = BeforeToolCallEvent(
+            agent=SimpleNamespace(),
+            selected_tool=None,
+            tool_use=tool_use,
+            invocation_state=state,
+        )
+        hooks.before_tool_call(event)
+        capture.before_tool_call(event)
+        return event
+
+    read = {
+        "toolUseId": "read-1",
+        "name": "get_recent_transactions",
+        "input": {"complaint_id": "CMP-1"},
+    }
+    read_event = before(read)
+    capture.after_tool_call(
+        AfterToolCallEvent(
+            agent=SimpleNamespace(),
+            selected_tool=None,
+            tool_use=read,
+            invocation_state=state,
+            result={"status": "success", "content": [{"json": _tx(None)}]},
+            cancel_message=(
+                str(read_event.cancel_tool) if read_event.cancel_tool else None
+            ),
+        )
+    )
+    records = orchestrator_module._tool_records(
+        capture.snapshot_attempts(), capture.snapshot_results()
+    )
+
+    assert orchestrator_module._analyze_tools(records).missing_merchant is missing
 
 
 def test_public_terminal_types_are_exact_and_frozen() -> None:
@@ -567,16 +642,17 @@ def test_verified_missing_merchant_uses_exact_localized_constant_without_screeni
         message={"role": "assistant", "content": [{"text": hostile}]},
     )
     read = _result(
-        "get_dispute_context",
-        {"merchant_name": None, "complaint_id": "CMP-SECRET"},
+        "get_recent_transactions",
+        _tx(None),
         tool_use_id="read-1",
     )
     orchestrator, adapter, sink, _ = _install_turn(
         monkeypatch,
         agent_result=agent_result,
+        sink=RecordingSink({"tool_call"}),
         attempts=(
             _attempt(
-                "get_dispute_context",
+                "get_recent_transactions",
                 tool_use_id="read-1",
                 args={"complaint_id": "CMP-SECRET"},
             ),
@@ -600,8 +676,9 @@ def test_verified_missing_merchant_uses_exact_localized_constant_without_screeni
     ]
     response = sink.events[-1]
     assert response["outcome"] == "success"
+    assert response["payload"]["orphaned"] is True
     assert response["payload"]["grounded_in"] == [
-        "tool:get_dispute_context",
+        "tool:get_recent_transactions",
         "orchestrator:template",
     ]
     assert "CMP-SECRET" not in repr(response)
@@ -612,7 +689,7 @@ def test_missing_merchant_blocked_write_remains_deterministic_clarification(
     monkeypatch,
     tool_name: str,
 ) -> None:
-    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")
+    read = _result("get_recent_transactions", _tx(None), tool_use_id="read-1")
     blocked_write = _result(
         tool_name,
         None,
@@ -623,7 +700,7 @@ def test_missing_merchant_blocked_write_remains_deterministic_clarification(
     orchestrator, adapter, sink, _ = _install_turn(
         monkeypatch,
         attempts=(
-            _attempt("get_dispute_context", tool_use_id="read-1"),
+            _attempt("get_recent_transactions", tool_use_id="read-1"),
             _attempt(
                 tool_name,
                 tool_use_id="write-1",
@@ -643,9 +720,9 @@ def test_missing_merchant_blocked_write_remains_deterministic_clarification(
 
 
 def test_missing_merchant_terminal_precedence(monkeypatch) -> None:
-    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")
+    read = _result("get_recent_transactions", _tx(None), tool_use_id="read-1")
     attempts = (
-        _attempt("get_dispute_context", tool_use_id="read-1"),
+        _attempt("get_recent_transactions", tool_use_id="read-1"),
         _attempt("block_card", tool_use_id="write-1", blocked=True),
     )
     denied = _result(
@@ -696,8 +773,8 @@ def test_governance_and_uncertain_effect_precede_missing_merchant(
     write: NormalizedToolResult | None,
     expected_type: EscalationType,
 ) -> None:
-    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")
-    attempts = [_attempt("get_dispute_context", tool_use_id="read-1")]
+    read = _result("get_recent_transactions", _tx(None), tool_use_id="read-1")
+    attempts = [_attempt("get_recent_transactions", tool_use_id="read-1")]
     results = [read]
     if write is not None:
         attempts.append(_attempt("block_card", tool_use_id="write-1"))
@@ -718,7 +795,7 @@ def test_governance_and_uncertain_effect_precede_missing_merchant(
 def test_missing_merchant_precedes_other_failed_and_successful_actions(
     monkeypatch,
 ) -> None:
-    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")
+    read = _result("get_recent_transactions", _tx(None), tool_use_id="read-1")
     failed = _result(
         "block_card",
         {
@@ -741,7 +818,7 @@ def test_missing_merchant_precedes_other_failed_and_successful_actions(
     orchestrator, adapter, sink, _ = _install_turn(
         monkeypatch,
         attempts=(
-            _attempt("get_dispute_context", tool_use_id="read-1"),
+            _attempt("get_recent_transactions", tool_use_id="read-1"),
             _attempt("block_card", tool_use_id="failed-1"),
             _attempt("escalate_case", tool_use_id="success-1"),
         ),
@@ -1596,9 +1673,9 @@ def test_evidence_distinguishes_governance_block_from_missing_merchant(monkeypat
     evs = _evidence_turn(monkeypatch, (_attempt("block_card", blocked=True),), (blocked,), gov)  # noqa: E501
     gov_block = evs[0]
     assert gov_block["governance"]["action"] == "block" and gov_block["execution"]["state"] == "blocked"  # noqa: E501
-    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")  # noqa: E501
+    read = _result("get_recent_transactions", _tx(None), tool_use_id="read-1")  # noqa: E501
     write = _result("block_card", None, tool_use_id="write-1", status="error", cancel_message="missing_merchant:clarification")  # noqa: E501
-    attempts = (_attempt("get_dispute_context", tool_use_id="read-1"), _attempt("block_card", tool_use_id="write-1", missing_merchant_blocked=True))  # noqa: E501
+    attempts = (_attempt("get_recent_transactions", tool_use_id="read-1"), _attempt("block_card", tool_use_id="write-1", missing_merchant_blocked=True))  # noqa: E501
     evs = _evidence_turn(monkeypatch, attempts, (read, write), {"read-1": _governance_entry(), "write-1": _governance_entry()}, "Cargo")  # noqa: E501
     assert evs[0]["missing_data"]["state"] == "verified_missing"
     assert evs[1]["governance"]["action"] == "allow" and evs[1]["execution"]["state"] == "blocked"  # noqa: E501
@@ -1640,12 +1717,12 @@ def test_evidence_block_authorization_states(state, reason, verified) -> None:
     evidence = orchestrator_module._evidence_block(record, entry, 0)
     assert evidence["authorization"] == {"state": state, "reason_code": reason, "verified": verified}  # noqa: E501
 def test_evidence_block_missing_data_states() -> None:
-    present = _result("get_dispute_context", {"merchant_name": "Store"}, tool_use_id="t1")  # noqa: E501
-    missing = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="t2")  # noqa: E501
+    present = _result("get_recent_transactions", _tx("Store"), tool_use_id="t1")  # noqa: E501
+    missing = _result("get_recent_transactions", _tx(None), tool_use_id="t2")  # noqa: E501
     other = _result("get_recent_transactions", {"transactions": []}, tool_use_id="t3")  # noqa: E501
     cases = (  # noqa: E501
-        (orchestrator_module._tool_records((_attempt("get_dispute_context", tool_use_id="t1"),), (present,))[0], "verified_present"),  # noqa: E501
-        (orchestrator_module._tool_records((_attempt("get_dispute_context", tool_use_id="t2"),), (missing,))[0], "verified_missing"),  # noqa: E501
+        (orchestrator_module._tool_records((_attempt("get_recent_transactions", tool_use_id="t1"),), (present,))[0], "verified_present"),  # noqa: E501
+        (orchestrator_module._tool_records((_attempt("get_recent_transactions", tool_use_id="t2"),), (missing,))[0], "verified_missing"),  # noqa: E501
         (orchestrator_module._tool_records((_attempt("get_recent_transactions", tool_use_id="t3"),), (other,))[0], "unknown"),  # noqa: E501
     )
     for record, expected in cases:

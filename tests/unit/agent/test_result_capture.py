@@ -514,9 +514,10 @@ def _authorized_state() -> dict:
     }
 
 
-def test_verified_missing_merchant_result_marks_invocation_local_state() -> None:
+def test_legacy_context_and_shared_state_cannot_mark_missing_merchant() -> None:
     capture = ResultCaptureHooks()
     state = _authorized_state()
+    state["missing_merchant_verified"] = True
     tool_use = _tool_use(name="get_dispute_context")
 
     capture.before_tool_call(_before_event(tool_use, state=state))
@@ -531,7 +532,7 @@ def test_verified_missing_merchant_result_marks_invocation_local_state() -> None
         )
     )
 
-    assert state["missing_merchant_verified"] is True
+    assert state.get("missing_merchant_verified") is not True
 
 
 @pytest.mark.parametrize(
@@ -627,8 +628,9 @@ def test_duplicate_context_attempt_clears_prior_missing_merchant_state() -> None
     }
     capture.before_tool_call(_before_event(first, state=state))
     capture.after_tool_call(_after_event(first, state=state, result=result))
-    assert state["missing_merchant_verified"] is True
+    assert state.get("missing_merchant_verified") is not True
 
+    state["missing_merchant_verified"] = True
     duplicate = _tool_use(name="get_dispute_context")
     capture.before_tool_call(_before_event(duplicate, state=state))
 

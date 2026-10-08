@@ -159,10 +159,7 @@ class ResultCaptureHooks(HookProvider):
             return deepcopy(tuple(self._results))
 
     def _sync_missing_merchant_state(self, state: dict) -> None:
-        if self._missing_merchant_ids:
-            state[MISSING_MERCHANT_STATE_KEY] = True
-        else:
-            state.pop(MISSING_MERCHANT_STATE_KEY, None)
+        state.pop(MISSING_MERCHANT_STATE_KEY, None)
 
     def _match_attempt(
         self,
@@ -266,6 +263,34 @@ def _is_verified_missing_merchant(
         and "merchant_name" in result.content
         and result.content["merchant_name"] is None
     )
+
+
+def _missing_merchant_state(result: object) -> str:
+    if not isinstance(result, NormalizedToolResult) or not (
+        result.tool_name == "get_recent_transactions"
+        and result.status == "success"
+        and result.exception is None
+        and result.cancel_message is None
+        and result.blocked_before_execution is False
+        and result.retry_requested is False
+        and result.authorization_verified is True
+        and isinstance(result.content, dict)
+        and "error" not in result.content
+    ):
+        return "unknown"
+    transactions = result.content.get("transactions")
+    if not (
+        isinstance(transactions, list)
+        and transactions
+        and all(
+            isinstance(transaction, dict) and "merchant_name" in transaction
+            for transaction in transactions
+        )
+    ):
+        return "unknown"
+    if any(transaction["merchant_name"] is None for transaction in transactions):
+        return "verified_missing"
+    return "verified_present"
 
 
 def _authorization_evidence(

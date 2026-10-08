@@ -18,6 +18,7 @@ from ai_banking_customer_service.agent.language_detector import detect_language
 from ai_banking_customer_service.agent.result_capture import (
     NormalizedToolResult,
     ResultCaptureHooks,
+    _missing_merchant_state,
 )
 from ai_banking_customer_service.agent.session_manager import (
     SessionManager,
@@ -917,32 +918,28 @@ def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
 def _is_verified_merchant(record: _ToolRecord) -> bool:
     result = record.result
     return (
-        record.tool_name == "get_dispute_context"
+        record.tool_name == "get_recent_transactions"
         and not record.duplicate_or_retry
         and bool(record.tool_use_id)
         and len(record.attempts) == 1
         and result is not None
         and _identity_matches(record)
         and _authorization_verified(record)
-        and result.status == "success"
-        and result.exception is None
-        and result.cancel_message is None
-        and isinstance(result.content, dict)
-        and "error" not in result.content
-        and "merchant_name" in result.content
+        and _missing_merchant_state(result) != "unknown"
     )
 
 
 def _is_verified_missing_merchant(record: _ToolRecord) -> bool:
     return (
-        _is_verified_merchant(record) and record.result.content["merchant_name"] is None
+        _is_verified_merchant(record)
+        and _missing_merchant_state(record.result) == "verified_missing"
     )
 
 
 def _is_verified_present_merchant(record: _ToolRecord) -> bool:
     return (
         _is_verified_merchant(record)
-        and record.result.content["merchant_name"] is not None
+        and _missing_merchant_state(record.result) == "verified_present"
     )
 
 
