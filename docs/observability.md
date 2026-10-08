@@ -67,6 +67,7 @@ verified       bool  evidencia terminal cumple el contrato de la tool
 authorization_verified bool  autorización explícita de producto acreditada por el adapter
 correlation    str   opcional; routing_fallback cuando falta correlación válida
 orphaned       bool  opcional; solo true para descendencia sin padre durable
+evidence       obj   evidencia canónica runtime de la ocurrencia (ver §3.2.1)
 ```
 
 Proyección permitida de `args`:
@@ -90,6 +91,87 @@ predicado completo de escalamiento persistido. Para las cuatro tools sensibles,
 `authorization_verified` siempre está presente y solo es `true` cuando el
 contexto creado por el adapter contiene autorización explícita válida; no se
 infiere desde la reclamación, el producto ni el resultado de la ejecución.
+
+#### 3.2.1 Evidencia canónica runtime (`evidence`)
+
+A partir de Spec #09A1, cada evento `tool_call` incluye exactamente un bloque de
+evidencia canónica (`evidence`) que describe una sola ocurrencia causal de tool.
+El resto del contrato del payload no cambia.
+
+El bloque contiene cinco dimensiones causales y metadatos cerrados:
+
+```text
+ordinal        int   posición canónica de la ocurrencia (>= 0)
+authorization  obj   { state, reason_code, verified }
+missing_data   obj   { state, detected }
+governance     obj   { stage, action, reason_code }
+execution      obj   { state }
+verification   obj   { outcome, verified }
+truncated      bool  opcional; solo true cuando se excede el límite de ocurrencias
+invalid        bool  opcional; solo true cuando el bloque es fail-closed por inconsistencia
+```
+
+`evidence` es obligatorio en el payload de `tool_call`. Las claves requeridas son
+`ordinal`, `authorization`, `missing_data`, `governance`, `execution` y
+`verification`. Las únicas claves opcionales son `truncated` e `invalid`.
+
+**Vocabularios congelados**
+
+Las cadenas deben pertenecer exactamente a las siguientes allowlists (spelling y
+ casing idénticos al código en `src/ai_banking_customer_service/observability/contract.py`):
+
+- `authorization.state`: `allowed`, `denied`, `unavailable`, `not_evaluated`, `invalid`.
+- `authorization.reason_code`: `authorized`, `not_authenticated`, `product_not_authorized`, `authorization_unavailable`, `invalid_authorization_result`, o `null`.
+- `authorization.verified`: `bool` estricto.
+- `missing_data.state`: `verified_missing`, `verified_present`, `unknown`, `invalid`.
+- `missing_data.detected`: `bool` estricto.
+- `governance.stage`: `tool_gating`.
+- `governance.action`: `allow`, `block`.
+- `governance.reason_code`: `invalid_tool_name`, `invalid_tool_input`, `invalid_complaint_id`, `invalid_invocation_state`, `missing_merchant:clarification`, `TOOL_GATING_VALIDATION_ERROR`, `JEV_ERROR`, `TOOL_GATING_DETERMINISTIC_BLOCK`, `INVALID_METADATA`, `INVALID_SIGNAL`, `TOOL_GATING_ALLOW`, `TOOL_GATING_BLOCK_LOW_INTENT_MATCH`, o `null`.
+- `execution.state`: `success`, `failure`, `blocked`, `unknown`, `invalid`.
+- `verification.outcome`: `verified`, `unverified`, `not_applicable`, `invalid`.
+- `verification.verified`: `bool` estricto.
+
+Cada código tiene como máximo 64 code points. El bloque serializado no puede
+superar 8 KiB. Se permite un máximo de 16 ocurrencias por trace; la ocurrencia
+17 y siguientes se reemplazan por un bloque cerrado con `truncated: true`
+(todos los estados en `invalid`, acción de gobierno `block`, booleanos `False`,
+`invalid: true`). El evento `tool_call` igual se emite.
+
+**Correlación**
+
+La decisión de gobierno se une a la ocurrencia por el `toolUseId` exacto de la
+entrada `tool_gating` correspondiente. No se correlaciona por nombre de tool,
+similitud de argumentos, orden supuesto, `case_id` ni ningún ID bancario.
+
+**Fail-closed**
+
+Cualquiera de las siguientes condiciones produce el bloque cerrado `invalid: true`
+(todos los estados en `invalid`, acción de gobierno `block`, booleanos `False`):
+
+- unión ambigua entre la ocurrencia y su entrada de gobierno;
+- retry o duplicado del intento;
+- lineage huérfano o resultado no durable;
+- booleanos no estrictos (`bool` subclases o enteros usados como booleanos);
+- combinaciones imposibles entre `state`/`reason_code`/`verified` (por ejemplo,
+  `allowed` sin `authorized`/`true`);
+- gobierno desconocido o no reconocido (falla a `block`);
+- bloque truncado por exceso de ocurrencias.
+
+Este bloque `invalid` nunca cuenta como evidencia positiva.
+
+**Privacidad**
+
+El bloque de evidencia nunca transporta:
+
+- `complaint_id`, `product_id`, `customer_id`;
+- IDs de transacción, handoff o escalamiento;
+- excepciones, mensajes o textos libres;
+- argumentos o resultados completos de tools;
+- state, score, probabilidad, metadata o razón de Jev.
+
+`validate_event` rechaza el payload antes de escribir al sink si `evidence`
+está presente y no cumple el contrato.
 
 ### 3.3 `escalation`
 
