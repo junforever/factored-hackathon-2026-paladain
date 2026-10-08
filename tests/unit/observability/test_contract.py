@@ -373,3 +373,26 @@ def test_validate_evidence_rejects_oversized_serialized_block() -> None:
     evidence["invalid"] = True
     with pytest.raises(ValueError, match="oversized"):
         validate_evidence(evidence)
+
+
+def test_validate_event_calls_validate_evidence_for_tool_call_payload() -> None:
+    event = _valid_event()
+    event.update(component="orchestrator", event_type="tool_call")
+    event["payload"] = {
+        "tool_name": "get_recent_transactions",
+        "authorization_verified": False,
+        "evidence": _evidence(),
+    }
+    validate_event(event)
+
+
+def test_validate_event_rejects_invalid_evidence_in_tool_call_payload() -> None:
+    event = _valid_event()
+    event.update(component="orchestrator", event_type="tool_call")
+    event["payload"] = {
+        "tool_name": "get_recent_transactions",
+        "authorization_verified": False,
+        "evidence": {"ordinal": 0},
+    }
+    with pytest.raises(ValueError, match="evidence"):
+        validate_event(event)

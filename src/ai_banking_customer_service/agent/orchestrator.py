@@ -37,6 +37,13 @@ from ai_banking_customer_service.governance.jev.sanitization import (
     sanitize_json_structure,
     sanitize_message,
 )
+from ai_banking_customer_service.observability.contract import (
+    AUTHORIZATION_REASON_CODES,
+    AUTHORIZATION_RESULTS,
+    GOVERNANCE_ACTIONS,
+    GOVERNANCE_EVIDENCE_REASON_CODES,
+    validate_evidence,
+)
 from ai_banking_customer_service.observability.sink import (
     AuditPersistenceError,
     CompositeAuditSink,
@@ -319,12 +326,21 @@ class BankingOrchestrator:
                 durable_parent = _last_durable_parent(
                     invocation_state.get("routing_event_id"), input_event_id
                 )
-                for record in records:
+                for ordinal, record in enumerate(records):
                     parent_event_id, used_fallback = _tool_parent(
                         record.tool_use_id,
                         invocation_state,
                     )
+                    governance = invocation_state.get("tool_governance")
+                    governance_entry = (
+                        governance.get(record.tool_use_id)
+                        if isinstance(governance, dict)
+                        else None
+                    )
                     payload = _tool_event_payload(record, used_fallback)
+                    payload["evidence"] = _evidence_block(
+                        record, governance_entry, ordinal
+                    )
                     _add_orphaned(payload, invocation_state)
                     event_id = self._emit_event(
                         self._event(
@@ -898,7 +914,7 @@ def _analyze_tools(records: list[_ToolRecord]) -> _ToolAnalysis:
     return analysis
 
 
-def _is_verified_missing_merchant(record: _ToolRecord) -> bool:
+def _is_verified_merchant(record: _ToolRecord) -> bool:
     result = record.result
     return (
         record.tool_name == "get_dispute_context"
@@ -914,8 +930,151 @@ def _is_verified_missing_merchant(record: _ToolRecord) -> bool:
         and isinstance(result.content, dict)
         and "error" not in result.content
         and "merchant_name" in result.content
-        and result.content["merchant_name"] is None
     )
+
+
+def _is_verified_missing_merchant(record: _ToolRecord) -> bool:
+    return (
+        _is_verified_merchant(record) and record.result.content["merchant_name"] is None
+    )
+
+
+def _is_verified_present_merchant(record: _ToolRecord) -> bool:
+    return (
+        _is_verified_merchant(record)
+        and record.result.content["merchant_name"] is not None
+    )
+
+
+def _evidence_block(
+    record: _ToolRecord, governance_entry: object, ordinal: int
+) -> dict:
+    """Build canonical runtime evidence for one tool occurrence."""
+    evidence = _fail_closed_evidence(ordinal)
+    if ordinal >= 16:
+        evidence["truncated"] = True
+        return _validated_evidence(evidence)
+    if not _has_unambiguous_join(record, governance_entry):
+        return _validated_evidence(evidence)
+    auth = _authorization_section(governance_entry)
+    gov = _governance_section(governance_entry)
+    if auth is None or gov is None:
+        return _validated_evidence(evidence)
+    evidence = {
+        "ordinal": ordinal,
+        "authorization": auth,
+        "missing_data": _missing_data_section(record),
+        "governance": gov,
+        "execution": _execution_section(record),
+        "verification": _verification_section(record),
+    }
+    return _validated_evidence(evidence)
+
+
+def _has_unambiguous_join(record: _ToolRecord, governance_entry: object) -> bool:
+    return (
+        bool(record.tool_use_id)
+        and not record.duplicate_or_retry
+        and len(record.attempts) == 1
+        and len(record.results) <= 1
+        and isinstance(governance_entry, dict)
+        and _identity_matches(record)
+    )
+
+
+def _authorization_section(entry: dict) -> dict | None:
+    state = entry.get("authorization_result")
+    reason = entry.get("authorization_reason_code")
+    verified = entry.get("authorization_verified")
+    if state not in AUTHORIZATION_RESULTS or type(verified) is not bool:
+        return None
+    if reason is not None and (
+        not isinstance(reason, str) or reason not in AUTHORIZATION_REASON_CODES
+    ):
+        return None
+    if state == "allowed" and (reason != "authorized" or verified is not True):
+        return None
+    if state == "denied" and (
+        reason not in ("not_authenticated", "product_not_authorized")
+        or verified is not False
+    ):
+        return None
+    if state == "unavailable" and (
+        reason not in ("authorization_unavailable", "invalid_authorization_result")
+        or verified is not False
+    ):
+        return None
+    if state == "not_evaluated" and (reason is not None or verified is not False):
+        return None
+    return {"state": state, "reason_code": reason, "verified": verified}
+
+
+def _missing_data_section(record: _ToolRecord) -> dict:
+    if _is_verified_missing_merchant(record):
+        return {"state": "verified_missing", "detected": True}
+    if _is_verified_present_merchant(record):
+        return {"state": "verified_present", "detected": False}
+    return {"state": "unknown", "detected": False}
+
+
+def _governance_section(entry: dict) -> dict | None:
+    action = entry.get("action")
+    if action not in GOVERNANCE_ACTIONS:
+        return None
+    reason = entry.get("reason")
+    reason_code = None
+    if isinstance(reason, str) and reason in GOVERNANCE_EVIDENCE_REASON_CODES:
+        reason_code = reason
+    else:
+        decision = entry.get("decision")
+        codes = getattr(decision, "reason_codes", None)
+        if isinstance(codes, (list, tuple)) and codes:
+            first = codes[0]
+            if isinstance(first, str) and first in GOVERNANCE_EVIDENCE_REASON_CODES:
+                reason_code = first
+    return {"stage": "tool_gating", "action": action, "reason_code": reason_code}
+
+
+def _execution_section(record: _ToolRecord) -> dict:
+    if record.blocked_before_execution:
+        return {"state": "blocked"}
+    if record.result is None:
+        return {"state": "unknown"}
+    return (
+        {"state": "success"}
+        if _tool_outcome(record) == "success"
+        else {"state": "failure"}
+    )
+
+
+def _verification_section(record: _ToolRecord) -> dict:
+    if record.blocked_before_execution:
+        return {"outcome": "not_applicable", "verified": False}
+    return (
+        {"outcome": "verified", "verified": True}
+        if _verified(record)
+        else {"outcome": "unverified", "verified": False}
+    )
+
+
+def _fail_closed_evidence(ordinal: int) -> dict:
+    return {
+        "ordinal": ordinal,
+        "authorization": {"state": "invalid", "reason_code": None, "verified": False},
+        "missing_data": {"state": "invalid", "detected": False},
+        "governance": {"stage": "tool_gating", "action": "block", "reason_code": None},
+        "execution": {"state": "invalid"},
+        "verification": {"outcome": "invalid", "verified": False},
+        "invalid": True,
+    }
+
+
+def _validated_evidence(evidence: dict) -> dict:
+    try:
+        validate_evidence(evidence)
+    except ValueError:
+        return _fail_closed_evidence(evidence.get("ordinal", 0))
+    return evidence
 
 
 def _record_is_sensitive(record: _ToolRecord) -> bool:

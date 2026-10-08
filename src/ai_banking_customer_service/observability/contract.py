@@ -125,6 +125,12 @@ def validate_event(event: dict) -> None:
         and type(payload.get("authorization_verified")) is not bool
     ):
         raise ValueError("authorization_verified must be a bool for sensitive tools")
+    if (
+        event["event_type"] == "tool_call"
+        and isinstance(payload, dict)
+        and "evidence" in payload
+    ):
+        validate_evidence(payload["evidence"])
 
 
 def validate_evidence(evidence: dict) -> None:

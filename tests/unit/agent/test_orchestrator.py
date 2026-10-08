@@ -1413,3 +1413,108 @@ def test_denied_sensitive_attempt_emits_false_authorization_without_claiming_uns
     assert tool_event["payload"]["verified"] is False
     assert tool_event["payload"]["authorization_verified"] is False
     assert result.escalation_type is EscalationType.FAILED_ACTION
+
+
+# --- Spec 09A1 runtime evidence (WU2) ---
+
+
+# fmt: off
+def _governance_entry(action="allow", reason=None, auth_result="allowed", auth_reason="authorized", auth_verified=True):  # noqa: E501
+    return {"action": action, "reason": reason, "authorization_result": auth_result, "authorization_reason_code": auth_reason, "authorization_verified": auth_verified}  # noqa: E501
+
+
+def _evidence_turn(monkeypatch, attempts, results, governance, message="Bloquear"):
+    o, _, sink, _ = _install_turn(monkeypatch, attempts=attempts, results=results, state={"tool_governance": governance})  # noqa: E501
+    o.handle_turn(message, "s", "c")
+    return [e["payload"]["evidence"] for e in sink.events if e["event_type"] == "tool_call"]  # noqa: E501
+
+
+def test_evidence_distinguishes_governance_block_from_missing_merchant(monkeypatch) -> None:  # noqa: E501
+    gov = {"tool-1": _governance_entry(action="block", reason="TOOL_GATING_BLOCK_LOW_INTENT_MATCH")}  # noqa: E501
+    blocked = _result("block_card", None, status="error", cancel_message="governance:block", blocked=True)  # noqa: E501
+    evs = _evidence_turn(monkeypatch, (_attempt("block_card", blocked=True),), (blocked,), gov)  # noqa: E501
+    gov_block = evs[0]
+    assert gov_block["governance"]["action"] == "block" and gov_block["execution"]["state"] == "blocked"  # noqa: E501
+    read = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="read-1")  # noqa: E501
+    write = _result("block_card", None, tool_use_id="write-1", status="error", cancel_message="missing_merchant:clarification")  # noqa: E501
+    attempts = (_attempt("get_dispute_context", tool_use_id="read-1"), _attempt("block_card", tool_use_id="write-1", missing_merchant_blocked=True))  # noqa: E501
+    evs = _evidence_turn(monkeypatch, attempts, (read, write), {"read-1": _governance_entry(), "write-1": _governance_entry()}, "Cargo")  # noqa: E501
+    assert evs[0]["missing_data"]["state"] == "verified_missing"
+    assert evs[1]["governance"]["action"] == "allow" and evs[1]["execution"]["state"] == "blocked"  # noqa: E501
+    assert evs[1]["governance"]["action"] != gov_block["governance"]["action"]
+
+
+def test_evidence_distinguishes_authorization_denied_from_not_evaluated(monkeypatch) -> None:  # noqa: E501
+    denied = _result("block_card", None, tool_use_id="denied-1", status="error", cancel_message="governance:block", blocked=True)  # noqa: E501
+    ne = _result("block_card", None, tool_use_id="ne-1", status="error", cancel_message="governance:block", blocked=True)  # noqa: E501
+    gov = {"denied-1": _governance_entry(action="block", auth_result="denied", auth_reason="product_not_authorized", auth_verified=False), "ne-1": _governance_entry(action="block", auth_result="not_evaluated", auth_reason=None, auth_verified=False)}  # noqa: E501
+    evs = _evidence_turn(monkeypatch, (_attempt("block_card", tool_use_id="denied-1"), _attempt("block_card", tool_use_id="ne-1")), (denied, ne), gov)  # noqa: E501
+    assert evs[0]["authorization"] == {"state": "denied", "reason_code": "product_not_authorized", "verified": False}  # noqa: E501
+    assert evs[1]["authorization"] == {"state": "not_evaluated", "reason_code": None, "verified": False}  # noqa: E501
+
+
+def test_evidence_distinguishes_verified_false_causes(monkeypatch) -> None:
+    retry = _result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}, tool_use_id="retry-1", retry=True)  # noqa: E501
+    exc = _result("block_card", None, tool_use_id="exc-1", status="error", exception="RuntimeError: failed")  # noqa: E501
+    bad = _result("block_card", {"action": "block_card", "executed": True, "verification": "bad"}, tool_use_id="bad-1")  # noqa: E501
+    gov = {"retry-1": _governance_entry(), "exc-1": _governance_entry(), "bad-1": _governance_entry()}  # noqa: E501
+    attempts = (_attempt("block_card", tool_use_id="retry-1"), _attempt("block_card", tool_use_id="exc-1"), _attempt("block_card", tool_use_id="bad-1"))  # noqa: E501
+    evs = _evidence_turn(monkeypatch, attempts, (retry, exc, bad), gov)
+    assert evs[0]["execution"]["state"] == "invalid" and evs[0]["verification"]["outcome"] == "invalid"  # noqa: E501
+    assert evs[1]["execution"]["state"] == "failure" and evs[1]["verification"]["outcome"] == "unverified"  # noqa: E501
+    assert evs[2]["execution"]["state"] == "success" and evs[2]["verification"]["outcome"] == "unverified"  # noqa: E501
+
+
+@pytest.mark.parametrize(("state", "reason", "verified"), [
+    ("allowed", "authorized", True),
+    ("denied", "not_authenticated", False),
+    ("denied", "product_not_authorized", False),
+    ("unavailable", "authorization_unavailable", False),
+    ("unavailable", "invalid_authorization_result", False),
+    ("not_evaluated", None, False),
+])
+def test_evidence_block_authorization_states(state, reason, verified) -> None:
+    record = orchestrator_module._tool_records((_attempt("block_card", authorization_verified=verified),), (_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}, authorization_verified=verified),))[0]  # noqa: E501
+    entry = {"action": "allow", "reason": None, "authorization_result": state, "authorization_reason_code": reason, "authorization_verified": verified}  # noqa: E501
+    evidence = orchestrator_module._evidence_block(record, entry, 0)
+    assert evidence["authorization"] == {"state": state, "reason_code": reason, "verified": verified}  # noqa: E501
+def test_evidence_block_missing_data_states() -> None:
+    present = _result("get_dispute_context", {"merchant_name": "Store"}, tool_use_id="t1")  # noqa: E501
+    missing = _result("get_dispute_context", {"merchant_name": None}, tool_use_id="t2")  # noqa: E501
+    other = _result("get_recent_transactions", {"transactions": []}, tool_use_id="t3")  # noqa: E501
+    cases = (  # noqa: E501
+        (orchestrator_module._tool_records((_attempt("get_dispute_context", tool_use_id="t1"),), (present,))[0], "verified_present"),  # noqa: E501
+        (orchestrator_module._tool_records((_attempt("get_dispute_context", tool_use_id="t2"),), (missing,))[0], "verified_missing"),  # noqa: E501
+        (orchestrator_module._tool_records((_attempt("get_recent_transactions", tool_use_id="t3"),), (other,))[0], "unknown"),  # noqa: E501
+    )
+    for record, expected in cases:
+        evidence = orchestrator_module._evidence_block(record, _governance_entry(), 0)
+        assert evidence["missing_data"]["state"] == expected
+
+
+def test_evidence_block_execution_and_verification() -> None:
+    entry = _governance_entry()
+    success = orchestrator_module._tool_records((_attempt("block_card"),), (_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}),))[0]  # noqa: E501
+    blocked = orchestrator_module._tool_records((_attempt("block_card", blocked=True),), (_result("block_card", None, status="error", cancel_message="governance:block", blocked=True),))[0]  # noqa: E501
+    exc = orchestrator_module._tool_records((_attempt("block_card"),), (_result("block_card", None, status="error", exception="RuntimeError: failed"),))[0]  # noqa: E501
+    none_result = orchestrator_module._ToolRecord("t", "block_card", {}, (_attempt("block_card"),), ())  # noqa: E501
+    cases = ((success, "success", "verified"), (blocked, "blocked", "not_applicable"), (exc, "failure", "unverified"), (none_result, "unknown", "unverified"))  # noqa: E501
+    for record, exp_exec, exp_ver in cases:
+        evidence = orchestrator_module._evidence_block(record, entry, 0)
+        assert evidence["execution"]["state"] == exp_exec and evidence["verification"]["outcome"] == exp_ver  # noqa: E501
+
+
+def test_evidence_block_truncation_orphan_and_non_strict_bool(monkeypatch) -> None:
+    records = [_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}, tool_use_id=f"t{i}") for i in range(17)]  # noqa: E501
+    attempts = [_attempt("block_card", tool_use_id=f"t{i}") for i in range(17)]
+    gov = {f"t{i}": _governance_entry() for i in range(17)}
+    evs = _evidence_turn(monkeypatch, tuple(attempts), tuple(records), gov)
+    assert all(e["ordinal"] == i for i, e in enumerate(evs[:16]))
+    assert evs[16]["truncated"] is True and evs[16]["invalid"] is True
+    ok = orchestrator_module._tool_records((_attempt("block_card"),), (_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}),))[0]  # noqa: E501
+    assert orchestrator_module._evidence_block(ok, None, 0)["invalid"] is True
+    bad_bool = _governance_entry(auth_verified="true")
+    assert orchestrator_module._evidence_block(ok, bad_bool, 0)["invalid"] is True
+
+
+# fmt: on
