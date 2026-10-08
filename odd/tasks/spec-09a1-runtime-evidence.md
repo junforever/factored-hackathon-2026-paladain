@@ -93,7 +93,7 @@ odd/tasks/spec-09a1-runtime-evidence.md
   adversarial, duplicado, retry, lineage huérfano, booleanos no estrictos,
   oversized, auditoría fallida, negativos de privacidad.
 - [x] **T3 — WU3: documentación**
-  Commit `6ef3d3b` (197i/1d incluye este documento): sección 3.2.1 de
+  Commit `e4c06ec` (197i/1d incluye este documento): sección 3.2.1 de
   `docs/observability.md` con dimensiones, vocabularios exactos, límites,
   correlación, fail-closed y privacidad; `docs/STATUS.md` con cierre 09A1,
   siguiente paso y registro fechado. Vocabularios verificados contra código.
@@ -113,4 +113,14 @@ git diff --check
 - WU1 `8d11866` — contrato canónico y `validate_evidence` (300 authored).
 - WU2 `be5cec2` — emisión `evidence` por ocurrencia (296i/3d).
 - WU2b `e587c7c` — triangulación completa (61i).
-- WU3 `6ef3d3b` — documentación y tracking.
+- WU3 `e4c06ec` — documentación y tracking.
+
+## Cierre
+
+- Verificación independiente final: 330 focales + 1271 unitarios, Ruff check,
+  Ruff format y diff check verdes; rama con exactamente 4 commits (+862/−5).
+- Revisión nativa RDD `review-8869ce4e1f2ceb41`: aprobada (lente
+  review-reliability), acknowledge quemado, revisión consumida. Hallazgos
+  informativos no bloqueantes: `R3-evidence-not-required` (contract.py:128-133)
+  y `R3-substring-membership` (contract.py:193) — trabajo posterior separado.
+- Spec #09A2 desbloqueada para su handoff.

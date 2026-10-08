@@ -11,7 +11,7 @@
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
 El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline de Spec #9 están **completados**. Spec #09A cerró su única calibración real autorizada sobre development `v1.0.5`: 30/30 casos completaron sin errores ni timeouts, pero la aceptación falló porque SAR permaneció en 0/30 y persistieron resultados inseguros de autorización y datos faltantes. Held-out `v1.0.2` continúa congelado, sin cambios y sin ejecución durante Spec #09A. La demo local cuenta además con un catálogo reproducible de seis casos, reset SQLite acotado y una guía de ejecución para jueces.
 
-**Siguiente paso:** Spec #09A1 queda implementada (contrato y emisión de evidencia canónica runtime en `tool_call`) y pendiente de verificación/revisión final; una vez aceptada, desbloquea a Spec #09A2 (proyección segura de reportes). No se realizaron runs reales de evaluación como parte de 09A1. Held-out `v1.0.2` permanece congelado, sin cambios y sin ejecución. En paralelo, completar la validación integral y manual del flujo de demo antes de slides y video pitch de Spec #10.
+**Siguiente paso:** Spec #09A1 queda implementada y aceptada (contrato y emisión de evidencia canónica runtime en `tool_call`; 1271 tests unitarios, revisión nativa `review-8869ce4e1f2ceb41` aprobada y consumida), lo que desbloquea a Spec #09A2 (proyección segura de reportes). No se realizaron runs reales de evaluación como parte de 09A1. Held-out `v1.0.2` permanece congelado, sin cambios y sin ejecución. En paralelo, completar la validación integral y manual del flujo de demo antes de slides y video pitch de Spec #10.
 
 ---
 
@@ -91,7 +91,7 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 - [x] Contrato de eventos (`contract.py`) y sink JSONL validado (`sink.py`).
 - [x] `CompositeAuditSink` con fallback diagnóstico no durable y `AuditPersistenceError`.
 - [x] Eventos `input`, `tool_call`, `escalation` y `response` con sanitización, lineage, correlación fallback y descendencia huérfana.
-- [x] Spec #09A1 — contrato y emisión de evidencia canónica runtime con TDD (validador de contrato, `evidence` por ocurrencia en `tool_call`, semántica fail-closed y truncamiento, negativos de privacidad), commits `8d11866`, `be5cec2`, `e587c7c` en rama `feat/spec-09a1-runtime-evidence`.
+- [x] Spec #09A1 — contrato y emisión de evidencia canónica runtime con TDD (validador de contrato, `evidence` por ocurrencia en `tool_call`, semántica fail-closed y truncamiento, negativos de privacidad), commits `8d11866`, `be5cec2`, `e587c7c`, `e4c06ec` en rama `feat/spec-09a1-runtime-evidence`; verificación final 1271 tests unitarios y revisión nativa `review-8869ce4e1f2ceb41` aprobada y consumida.
 
 ### UI — Chainlit
 
