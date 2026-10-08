@@ -70,4 +70,4 @@ git diff --check
 - Independent verifier: PASS; focused `2 passed`, affected `185 passed`, full `1293 passed` with one unrelated Pydantic warning, and Ruff check/format and diff check passed.
 - One non-blocking informational advisory exists: `R3-001`, reliability, `src/ai_banking_customer_service/agent/result_capture.py:232-242`; it is not a correction.
 - No real evaluation, network, model, or Jev execution occurred.
-- User review, acceptance, and freeze of 09A4A remain pending; 09A4 remains accepted and frozen. Later delivery decisions follow that user decision.
+- 2026-10-08: the user reviewed, accepted, and froze Spec 09A4A. This satisfies Spec 09A5's dependency gate but does not authorize planning or implementing 09A5.

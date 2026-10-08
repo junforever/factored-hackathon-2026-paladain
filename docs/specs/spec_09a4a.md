@@ -1,7 +1,8 @@
 # SPEC #09A4A — Gate de escritura ante datos faltantes
 
-> **Estado:** `IMPLEMENTED`; verificación independiente y revisión nativa aprobadas; aceptación y congelación por el usuario pendientes.
+> **Estado:** `FROZEN`; revisada, aceptada y congelada por el usuario el 2026-10-08.
 > **Depende de:** [09A4](spec_09a4.md) completada, GREEN, revisada, aceptada y congelada el 2026-10-08.
+> **Desbloquea:** el gate de dependencia de [09A5](spec_09a5.md) está satisfecho; esta congelación no autoriza planificar ni implementar 09A5.
 > **Pregunta única:** ¿el runtime cancela antes del service cada `block_card` o
 > `escalate_case` posterior cuando 09A4 demuestra datos faltantes canónicos?
 
@@ -135,7 +136,7 @@ git diff --check
 - La revisión nativa `review-aed25f0ecbbab6ca` fue aprobada y su acknowledgement exacto fue completado; la autoridad quedó consumida para el target `sha256:734db8c27df208a44bd632fd61374fc7277fdaf8d0c779fe290fe6bb6a323b3f`.
 - Existe un advisory informativo no bloqueante: `R3-001`, reliability, `src/ai_banking_customer_service/agent/result_capture.py:232-242`; no es una corrección.
 - No se ejecutaron evaluación real, red, modelo ni Jev.
-- La aceptación y congelación de 09A4A por el usuario todavía no están registradas.
+- El usuario revisó, aceptó y congeló 09A4A el 2026-10-08.
 
 ## 9. Stop, rollback y handoff
 
@@ -143,7 +144,7 @@ Detener si el gate necesita rederivar el positivo, tocar services, cambiar
 policy, abrir otro dominio o superar 300 líneas. El rollback elimina productor,
 transporte y tests del gate como una unidad, sin revertir 09A4.
 
-La implementación de 09A4A está GREEN, verificada y revisada. El siguiente paso
-es la revisión, aceptación y congelación por el usuario; solo después
-[09A5](spec_09a5.md) podrá consumir la cadena completa de canonicalización y
-cancelación pre-service y podrán decidirse entregas posteriores.
+La implementación de 09A4A está GREEN, verificada, revisada, aceptada y
+congelada por el usuario desde el 2026-10-08. Con ello queda satisfecho el gate
+de dependencia de [09A5](spec_09a5.md), pero la planificación o implementación
+de 09A5 requiere autorización separada.
