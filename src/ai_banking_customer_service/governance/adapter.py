@@ -52,7 +52,7 @@ class ProductAuthorization:
 
 
 class ProductAuthorizationProvider(Protocol):
-    """Authorize a trusted principal for one internally resolved product."""
+    """Return only the decision for the exact principal and product arguments."""
 
     def authorize_product(
         self,

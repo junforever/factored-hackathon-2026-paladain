@@ -18,6 +18,16 @@ from ai_banking_customer_service.governance.jev.sanitization import sanitize_mes
 MISSING_MERCHANT_CANCEL_REASON = "missing_merchant:clarification"
 MISSING_MERCHANT_STATE_KEY = "missing_merchant_verified"
 _ACTION_TOOLS = frozenset({"block_card", "escalate_case"})
+_AUTHORIZATION_EVIDENCE = frozenset(
+    {
+        ("allowed", "authorized", True),
+        ("denied", "not_authenticated", False),
+        ("denied", "product_not_authorized", False),
+        ("unavailable", "authorization_unavailable", False),
+        ("unavailable", "invalid_authorization_result", False),
+        ("not_evaluated", None, False),
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -43,6 +53,8 @@ class _ToolAttempt:
     tool_name: str
     tool_args: dict
     blocked_before_execution: bool
+    authorization_result: str
+    authorization_reason_code: str | None
     authorization_verified: bool
     missing_merchant_blocked: bool
 
@@ -69,7 +81,9 @@ class ResultCaptureHooks(HookProvider):
     def before_tool_call(self, event: BeforeToolCallEvent) -> None:
         tool_use_id, tool_name, tool_args = _normalize_tool_use(event.tool_use)
         blocked = _is_governance_block(event, tool_use_id)
-        authorized = _is_authorization_verified(event, tool_use_id)
+        authorization_result, authorization_reason, authorized = (
+            _authorization_evidence(event, tool_use_id)
+        )
         missing_merchant_blocked = _is_missing_merchant_block(
             event, tool_use_id, tool_name
         )
@@ -78,6 +92,8 @@ class ResultCaptureHooks(HookProvider):
             tool_name,
             tool_args,
             blocked,
+            authorization_result,
+            authorization_reason,
             authorized,
             missing_merchant_blocked,
         )
@@ -252,22 +268,27 @@ def _is_verified_missing_merchant(
     )
 
 
-def _is_authorization_verified(
+def _authorization_evidence(
     event: BeforeToolCallEvent,
     tool_use_id: str,
-) -> bool:
+) -> tuple[str, str | None, bool]:
+    fallback = ("not_evaluated", None, False)
     if not tool_use_id:
-        return False
+        return fallback
     governance = event.invocation_state.get("tool_governance")
     if not isinstance(governance, dict):
-        return False
+        return fallback
     evidence = governance.get(tool_use_id)
-    return (
-        isinstance(evidence, dict)
-        and evidence.get("authorization_result") == "allowed"
-        and evidence.get("authorization_reason_code") == "authorized"
-        and evidence.get("authorization_verified") is True
+    if not isinstance(evidence, dict):
+        return fallback
+    authorization = (
+        evidence.get("authorization_result"),
+        evidence.get("authorization_reason_code"),
+        evidence.get("authorization_verified"),
     )
+    if type(authorization[2]) is not bool:
+        return fallback
+    return authorization if authorization in _AUTHORIZATION_EVIDENCE else fallback
 
 
 def _status(result: object) -> str:

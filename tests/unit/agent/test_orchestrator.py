@@ -30,6 +30,7 @@ from ai_banking_customer_service.agent.tools import (
 from ai_banking_customer_service.governance.adapter import (
     GovernanceAdapter,
     GovernanceResult,
+    ProductAuthorization,
 )
 from ai_banking_customer_service.governance.jev.decision import GovernanceAction
 from ai_banking_customer_service.observability.sink import AuditPersistenceError
@@ -64,6 +65,8 @@ def _attempt(
     tool_use_id: str = "tool-1",
     args: dict | None = None,
     blocked: bool = False,
+    authorization_result: str = "allowed",
+    authorization_reason_code: str | None = "authorized",
     authorization_verified: bool = True,
     missing_merchant_blocked: bool = False,
 ):
@@ -72,6 +75,8 @@ def _attempt(
         tool_name=name,
         tool_args={"complaint_id": "CMP-1"} if args is None else args,
         blocked_before_execution=blocked,
+        authorization_result=authorization_result,
+        authorization_reason_code=authorization_reason_code,
         authorization_verified=authorization_verified,
         missing_merchant_blocked=missing_merchant_blocked,
     )
@@ -1387,6 +1392,161 @@ def test_allowed_sensitive_lifecycle_emits_exact_authorization_evidence() -> Non
     assert payload["authorization_verified"] is True
 
 
+def test_denied_provider_occurrence_cannot_inherit_later_homonymous_authorization(
+    monkeypatch,
+) -> None:
+    principal = object()
+
+    class FakeProvider:
+        def __init__(self) -> None:
+            self.calls: list[tuple[object, str]] = []
+
+        def authorize_product(
+            self, *, principal: object, product_id: str
+        ) -> ProductAuthorization:
+            self.calls.append((principal, product_id))
+            if product_id == "PRD-ALLOWED":
+                return ProductAuthorization(True, True, "authorized")
+            return ProductAuthorization(True, False, "product_not_authorized")
+
+    provider = FakeProvider()
+    products = {"CMP-DENIED": "PRD-DENIED", "CMP-ALLOWED": "PRD-ALLOWED"}
+    adapter = GovernanceAdapter(
+        client=Mock(),
+        thresholds=Mock(),
+        tool_gating_thresholds=Mock(),
+        output_screening_thresholds=Mock(),
+        audit_sink=Mock(),
+        dispute_context_loader=lambda complaint_id: {
+            "complaint_id": complaint_id,
+            "product_id": products[complaint_id],
+        },
+        product_authorization_provider=provider,
+    )
+
+    gate_count = 0
+
+    def gate_tool_call(*args, **kwargs) -> GovernanceResult:
+        nonlocal gate_count
+        gate_count += 1
+        context = args[4]
+        action = (
+            GovernanceAction.ALLOW
+            if context["authorization_reason"] == "authorized"
+            else GovernanceAction.BLOCK
+        )
+        return _governance_result(action, f"gating-{gate_count}")
+
+    adapter.gate_tool_call = Mock(side_effect=gate_tool_call)  # type: ignore[method-assign]
+    governance = GovernanceHooks(adapter, principal=principal)
+    capture = ResultCaptureHooks()
+    state = {
+        "trace_id": "trace-1",
+        "session_id": "session-1",
+        "customer_id": "customer-1",
+        "intent": "dispute_charge",
+        "customer_message": "Bloquear",
+        "routing_event_id": "routing-1",
+        "tool_governance": {},
+    }
+    denied_use = {
+        "toolUseId": "homonymous-1",
+        "name": "block_card",
+        "input": {"complaint_id": "CMP-DENIED", "confirmed_by_customer": True},
+    }
+    denied_before = BeforeToolCallEvent(
+        agent=SimpleNamespace(),
+        selected_tool=None,
+        tool_use=denied_use,
+        invocation_state=state,
+    )
+    governance.before_tool_call(denied_before)
+    capture.before_tool_call(denied_before)
+    capture.after_tool_call(
+        AfterToolCallEvent(
+            agent=SimpleNamespace(),
+            selected_tool=None,
+            tool_use=denied_use,
+            invocation_state=state,
+            result={"status": "error", "content": []},
+            cancel_message="governance:block",
+        )
+    )
+    denied_attempts = capture.snapshot_attempts()
+    denied_results = capture.snapshot_results()
+
+    allowed_use = {
+        "toolUseId": "homonymous-1",
+        "name": "block_card",
+        "input": {"complaint_id": "CMP-ALLOWED", "confirmed_by_customer": True},
+    }
+    allowed_capture = ResultCaptureHooks()
+    allowed_before = BeforeToolCallEvent(
+        agent=SimpleNamespace(),
+        selected_tool=None,
+        tool_use=allowed_use,
+        invocation_state=state,
+    )
+    governance.before_tool_call(allowed_before)
+    allowed_capture.before_tool_call(allowed_before)
+    allowed_capture.after_tool_call(
+        AfterToolCallEvent(
+            agent=SimpleNamespace(),
+            selected_tool=None,
+            tool_use=allowed_use,
+            invocation_state=state,
+            result={
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "block_card",
+                            "executed": True,
+                            "verification": "confirmed_blocked",
+                        }
+                    }
+                ],
+            },
+        )
+    )
+
+    orchestrator, _, sink, _ = _install_turn(
+        monkeypatch,
+        attempts=denied_attempts,
+        results=denied_results,
+        state={"tool_governance": state["tool_governance"]},
+    )
+    orchestrator.handle_turn("Bloquear", "session-1", "customer-1")
+
+    tool_event = next(
+        event for event in sink.events if event["event_type"] == "tool_call"
+    )
+    assert provider.calls == [
+        (principal, "PRD-DENIED"),
+        (principal, "PRD-ALLOWED"),
+    ]
+    assert tool_event["payload"]["authorization_verified"] is False
+    assert tool_event["payload"]["evidence"]["authorization"]["verified"] is False
+    assert tool_event["payload"]["evidence"]["invalid"] is True
+
+    allowed_orchestrator, _, allowed_sink, _ = _install_turn(
+        monkeypatch,
+        attempts=allowed_capture.snapshot_attempts(),
+        results=allowed_capture.snapshot_results(),
+        state={"tool_governance": state["tool_governance"]},
+    )
+    allowed_orchestrator.handle_turn("Bloquear", "session-1", "customer-1")
+    allowed_event = next(
+        event for event in allowed_sink.events if event["event_type"] == "tool_call"
+    )
+    assert allowed_event["payload"]["authorization_verified"] is True
+    assert allowed_event["payload"]["evidence"]["authorization"] == {
+        "state": "allowed",
+        "reason_code": "authorized",
+        "verified": True,
+    }
+
+
 def test_denied_sensitive_attempt_emits_false_authorization_without_claiming_unsafe(
     monkeypatch,
 ) -> None:
@@ -1449,7 +1609,7 @@ def test_evidence_distinguishes_authorization_denied_from_not_evaluated(monkeypa
     denied = _result("block_card", None, tool_use_id="denied-1", status="error", cancel_message="governance:block", blocked=True)  # noqa: E501
     ne = _result("block_card", None, tool_use_id="ne-1", status="error", cancel_message="governance:block", blocked=True)  # noqa: E501
     gov = {"denied-1": _governance_entry(action="block", auth_result="denied", auth_reason="product_not_authorized", auth_verified=False), "ne-1": _governance_entry(action="block", auth_result="not_evaluated", auth_reason=None, auth_verified=False)}  # noqa: E501
-    evs = _evidence_turn(monkeypatch, (_attempt("block_card", tool_use_id="denied-1"), _attempt("block_card", tool_use_id="ne-1")), (denied, ne), gov)  # noqa: E501
+    evs = _evidence_turn(monkeypatch, (_attempt("block_card", tool_use_id="denied-1", authorization_result="denied", authorization_reason_code="product_not_authorized", authorization_verified=False), _attempt("block_card", tool_use_id="ne-1", authorization_result="not_evaluated", authorization_reason_code=None, authorization_verified=False)), (denied, ne), gov)  # noqa: E501
     assert evs[0]["authorization"] == {"state": "denied", "reason_code": "product_not_authorized", "verified": False}  # noqa: E501
     assert evs[1]["authorization"] == {"state": "not_evaluated", "reason_code": None, "verified": False}  # noqa: E501
 
@@ -1475,7 +1635,7 @@ def test_evidence_distinguishes_verified_false_causes(monkeypatch) -> None:
     ("not_evaluated", None, False),
 ])
 def test_evidence_block_authorization_states(state, reason, verified) -> None:
-    record = orchestrator_module._tool_records((_attempt("block_card", authorization_verified=verified),), (_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}, authorization_verified=verified),))[0]  # noqa: E501
+    record = orchestrator_module._tool_records((_attempt("block_card", authorization_result=state, authorization_reason_code=reason, authorization_verified=verified),), (_result("block_card", {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}, authorization_verified=verified),))[0]  # noqa: E501
     entry = {"action": "allow", "reason": None, "authorization_result": state, "authorization_reason_code": reason, "authorization_verified": verified}  # noqa: E501
     evidence = orchestrator_module._evidence_block(record, entry, 0)
     assert evidence["authorization"] == {"state": state, "reason_code": reason, "verified": verified}  # noqa: E501
@@ -1548,7 +1708,7 @@ def test_evidence_failed_tool_call_audit_marks_orphaned_and_keeps_classification
 
 def test_evidence_adversarial_order_preserves_per_call_governance(monkeypatch):  # noqa: E501
     gov = {"b1": _governance_entry(action="allow", auth_verified=True), "r1": _governance_entry(action="allow", auth_verified=True), "b2": _governance_entry(action="block", auth_result="denied", auth_reason="product_not_authorized", auth_verified=False), "r2": _governance_entry(action="allow", auth_verified=True)}  # noqa: E501
-    attempts = (_attempt("block_card", tool_use_id="b1"), _attempt("get_dispute_context", tool_use_id="r1"), _attempt("block_card", tool_use_id="b2"), _attempt("get_dispute_context", tool_use_id="r2"))  # noqa: E501
+    attempts = (_attempt("block_card", tool_use_id="b1"), _attempt("get_dispute_context", tool_use_id="r1"), _attempt("block_card", tool_use_id="b2", authorization_result="denied", authorization_reason_code="product_not_authorized", authorization_verified=False), _attempt("get_dispute_context", tool_use_id="r2"))  # noqa: E501
     ok = {"action": "block_card", "executed": True, "verification": "confirmed_blocked"}  # noqa: E501
     results = (_result("block_card", ok, tool_use_id="b1"), _result("get_dispute_context", {"merchant_name": "Store"}, tool_use_id="r1"), _result("block_card", None, tool_use_id="b2", status="error", cancel_message="governance:block", blocked=True), _result("get_dispute_context", {"merchant_name": "Store"}, tool_use_id="r2"))  # noqa: E501
     evs = _evidence_turn(monkeypatch, attempts, results, gov)

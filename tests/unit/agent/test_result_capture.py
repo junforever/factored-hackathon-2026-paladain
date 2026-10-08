@@ -337,6 +337,52 @@ def test_authorization_capture_requires_exact_bounded_allow_evidence(
     assert capture.snapshot_results()[0].authorization_verified is False
 
 
+@pytest.mark.parametrize(
+    ("authorization", "expected"),
+    [
+        (
+            {
+                "authorization_result": "allowed",
+                "authorization_reason_code": "authorized",
+                "authorization_verified": True,
+            },
+            ("allowed", "authorized", True),
+        ),
+        (
+            {
+                "authorization_result": "denied",
+                "authorization_reason_code": "not_authenticated",
+                "authorization_verified": False,
+            },
+            ("denied", "not_authenticated", False),
+        ),
+        (
+            {
+                "authorization_result": "unavailable",
+                "authorization_reason_code": "authorization_unavailable",
+                "authorization_verified": False,
+            },
+            ("unavailable", "authorization_unavailable", False),
+        ),
+    ],
+)
+def test_capture_retains_only_bounded_authorization_for_the_occurrence(
+    authorization: dict,
+    expected: tuple[str, str, bool],
+) -> None:
+    capture = ResultCaptureHooks()
+    state = {"tool_governance": {"tool-use-1": authorization}}
+
+    capture.before_tool_call(_before_event(_tool_use(), state=state))
+
+    attempt = capture.snapshot_attempts()[0]
+    assert (
+        attempt.authorization_result,
+        attempt.authorization_reason_code,
+        attempt.authorization_verified,
+    ) == expected
+
+
 def test_after_without_prior_attempt_cannot_claim_pre_execution_block() -> None:
     capture = ResultCaptureHooks()
     tool_use = _tool_use()

@@ -956,7 +956,7 @@ def _evidence_block(
         return _validated_evidence(evidence)
     if not _has_unambiguous_join(record, governance_entry):
         return _validated_evidence(evidence)
-    auth = _authorization_section(governance_entry)
+    auth = _authorization_section(record, governance_entry)
     gov = _governance_section(governance_entry)
     if auth is None or gov is None:
         return _validated_evidence(evidence)
@@ -982,10 +982,18 @@ def _has_unambiguous_join(record: _ToolRecord, governance_entry: object) -> bool
     )
 
 
-def _authorization_section(entry: dict) -> dict | None:
+def _authorization_section(record: _ToolRecord, entry: dict) -> dict | None:
     state = entry.get("authorization_result")
     reason = entry.get("authorization_reason_code")
     verified = entry.get("authorization_verified")
+    attempt = record.attempts[0]
+    captured = (
+        getattr(attempt, "authorization_result", None),
+        getattr(attempt, "authorization_reason_code", None),
+        getattr(attempt, "authorization_verified", None),
+    )
+    if captured != (state, reason, verified):
+        return None
     if state not in AUTHORIZATION_RESULTS or type(verified) is not bool:
         return None
     if reason is not None and (
