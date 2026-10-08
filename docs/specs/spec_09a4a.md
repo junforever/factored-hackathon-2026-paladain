@@ -1,8 +1,7 @@
 # SPEC #09A4A — Gate de escritura ante datos faltantes
 
-> **Estado:** `IMPLEMENTATION-BLOCKED`; especificada, no implementada.
-> **Depende de:** [09A4](spec_09a4.md) completada, GREEN, revisada y
-> congelada.
+> **Estado:** `IN-PROGRESS`; RED/GREEN focal observados; cierre, commit y revisión pendientes.
+> **Depende de:** [09A4](spec_09a4.md) completada, GREEN, revisada, aceptada y congelada el 2026-10-08.
 > **Pregunta única:** ¿el runtime cancela antes del service cada `block_card` o
 > `escalate_case` posterior cuando 09A4 demuestra datos faltantes canónicos?
 
@@ -27,8 +26,8 @@ de producción se congelan:
 - el punto exacto anterior a la invocación del service;
 - las superficies y el forecast total dentro del límite de esta spec.
 
-Mientras 09A4 siga sin commit o revisión, 09A4A no se implementa ni añade su
-RED.
+El usuario confirmó la revisión, aceptación y congelación de 09A4 el
+2026-10-08, desbloqueando este candidate.
 
 ## 2. Alcance
 
@@ -126,7 +125,14 @@ uv run ruff format --check src/ai_banking_customer_service/agent/hooks.py src/ai
 git diff --check
 ```
 
-## 8. Stop, rollback y handoff
+## 8. Evidencia del candidate
+
+- RED: el test focal dejó que ambos writes alcanzaran el seam (`2 failed`).
+- GREEN: el mismo test pasó para `block_card` y `escalate_case` (`2 passed`).
+- TRIANGULATE: suites agent `185 passed`; suite completa `1293 passed` con un warning Pydantic ajeno; Ruff check/format y `git diff --check` pasaron.
+- El candidate mide 253 líneas authored en un dominio runtime; el task permanece `in_progress`, con commit y revisión pendientes.
+
+## 9. Stop, rollback y handoff
 
 Detener si el gate necesita rederivar el positivo, tocar services, cambiar
 policy, abrir otro dominio o superar 300 líneas. El rollback elimina productor,

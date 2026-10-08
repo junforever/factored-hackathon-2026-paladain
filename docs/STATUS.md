@@ -1,6 +1,6 @@
 # STATUS — Estado de implementación
 
-> Última actualización: 2026-10-07
+> Última actualización: 2026-10-08
 > Contexto estable y decisiones de diseño: [../AGENTS.md](../AGENTS.md)
 > Este documento se actualiza después de implementar cada componente.
 
@@ -11,7 +11,7 @@
 Capa de datos, sandbox validado, tools y servicios mock están **completados y smoke-tested**.
 El transporte tipado, las cuatro etapas de gobierno de Jev, el `GovernanceAdapter`, los hooks y tools de Strands, la observabilidad, el orquestador conversacional, la UI Chainlit delgada y la evaluación offline de Spec #9 están **completados**. Spec #09A cerró su única calibración real autorizada sobre development `v1.0.5`: 30/30 casos completaron sin errores ni timeouts, pero la aceptación falló porque SAR permaneció en 0/30 y persistieron resultados inseguros de autorización y datos faltantes. Held-out `v1.0.2` continúa congelado, sin cambios y sin ejecución durante Spec #09A. La demo local cuenta además con un catálogo reproducible de seis casos, reset SQLite acotado y una guía de ejecución para jueces.
 
-**Next step:** Independently review, accept, and freeze Spec #09A4 commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02` before starting blocked 09A4A. Final verification: focused regression 1 passed, affected agent suites 185 passed, full suite 1293 passed with one unrelated Pydantic deprecation warning, Ruff check/format and `git diff --check` passed; no real evaluation, network, model, or Jev ran.
+**Next step:** Commit and review the in-progress Spec #09A4A candidate. The user reviewed, accepted, and froze 09A4 on 2026-10-08; 09A4A has observed RED/GREEN, 185 affected and 1293 full-suite tests passing, Ruff check/format and diff check passing, and 253 authored lines in one runtime domain. No real evaluation, network, model, or Jev ran.
 
 ---
 
@@ -94,8 +94,8 @@ Antes del reset deben detenerse las escrituras activas de la demo. `configs/demo
 - [x] Spec #09A1 — contrato y emisión de evidencia canónica runtime con TDD (validador de contrato, `evidence` por ocurrencia en `tool_call`, semántica fail-closed y truncamiento, negativos de privacidad), commits `8d11866`, `be5cec2`, `e587c7c`, `e4c06ec` en rama `feat/spec-09a1-runtime-evidence`; verificación final 1271 tests unitarios y revisión nativa `review-8869ce4e1f2ceb41` aprobada y consumida.
 - [x] Spec #09A2 — proyección allowlisted y acotada de evidencia canónica en outcomes y reportes JSON/Markdown, con compatibilidad histórica y entradas inválidas fail-closed; commit `22afd4a` en rama `feat/spec-09a2-canonical-evidence`, 225 tests unitarios de evaluación y revisión nativa `review-211925fc76b285f2` aprobada y consumida.
 - [x] Spec #09A3 task 09A3-1 — bounded authorization state is captured per tool occurrence and canonical evidence fails closed when a later homonymous `toolUseId` entry contradicts that capture; provider results and public event/report schemas remain unchanged.
-- [x] Spec #09A4 task 09A4-1 — canonical occurrence-local missing-data derivation and terminal/evidence propagation are GREEN in commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; independent review/acceptance/freeze remain pending and pre-service cancellation is excluded.
-- [ ] Spec #09A4A task 09A4A-1 — independent cancellation of later `block_card`/`escalate_case` calls is specified, not implemented, and blocked on completed/frozen 09A4.
+- [x] Spec #09A4 task 09A4-1 — canonical occurrence-local missing-data derivation and terminal/evidence propagation are GREEN in commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; reviewed, accepted, and frozen by the user on 2026-10-08.
+- [ ] Spec #09A4A task 09A4A-1 (`in_progress`) — canonical pre-service cancellation for later `block_card`/`escalate_case` is GREEN; deterministic checks pass, while commit and review remain pending.
 
 ### UI — Chainlit
 
@@ -282,6 +282,7 @@ De los 25 escalamientos, 13 fueron `governance_review`, 7 `failed_action`, 3 `un
 
 ## Registro de actualizaciones
 
+- **2026-10-08 — Spec #09A4 accepted; 09A4A candidate in progress** — The user reviewed, accepted, and froze 09A4. The 09A4A focused test observed both writes reach the service seam at RED, then pass after the canonical capture gate; 185 affected and 1293 full-suite tests, Ruff check/format, and diff check pass at 253 authored lines, while commit and review remain pending.
 - **2026-10-07 — Spec #09A4 implemented after 09A4A split** — The mandatory 300-line gate moved independent pre-service write/handoff cancellation into new Spec #09A4A. Canonical 09A4 is GREEN in commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; independent review, acceptance, and freeze remain pending. 09A4A is specified but has no RED or implementation.
 - **2026-10-07 — Spec #09A3 task 09A3-1 implemented** — A fake provider lifecycle reproduced a denied occurrence inheriting a later allowed entry with the same `toolUseId`. Capture now retains only bounded authorization state per occurrence, and orchestration rejects contradictory late association as invalid while preserving exact positive evidence. Focused tests, unit tests, Ruff, and whitespace validation passed without evaluation, network, model, or Jev execution.
 - **2026-10-07 — Spec #09A2 aceptada** — La evaluación offline proyecta evidencia canónica validada por ocurrencia, conserva orden, homónimos, las cinco dimensiones y marcadores `invalid`/`truncated`, aplica los límites de 16 ocurrencias y 8 KiB, y genera una vista Markdown desde el mismo diccionario autoritativo del JSON. Entradas ausentes, malformed, versionadas, desconocidas, no type-strict, privadas u oversized se omiten fail-closed sin modificar clasificación material. El commit `22afd4a` pasó 80 tests focales, 225 tests unitarios de evaluación, Ruff y `git diff --check`; la revisión nativa `review-211925fc76b285f2` fue aprobada y consumida. No se ejecutaron evaluaciones reales ni se modificaron runtime, wire, schemas, manifests o corpus. Spec #09A3 queda desbloqueada para revisión y autorización.

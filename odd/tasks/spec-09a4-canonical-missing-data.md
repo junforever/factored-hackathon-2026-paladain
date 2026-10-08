@@ -68,7 +68,7 @@ Documentation/tracking:
   - TRIANGULATE: present/absent, authorized/denied, success/error, malformed and non-strict values, homonyms, interleaving, retry/duplicate, ES/PT, terminal precedence, audit failure, canonical evidence, and privacy.
   - REFACTOR: no new module, event, public schema, or alternate positive source.
   - Acceptance: every positive is tied to one exact authorized verified read occurrence; all negative/ambiguous states remain non-positive; terminal/evidence contracts and unrelated behavior remain unchanged.
-  - Work-unit commit: `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02` (`fix(agent): canonicalize missing-merchant state`); independent review/acceptance/freeze remain pending.
+  - Work-unit commit: `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02` (`fix(agent): canonicalize missing-merchant state`); reviewed, accepted, and frozen by the user on 2026-10-08.
 
 ## Acceptance Criteria
 
@@ -90,7 +90,8 @@ Documentation/tracking:
 - 2026-10-07: split specification work committed as `cf426d1e827f4650a4aee6d0d9857eabf6a0fc15`; re-scoped 09A4 implementation remains open.
 - 2026-10-07: RED reproduced the blocker: authorized successful `get_dispute_context` plus legacy shared state remained positive; focused GREEN confirmed capture now neutralizes that state while retaining normalized records.
 - 2026-10-07: implementation committed as `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; independent final verification passed the focused regression (1), affected agent suites (185), full suite (1293; one unrelated Pydantic deprecation warning), Ruff check/format, and `git diff --check`, with no real evaluation/network/model/Jev.
-- 2026-10-07: native ASSESS for `cf426d1..dc93141` was medium risk (`executable_change`), 5 paths and 274 authored lines, with `reviewDue=false` (`under_budget`); review is deferred to a PR slice, not approved or frozen.
+- 2026-10-07: native ASSESS for `cf426d1..dc93141` was medium risk (`executable_change`), 5 paths and 274 authored lines, with `reviewDue=false` (`under_budget`).
+- 2026-10-08: the user reviewed, accepted, and froze 09A4, unblocking 09A4A.
 
 ## Verification
 
@@ -103,4 +104,4 @@ git diff --check
 
 ## Next Step
 
-Independently review, accept, and freeze 09A4 before starting blocked 09A4A.
+Continue 09A4A as the independent in-progress pre-service write gate.

@@ -1,6 +1,6 @@
 # SPEC #09A4 — Estado canónico de datos faltantes
 
-> **Estado:** `IMPLEMENTED-GREEN`; commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; revisión, aceptación y freeze pendientes.
+> **Estado:** `FROZEN`; commit `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; revisada, aceptada y congelada por el usuario el 2026-10-08.
 > **Depende de:** [09A1](spec_09a1.md)–[09A3](spec_09a3.md) implementadas,
 > GREEN, revisadas y congeladas.
 > **Pregunta única:** ¿el runtime representa datos faltantes verificados con un

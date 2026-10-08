@@ -19,7 +19,7 @@ Excluded:
 
 ## Constraints
 
-- Dependency: 09A4 completed, GREEN, reviewed, and frozen.
+- Dependency: 09A4 completed, GREEN, reviewed, accepted, and frozen by the user on 2026-10-08.
 - Runner: `uv run pytest` with deterministic fakes.
 - One primary runtime domain: `agent`.
 - One behavioral work unit; tests and closure docs stay with the gate.
@@ -28,7 +28,7 @@ Excluded:
 
 ## Planned Task
 
-- [ ] **09A4A-1 — Cancel later writes from canonical missing data** (`blocked_on_09a4`)
+- [ ] **09A4A-1 — Cancel later writes from canonical missing data** (`in_progress`)
   - RED: prove canonical missing data currently lets each later write reach the service seam.
   - GREEN: add the minimum pre-service cancellation producer for both actions.
   - TRIANGULATE: present/missing, allowed/denied, malformed/error, retry/duplicate, read, precedence, terminal/evidence, ES/PT, privacy, and concurrency.
@@ -61,4 +61,8 @@ git diff --check
 
 ## Evidence
 
-No implementation or RED/GREEN evidence exists yet.
+- 2026-10-08: the user reviewed, accepted, and froze Spec 09A4, unblocking this task.
+- RED: the exact focused test failed for both writes because each reached the service seam (`2 failed`).
+- GREEN: the same focused test passed for both writes (`2 passed`).
+- TRIANGULATE: affected agent suites passed (`185 passed`); full suite passed (`1293 passed`, one unrelated Pydantic warning); Ruff check/format and `git diff --check` passed.
+- Canonical records gate writes in capture without shared positivity; 253 authored lines, one runtime domain; task, commit, and review remain pending.
