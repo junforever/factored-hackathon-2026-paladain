@@ -1,8 +1,8 @@
 # SPEC #09A5 — Admisión de gobierno para el handoff deseado
 
 > **Estado:** `IMPLEMENTATION-BLOCKED`; planificación normativa, no autorizada.
-> **Depende de:** [09A1](spec_09a1.md)–[09A4](spec_09a4.md) implementadas,
-> GREEN, revisadas y congeladas.
+> **Depende de:** [09A1](spec_09a1.md)–[09A4](spec_09a4.md) y
+> [09A4A](spec_09a4a.md) implementadas, GREEN, revisadas y congeladas.
 > **Pregunta única:** ¿un handoff requerido y determinísticamente elegible llega
 > a la decisión de gobierno correcta antes de tocar persistencia?
 
@@ -28,7 +28,8 @@ Debe existir una matriz fake revisada que separe, sin IDs de caso:
 - ejecución y persistencia, todavía fuera de esta spec.
 
 09A1–09A2 deben señalar el primer gate divergente por ocurrencia; 09A3–09A4
-deben probar autorización y missing-data. Un terminal agregado no desbloquea 09A5.
+deben probar autorización y missing-data, y 09A4A su cancelación pre-service.
+Un terminal agregado no desbloquea 09A5.
 
 ## 2. Alcance futuro
 
@@ -136,7 +137,7 @@ no están autorizados por la planificación base.
 
 ## 8. Aceptación y verificación
 
-Antes de implementar se congelan asserts desde 09A1–09A4. Como mínimo:
+Antes de implementar se congelan asserts desde 09A1–09A4A. Como mínimo:
 
 - cada positivo elegible alcanza el gate semántico exacto;
 - cada negativo se detiene en el primer gate y no ejecuta service;
