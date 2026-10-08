@@ -62,13 +62,13 @@ Documentation/tracking:
   - Acceptance: coherent 09A4 and 09A4A behavior boundaries, each forecast or observed at ≤300 authored lines including tracking.
   - Work-unit commit: `cf426d1e827f4650a4aee6d0d9857eabf6a0fc15` (`docs(agent): split canonical missing-data work units`).
 
-- [ ] **09A4-1 — Preserve canonical missing-data truth end to end** (`in_progress`)
+- [x] **09A4-1 — Preserve canonical missing-data truth end to end** (`done`)
   - RED: an authorized recent-transaction result with missing merchant data returned model text instead of the safe missing-data terminal; the denied occurrence remained non-positive.
   - GREEN: derive missing-data from the exact normalized `get_recent_transactions` occurrence and use it for terminal/evidence behavior.
   - TRIANGULATE: present/absent, authorized/denied, success/error, malformed and non-strict values, homonyms, interleaving, retry/duplicate, ES/PT, terminal precedence, audit failure, canonical evidence, and privacy.
   - REFACTOR: no new module, event, public schema, or alternate positive source.
   - Acceptance: every positive is tied to one exact authorized verified read occurrence; all negative/ambiguous states remain non-positive; terminal/evidence contracts and unrelated behavior remain unchanged.
-  - Work-unit commit and native review: pending; do not close before commit.
+  - Work-unit commit: `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02` (`fix(agent): canonicalize missing-merchant state`); independent review/acceptance/freeze remain pending.
 
 ## Acceptance Criteria
 
@@ -89,7 +89,8 @@ Documentation/tracking:
 - 2026-10-07: the user accepted the 09A4/09A4A behavioral split.
 - 2026-10-07: split specification work committed as `cf426d1e827f4650a4aee6d0d9857eabf6a0fc15`; re-scoped 09A4 implementation remains open.
 - 2026-10-07: RED reproduced the blocker: authorized successful `get_dispute_context` plus legacy shared state remained positive; focused GREEN confirmed capture now neutralizes that state while retaining normalized records.
-- 2026-10-07: affected agent suites passed (185 tests), and scoped Ruff check/format validation passed; commit and native review remain pending.
+- 2026-10-07: implementation committed as `dc9314168c6d38b8780cbdb6b1e97bd29ba89a02`; independent final verification passed the focused regression (1), affected agent suites (185), full suite (1293; one unrelated Pydantic deprecation warning), Ruff check/format, and `git diff --check`, with no real evaluation/network/model/Jev.
+- 2026-10-07: native ASSESS for `cf426d1..dc93141` was medium risk (`executable_change`), 5 paths and 274 authored lines, with `reviewDue=false` (`under_budget`); review is deferred to a PR slice, not approved or frozen.
 
 ## Verification
 
@@ -102,4 +103,4 @@ git diff --check
 
 ## Next Step
 
-Parent commit and native review remain pending; keep 09A4 in progress until both complete.
+Independently review, accept, and freeze 09A4 before starting blocked 09A4A.
